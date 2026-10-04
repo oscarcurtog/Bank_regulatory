@@ -1,0 +1,36 @@
+# Environment
+.venv/
+.env
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Downloaded corpus and parsed layer (D-002): not versioned in git, they can be
+# regenerated from data/manifest.json + ingest/. That is why every row of the
+# measurement log records the download date and the snapshot hash: the commit
+# alone does not reproduce an experiment.
+data/raw/
+data/processed/
+# Same rule: t2_nodes.json is the per-node derived layer (1.8 MB, corpus text
+# included), regenerable with scripts/measure_nodes.py. The measurement
+# profiles ARE versioned, like data/t1_report.json.
+data/t2_nodes.json
+
+# Local Claude Code config: it belongs to this machine, not to the project.
+# .claude/settings.json (without "local") IS shared and can be versioned.
+.claude/settings.local.json
+
+# Internal working documents: they stay local while they have no real content
+# to show. To be revisited in S10 (English translation, and which part, if any,
+# becomes public alongside the README).
+CLAUDE.md
+docs/
+
+# macOS
+.DS_Store
+
+# NOTE: this file IS pushed to the repo. It is a list of patterns to ignore,
+# not a place to keep anything. Secrets go in .env, which is ignored above and
+# therefore never leaves this machine.

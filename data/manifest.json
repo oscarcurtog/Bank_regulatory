@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-09-05T16:17:15Z",
+  "documents": [
+    {
+      "act": "DORA",
+      "celex": "32022R2554",
+      "role": "original",
+      "url": "https://publications.europa.eu/resource/celex/32022R2554",
+      "local_path": "data/raw/32022R2554.xhtml",
+      "sha256": "cf50d8f023d23b2a56f535aaee0760eba7f1925ef08a9858c5c31d43d414f46b",
+      "fetched_at": "2026-09-05T16:17:15Z",
+      "http_status": 200,
+      "size_bytes": 746866
+    },
+    {
+      "act": "MiCA",
+      "celex": "32023R1114",
+      "role": "original",
+      "url": "https://publications.europa.eu/resource/celex/32023R1114",
+      "local_path": "data/raw/32023R1114.xhtml",
+      "sha256": "c694819af2efbd715735cacf4bb65eade4685f88b30787197658122ff04c26fb",
+      "fetched_at": "2026-09-05T16:17:15Z",
+      "http_status": 200,
+      "size_bytes": 1681465
+    },
+    {
+      "act": "MiCA",
+      "celex": "02023R1114-20240109",
+      "role": "consolidated",
+      "url": "https://publications.europa.eu/resource/celex/02023R1114-20240109",
+      "local_path": "data/raw/02023R1114-20240109.xhtml",
+      "sha256": "078da6ed766fe117be60ff63536f25101ec21f2dec175394eef7bf82c02ffe19",
+      "fetched_at": "2026-09-05T16:17:15Z",
+      "http_status": 200,
+      "size_bytes": 1188920
+    },
+    {
+      "act": "PSD2",
+      "celex": "32015L2366",
+      "role": "original",
+      "url": "https://publications.europa.eu/resource/celex/32015L2366",
+      "local_path": "data/raw/32015L2366.xhtml",
+      "sha256": "9ca1d7e9a83b9165c453d0731dd9b1405ba3629676b9f60660dbd7c69b37d767",
+      "fetched_at": "2026-09-05T16:17:15Z",
+      "http_status": 200,
+      "size_bytes": 859273
+    },
+    {
+      "act": "PSD2",
+      "celex": "02015L2366-20151223",
+      "role": "consolidated",
+      "url": "https://publications.europa.eu/resource/celex/02015L2366-20151223",
+      "local_path": "data/raw/02015L2366-20151223.xhtml",
+      "sha256": "e9063e8919bf93bd2b92ae0c6f816ad83bcf6ca42a5b97cdc277214e5080e1c3",
+      "fetched_at": "2026-09-05T16:17:15Z",
+      "http_status": 200,
+      "size_bytes": 567712
+    }
+  ]
+}

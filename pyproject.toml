@@ -1,0 +1,133 @@
+# Dependency contract of the project. It declares WHAT Fundamento needs, in the
+# abstract. The exact versions that reproduced each measurement are in
+# requirements.lock.txt, which is another file with another purpose.
+[project]
+name = "fundamento"
+version = "0.1.0"
+description = "RAG over EU banking regulation with verifiable article-level citations"
+requires-python = ">=3.12"
+
+# Dependency boundary. pydantic is needed since EF-3: it defines the data
+# contracts, which are validated at both of their boundaries: the manifest
+# (ingest/download.py), the Node and Article models (ingest/hierarchy.py) and
+# the processed layer (ingest/processed.py). The parsing logic itself still
+# uses only the standard library (xml.etree, re). The T2 measurement scripts
+# need tiktoken and tokenizers (D-005, M-005, M-006).
+dependencies = [
+    "pydantic>=2.13,<3",
+    "tiktoken>=0.14,<0.15",
+    "tokenizers>=0.22,<0.23",
+]
+
+# Development dependencies, not production ones. They are installed with
+# `uv pip install -e ".[dev]"` and are not part of the package that gets deployed.
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",   # EF-2
+    "ruff>=0.16",  # EF-4
+    "mypy>=2",     # EF-5
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ingest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# "corpus" needs data/raw/ (D-002: not versioned). It is registered here so that
+# pytest does not warn about an "unknown mark"; tests/conftest.py skips it
+# automatically when the directory does not exist.
+markers = [
+    "corpus: needs the full corpus downloaded into data/raw/",
+]
+
+# ---------------------------------------------------------------------------
+# EF-4: Ruff. Linter and formatter.
+#
+# line-length 100 is not a round number picked at random: it describes the code
+# that already exists. The real distribution of the repo before EF-4 was median
+# 39, p95 84, p99 104. With 88 (Ruff's default) there would be 88 cosmetic
+# violations, with 79 (PEP 8) there would be 169.
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# A deliberately short set. What each one brings:
+#   F  Pyflakes      unused imports, dead variables, undefined names.
+#                    The only one that catches real defects, not style.
+#   E,W pycodestyle  spacing, length, two statements on one line.
+#   I  isort         import order. Auto-fixable, zero risk.
+#   UP pyupgrade     outdated syntax for py312. Relevant coming from 3.9.
+#   B  bugbear       mutable default arguments, captures in loops.
+#
+# Deliberately NOT enabled: ANN (that is mypy's job in EF-5), D (the docstrings
+# in this repo are explanatory prose, not imperative summaries), SIM (it rewrites
+# to its own taste and costs readability in a parser), PTH, S (it would flag the
+# asserts of the 165 tests), N.
+select = ["E", "W", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# The two measurement scripts print aligned tables to the console. Their long
+# f-strings carry width specifiers ({:5}, {:9}, {:.0f}) that are exactly what
+# aligns the output: splitting them destroys the alignment, which is their only
+# reason to exist. They measure between 103 and 143 characters, so raising the
+# global ceiling would not cover them either without loosening it too much.
+"scripts/measure_nodes.py" = ["E501"]
+"scripts/profile_tokens.py" = ["E501"]
+
+# ---------------------------------------------------------------------------
+# EF-5: mypy. Static type checking.
+#
+# It does NOT start with strict = true, and the reason is measured: strict gives
+# 177 errors, of which 148 are only missing annotations and 115 are in tests/.
+# Forcing annotations on 131 test functions that get their arguments from
+# parametrize and return None is ceremony, not safety. The configuration below
+# gives 34 errors, all of them actionable.
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+
+# Checks the BODY of unannotated functions. Without this mypy did not even look
+# inside _Buf or the parser's walk() functions, which is where the wrongly
+# inferred type of current_para was (list[None] instead of list[str | None]).
+check_untyped_defs = true
+
+# Requires complete annotations. Relaxed only for tests, further down.
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+no_implicit_optional = true   # a "= None" does not make the type optional behind your back
+strict_equality = true        # catches comparisons between types that are never equal
+warn_return_any = true
+warn_no_return = true
+warn_redundant_casts = true   # stops a cast from lingering once it is no longer needed
+warn_unused_ignores = true    # stops the "# type: ignore" debt from fossilising
+
+# init_typed keeps the models' constructor STRICT. By default the plugin makes it
+# permissive, imitating Pydantic's runtime coercion, and that hides exactly what
+# we want to see: code that passes a str where the contract declares a closed
+# set. With this, the 5 boundary errors show up.
+[tool.pydantic-mypy]
+init_typed = true
+init_forbid_extra = true
+
+# Tests do not need annotations: their arguments come from parametrize and none
+# of them returns anything. Requiring them would mean 115 ceremony errors.
+# The rest of the checks DO apply to them, and one of them found a real boundary
+# error in test_processed_loading.py.
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+# tokenizers does not publish a py.typed marker. An override for THAT module, not
+# a global ignore_missing_imports: tiktoken and pydantic do publish types.
+[[tool.mypy.overrides]]
+module = ["tokenizers.*"]
+ignore_missing_imports = true

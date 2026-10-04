@@ -1,0 +1,2319 @@
+[
+ {
+  "act": "DORA",
+  "article_id": "art_1",
+  "words": 263,
+  "cl100k": 335,
+  "wordpiece": 344
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_2",
+  "words": 370,
+  "cl100k": 617,
+  "wordpiece": 610
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_3",
+  "words": 2069,
+  "cl100k": 3095,
+  "wordpiece": 3140
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_4",
+  "words": 139,
+  "cl100k": 173,
+  "wordpiece": 167
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_5",
+  "words": 527,
+  "cl100k": 645,
+  "wordpiece": 675
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_6",
+  "words": 730,
+  "cl100k": 877,
+  "wordpiece": 909
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_7",
+  "words": 119,
+  "cl100k": 144,
+  "wordpiece": 144
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_8",
+  "words": 329,
+  "cl100k": 401,
+  "wordpiece": 406
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_9",
+  "words": 543,
+  "cl100k": 651,
+  "wordpiece": 674
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_10",
+  "words": 152,
+  "cl100k": 190,
+  "wordpiece": 194
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_11",
+  "words": 728,
+  "cl100k": 913,
+  "wordpiece": 914
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_12",
+  "words": 557,
+  "cl100k": 644,
+  "wordpiece": 651
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_13",
+  "words": 529,
+  "cl100k": 644,
+  "wordpiece": 669
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_14",
+  "words": 137,
+  "cl100k": 160,
+  "wordpiece": 163
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_15",
+  "words": 433,
+  "cl100k": 561,
+  "wordpiece": 568
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_16",
+  "words": 697,
+  "cl100k": 887,
+  "wordpiece": 898
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_17",
+  "words": 261,
+  "cl100k": 327,
+  "wordpiece": 340
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_18",
+  "words": 491,
+  "cl100k": 647,
+  "wordpiece": 659
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_19",
+  "words": 1095,
+  "cl100k": 1394,
+  "wordpiece": 1400
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_20",
+  "words": 374,
+  "cl100k": 506,
+  "wordpiece": 501
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_21",
+  "words": 211,
+  "cl100k": 268,
+  "wordpiece": 269
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_22",
+  "words": 223,
+  "cl100k": 283,
+  "wordpiece": 294
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_23",
+  "words": 59,
+  "cl100k": 71,
+  "wordpiece": 73
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_24",
+  "words": 309,
+  "cl100k": 387,
+  "wordpiece": 403
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_25",
+  "words": 203,
+  "cl100k": 252,
+  "wordpiece": 258
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_26",
+  "words": 1158,
+  "cl100k": 1417,
+  "wordpiece": 1449
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_27",
+  "words": 270,
+  "cl100k": 336,
+  "wordpiece": 344
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_28",
+  "words": 1408,
+  "cl100k": 1711,
+  "wordpiece": 1728
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_29",
+  "words": 389,
+  "cl100k": 442,
+  "wordpiece": 470
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_30",
+  "words": 1068,
+  "cl100k": 1292,
+  "wordpiece": 1338
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_31",
+  "words": 1151,
+  "cl100k": 1440,
+  "wordpiece": 1470
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_32",
+  "words": 684,
+  "cl100k": 899,
+  "wordpiece": 886
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_33",
+  "words": 534,
+  "cl100k": 661,
+  "wordpiece": 671
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_34",
+  "words": 177,
+  "cl100k": 218,
+  "wordpiece": 217
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_35",
+  "words": 1226,
+  "cl100k": 1500,
+  "wordpiece": 1542
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_36",
+  "words": 723,
+  "cl100k": 900,
+  "wordpiece": 920
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_37",
+  "words": 410,
+  "cl100k": 525,
+  "wordpiece": 516
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_38",
+  "words": 388,
+  "cl100k": 490,
+  "wordpiece": 489
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_39",
+  "words": 459,
+  "cl100k": 578,
+  "wordpiece": 579
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_40",
+  "words": 260,
+  "cl100k": 323,
+  "wordpiece": 324
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_41",
+  "words": 214,
+  "cl100k": 289,
+  "wordpiece": 281
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_42",
+  "words": 1020,
+  "cl100k": 1249,
+  "wordpiece": 1274
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_43",
+  "words": 185,
+  "cl100k": 215,
+  "wordpiece": 217
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_44",
+  "words": 144,
+  "cl100k": 201,
+  "wordpiece": 194
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_45",
+  "words": 243,
+  "cl100k": 304,
+  "wordpiece": 313
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_46",
+  "words": 480,
+  "cl100k": 758,
+  "wordpiece": 717
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_47",
+  "words": 295,
+  "cl100k": 376,
+  "wordpiece": 361
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_48",
+  "words": 76,
+  "cl100k": 96,
+  "wordpiece": 93
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_49",
+  "words": 216,
+  "cl100k": 273,
+  "wordpiece": 275
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_50",
+  "words": 481,
+  "cl100k": 577,
+  "wordpiece": 586
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_51",
+  "words": 237,
+  "cl100k": 300,
+  "wordpiece": 301
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_52",
+  "words": 123,
+  "cl100k": 142,
+  "wordpiece": 146
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_53",
+  "words": 54,
+  "cl100k": 76,
+  "wordpiece": 76
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_54",
+  "words": 374,
+  "cl100k": 451,
+  "wordpiece": 456
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_55",
+  "words": 197,
+  "cl100k": 229,
+  "wordpiece": 223
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_56",
+  "words": 126,
+  "cl100k": 163,
+  "wordpiece": 153
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_57",
+  "words": 351,
+  "cl100k": 418,
+  "wordpiece": 416
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_58",
+  "words": 555,
+  "cl100k": 707,
+  "wordpiece": 697
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_59",
+  "words": 154,
+  "cl100k": 218,
+  "wordpiece": 217
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_60",
+  "words": 677,
+  "cl100k": 935,
+  "wordpiece": 953
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_61",
+  "words": 440,
+  "cl100k": 567,
+  "wordpiece": 563
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_62",
+  "words": 203,
+  "cl100k": 317,
+  "wordpiece": 310
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_63",
+  "words": 65,
+  "cl100k": 98,
+  "wordpiece": 94
+ },
+ {
+  "act": "DORA",
+  "article_id": "art_64",
+  "words": 37,
+  "cl100k": 43,
+  "wordpiece": 40
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_1",
+  "words": 174,
+  "cl100k": 236,
+  "wordpiece": 260
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_2",
+  "words": 448,
+  "cl100k": 638,
+  "wordpiece": 639
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_3",
+  "words": 1926,
+  "cl100k": 2749,
+  "wordpiece": 2879
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_4",
+  "words": 918,
+  "cl100k": 1189,
+  "wordpiece": 1228
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_5",
+  "words": 388,
+  "cl100k": 509,
+  "wordpiece": 518
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_6",
+  "words": 1160,
+  "cl100k": 1494,
+  "wordpiece": 1556
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_7",
+  "words": 445,
+  "cl100k": 548,
+  "wordpiece": 559
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_8",
+  "words": 471,
+  "cl100k": 581,
+  "wordpiece": 594
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_9",
+  "words": 157,
+  "cl100k": 200,
+  "wordpiece": 209
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_10",
+  "words": 250,
+  "cl100k": 308,
+  "wordpiece": 327
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_11",
+  "words": 144,
+  "cl100k": 191,
+  "wordpiece": 205
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_12",
+  "words": 600,
+  "cl100k": 752,
+  "wordpiece": 775
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_13",
+  "words": 302,
+  "cl100k": 363,
+  "wordpiece": 390
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_14",
+  "words": 241,
+  "cl100k": 326,
+  "wordpiece": 336
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_15",
+  "words": 382,
+  "cl100k": 476,
+  "wordpiece": 485
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_16",
+  "words": 406,
+  "cl100k": 537,
+  "wordpiece": 526
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_17",
+  "words": 914,
+  "cl100k": 1163,
+  "wordpiece": 1162
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_18",
+  "words": 866,
+  "cl100k": 1128,
+  "wordpiece": 1144
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_19",
+  "words": 1022,
+  "cl100k": 1337,
+  "wordpiece": 1352
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_20",
+  "words": 519,
+  "cl100k": 636,
+  "wordpiece": 631
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_21",
+  "words": 459,
+  "cl100k": 613,
+  "wordpiece": 610
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_22",
+  "words": 572,
+  "cl100k": 720,
+  "wordpiece": 706
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_23",
+  "words": 309,
+  "cl100k": 390,
+  "wordpiece": 375
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_24",
+  "words": 589,
+  "cl100k": 769,
+  "wordpiece": 775
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_25",
+  "words": 815,
+  "cl100k": 1042,
+  "wordpiece": 1060
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_26",
+  "words": 287,
+  "cl100k": 364,
+  "wordpiece": 363
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_27",
+  "words": 89,
+  "cl100k": 120,
+  "wordpiece": 118
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_28",
+  "words": 108,
+  "cl100k": 147,
+  "wordpiece": 149
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_29",
+  "words": 220,
+  "cl100k": 283,
+  "wordpiece": 282
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_30",
+  "words": 180,
+  "cl100k": 231,
+  "wordpiece": 223
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_31",
+  "words": 297,
+  "cl100k": 403,
+  "wordpiece": 400
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_32",
+  "words": 301,
+  "cl100k": 405,
+  "wordpiece": 397
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_33",
+  "words": 43,
+  "cl100k": 53,
+  "wordpiece": 53
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_34",
+  "words": 1057,
+  "cl100k": 1401,
+  "wordpiece": 1399
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_35",
+  "words": 799,
+  "cl100k": 1037,
+  "wordpiece": 1023
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_36",
+  "words": 1282,
+  "cl100k": 1632,
+  "wordpiece": 1643
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_37",
+  "words": 1379,
+  "cl100k": 1779,
+  "wordpiece": 1822
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_38",
+  "words": 494,
+  "cl100k": 638,
+  "wordpiece": 633
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_39",
+  "words": 346,
+  "cl100k": 445,
+  "wordpiece": 440
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_40",
+  "words": 118,
+  "cl100k": 166,
+  "wordpiece": 164
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_41",
+  "words": 668,
+  "cl100k": 792,
+  "wordpiece": 778
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_42",
+  "words": 410,
+  "cl100k": 523,
+  "wordpiece": 518
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_43",
+  "words": 1105,
+  "cl100k": 1442,
+  "wordpiece": 1415
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_44",
+  "words": 418,
+  "cl100k": 555,
+  "wordpiece": 551
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_45",
+  "words": 610,
+  "cl100k": 809,
+  "wordpiece": 815
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_46",
+  "words": 514,
+  "cl100k": 615,
+  "wordpiece": 617
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_47",
+  "words": 493,
+  "cl100k": 609,
+  "wordpiece": 612
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_48",
+  "words": 309,
+  "cl100k": 412,
+  "wordpiece": 415
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_49",
+  "words": 172,
+  "cl100k": 237,
+  "wordpiece": 256
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_50",
+  "words": 126,
+  "cl100k": 169,
+  "wordpiece": 173
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_51",
+  "words": 1245,
+  "cl100k": 1567,
+  "wordpiece": 1634
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_52",
+  "words": 291,
+  "cl100k": 361,
+  "wordpiece": 375
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_53",
+  "words": 223,
+  "cl100k": 276,
+  "wordpiece": 285
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_54",
+  "words": 107,
+  "cl100k": 142,
+  "wordpiece": 145
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_55",
+  "words": 113,
+  "cl100k": 142,
+  "wordpiece": 149
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_56",
+  "words": 932,
+  "cl100k": 1133,
+  "wordpiece": 1175
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_57",
+  "words": 542,
+  "cl100k": 658,
+  "wordpiece": 689
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_58",
+  "words": 204,
+  "cl100k": 293,
+  "wordpiece": 286
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_59",
+  "words": 392,
+  "cl100k": 502,
+  "wordpiece": 504
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_60",
+  "words": 1676,
+  "cl100k": 2195,
+  "wordpiece": 2225
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_61",
+  "words": 312,
+  "cl100k": 394,
+  "wordpiece": 406
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_62",
+  "words": 993,
+  "cl100k": 1302,
+  "wordpiece": 1350
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_63",
+  "words": 1012,
+  "cl100k": 1315,
+  "wordpiece": 1310
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_64",
+  "words": 495,
+  "cl100k": 665,
+  "wordpiece": 682
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_65",
+  "words": 226,
+  "cl100k": 290,
+  "wordpiece": 292
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_66",
+  "words": 394,
+  "cl100k": 496,
+  "wordpiece": 522
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_67",
+  "words": 536,
+  "cl100k": 725,
+  "wordpiece": 733
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_68",
+  "words": 800,
+  "cl100k": 1004,
+  "wordpiece": 1025
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_69",
+  "words": 51,
+  "cl100k": 58,
+  "wordpiece": 58
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_70",
+  "words": 306,
+  "cl100k": 392,
+  "wordpiece": 411
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_71",
+  "words": 203,
+  "cl100k": 255,
+  "wordpiece": 253
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_72",
+  "words": 335,
+  "cl100k": 430,
+  "wordpiece": 428
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_73",
+  "words": 382,
+  "cl100k": 473,
+  "wordpiece": 512
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_74",
+  "words": 81,
+  "cl100k": 97,
+  "wordpiece": 100
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_75",
+  "words": 955,
+  "cl100k": 1162,
+  "wordpiece": 1276
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_76",
+  "words": 1319,
+  "cl100k": 1633,
+  "wordpiece": 1728
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_77",
+  "words": 177,
+  "cl100k": 225,
+  "wordpiece": 252
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_78",
+  "words": 517,
+  "cl100k": 612,
+  "wordpiece": 643
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_79",
+  "words": 204,
+  "cl100k": 273,
+  "wordpiece": 293
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_80",
+  "words": 144,
+  "cl100k": 176,
+  "wordpiece": 191
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_81",
+  "words": 1386,
+  "cl100k": 1733,
+  "wordpiece": 1842
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_82",
+  "words": 142,
+  "cl100k": 192,
+  "wordpiece": 199
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_83",
+  "words": 704,
+  "cl100k": 831,
+  "wordpiece": 819
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_84",
+  "words": 405,
+  "cl100k": 513,
+  "wordpiece": 512
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_85",
+  "words": 280,
+  "cl100k": 383,
+  "wordpiece": 386
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_86",
+  "words": 100,
+  "cl100k": 121,
+  "wordpiece": 125
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_87",
+  "words": 388,
+  "cl100k": 464,
+  "wordpiece": 480
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_88",
+  "words": 394,
+  "cl100k": 478,
+  "wordpiece": 469
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_89",
+  "words": 451,
+  "cl100k": 535,
+  "wordpiece": 544
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_90",
+  "words": 83,
+  "cl100k": 102,
+  "wordpiece": 97
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_91",
+  "words": 498,
+  "cl100k": 626,
+  "wordpiece": 648
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_92",
+  "words": 333,
+  "cl100k": 402,
+  "wordpiece": 391
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_93",
+  "words": 120,
+  "cl100k": 143,
+  "wordpiece": 138
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_94",
+  "words": 1779,
+  "cl100k": 2241,
+  "wordpiece": 2341
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_95",
+  "words": 954,
+  "cl100k": 1186,
+  "wordpiece": 1189
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_96",
+  "words": 185,
+  "cl100k": 257,
+  "wordpiece": 241
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_97",
+  "words": 352,
+  "cl100k": 521,
+  "wordpiece": 500
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_98",
+  "words": 72,
+  "cl100k": 86,
+  "wordpiece": 86
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_99",
+  "words": 51,
+  "cl100k": 67,
+  "wordpiece": 67
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_100",
+  "words": 125,
+  "cl100k": 134,
+  "wordpiece": 131
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_101",
+  "words": 62,
+  "cl100k": 81,
+  "wordpiece": 76
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_102",
+  "words": 375,
+  "cl100k": 508,
+  "wordpiece": 522
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_103",
+  "words": 546,
+  "cl100k": 674,
+  "wordpiece": 688
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_104",
+  "words": 547,
+  "cl100k": 679,
+  "wordpiece": 687
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_105",
+  "words": 747,
+  "cl100k": 872,
+  "wordpiece": 893
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_106",
+  "words": 206,
+  "cl100k": 282,
+  "wordpiece": 284
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_107",
+  "words": 321,
+  "cl100k": 384,
+  "wordpiece": 369
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_108",
+  "words": 148,
+  "cl100k": 191,
+  "wordpiece": 188
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_109",
+  "words": 910,
+  "cl100k": 1245,
+  "wordpiece": 1322
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_110",
+  "words": 237,
+  "cl100k": 309,
+  "wordpiece": 302
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_110a",
+  "words": 627,
+  "cl100k": 898,
+  "wordpiece": 917
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_111",
+  "words": 1363,
+  "cl100k": 1748,
+  "wordpiece": 1707
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_112",
+  "words": 328,
+  "cl100k": 394,
+  "wordpiece": 396
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_113",
+  "words": 142,
+  "cl100k": 167,
+  "wordpiece": 166
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_114",
+  "words": 468,
+  "cl100k": 533,
+  "wordpiece": 545
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_115",
+  "words": 246,
+  "cl100k": 296,
+  "wordpiece": 296
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_116",
+  "words": 31,
+  "cl100k": 43,
+  "wordpiece": 39
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_117",
+  "words": 336,
+  "cl100k": 498,
+  "wordpiece": 473
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_118",
+  "words": 120,
+  "cl100k": 158,
+  "wordpiece": 153
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_119",
+  "words": 981,
+  "cl100k": 1253,
+  "wordpiece": 1265
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_120",
+  "words": 502,
+  "cl100k": 685,
+  "wordpiece": 696
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_121",
+  "words": 40,
+  "cl100k": 48,
+  "wordpiece": 45
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_122",
+  "words": 556,
+  "cl100k": 711,
+  "wordpiece": 717
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_123",
+  "words": 680,
+  "cl100k": 850,
+  "wordpiece": 855
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_124",
+  "words": 703,
+  "cl100k": 865,
+  "wordpiece": 864
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_125",
+  "words": 385,
+  "cl100k": 488,
+  "wordpiece": 506
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_126",
+  "words": 111,
+  "cl100k": 140,
+  "wordpiece": 127
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_127",
+  "words": 142,
+  "cl100k": 161,
+  "wordpiece": 155
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_128",
+  "words": 81,
+  "cl100k": 96,
+  "wordpiece": 97
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_129",
+  "words": 44,
+  "cl100k": 52,
+  "wordpiece": 52
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_130",
+  "words": 1469,
+  "cl100k": 1839,
+  "wordpiece": 1914
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_131",
+  "words": 549,
+  "cl100k": 691,
+  "wordpiece": 711
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_132",
+  "words": 233,
+  "cl100k": 291,
+  "wordpiece": 281
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_133",
+  "words": 187,
+  "cl100k": 227,
+  "wordpiece": 218
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_134",
+  "words": 642,
+  "cl100k": 761,
+  "wordpiece": 751
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_135",
+  "words": 181,
+  "cl100k": 215,
+  "wordpiece": 211
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_136",
+  "words": 55,
+  "cl100k": 62,
+  "wordpiece": 61
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_137",
+  "words": 269,
+  "cl100k": 324,
+  "wordpiece": 328
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_138",
+  "words": 183,
+  "cl100k": 237,
+  "wordpiece": 231
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_139",
+  "words": 367,
+  "cl100k": 496,
+  "wordpiece": 492
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_140",
+  "words": 1242,
+  "cl100k": 1596,
+  "wordpiece": 1683
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_141",
+  "words": 604,
+  "cl100k": 781,
+  "wordpiece": 839
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_142",
+  "words": 204,
+  "cl100k": 269,
+  "wordpiece": 285
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_143",
+  "words": 440,
+  "cl100k": 585,
+  "wordpiece": 549
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_144",
+  "words": 142,
+  "cl100k": 259,
+  "wordpiece": 251
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_145",
+  "words": 175,
+  "cl100k": 309,
+  "wordpiece": 292
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_146",
+  "words": 76,
+  "cl100k": 150,
+  "wordpiece": 145
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_147",
+  "words": 64,
+  "cl100k": 141,
+  "wordpiece": 125
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_148",
+  "words": 66,
+  "cl100k": 100,
+  "wordpiece": 87
+ },
+ {
+  "act": "MiCA",
+  "article_id": "art_149",
+  "words": 154,
+  "cl100k": 391,
+  "wordpiece": 379
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_1",
+  "words": 272,
+  "cl100k": 349,
+  "wordpiece": 339
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_2",
+  "words": 261,
+  "cl100k": 365,
+  "wordpiece": 355
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_3",
+  "words": 927,
+  "cl100k": 1114,
+  "wordpiece": 1124
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_4",
+  "words": 1730,
+  "cl100k": 2204,
+  "wordpiece": 2213
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_5",
+  "words": 1293,
+  "cl100k": 1639,
+  "wordpiece": 1641
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_6",
+  "words": 367,
+  "cl100k": 440,
+  "wordpiece": 427
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_7",
+  "words": 136,
+  "cl100k": 182,
+  "wordpiece": 177
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_8",
+  "words": 160,
+  "cl100k": 194,
+  "wordpiece": 184
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_9",
+  "words": 734,
+  "cl100k": 912,
+  "wordpiece": 889
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_10",
+  "words": 384,
+  "cl100k": 423,
+  "wordpiece": 423
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_11",
+  "words": 580,
+  "cl100k": 703,
+  "wordpiece": 698
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_12",
+  "words": 54,
+  "cl100k": 63,
+  "wordpiece": 61
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_13",
+  "words": 184,
+  "cl100k": 228,
+  "wordpiece": 222
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_14",
+  "words": 212,
+  "cl100k": 258,
+  "wordpiece": 243
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_15",
+  "words": 294,
+  "cl100k": 366,
+  "wordpiece": 350
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_16",
+  "words": 38,
+  "cl100k": 45,
+  "wordpiece": 44
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_17",
+  "words": 145,
+  "cl100k": 230,
+  "wordpiece": 218
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_18",
+  "words": 361,
+  "cl100k": 459,
+  "wordpiece": 438
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_19",
+  "words": 645,
+  "cl100k": 753,
+  "wordpiece": 756
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_20",
+  "words": 67,
+  "cl100k": 79,
+  "wordpiece": 77
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_21",
+  "words": 36,
+  "cl100k": 48,
+  "wordpiece": 45
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_22",
+  "words": 254,
+  "cl100k": 293,
+  "wordpiece": 285
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_23",
+  "words": 295,
+  "cl100k": 356,
+  "wordpiece": 354
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_24",
+  "words": 94,
+  "cl100k": 122,
+  "wordpiece": 114
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_25",
+  "words": 58,
+  "cl100k": 67,
+  "wordpiece": 63
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_26",
+  "words": 177,
+  "cl100k": 231,
+  "wordpiece": 225
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_27",
+  "words": 159,
+  "cl100k": 210,
+  "wordpiece": 198
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_28",
+  "words": 768,
+  "cl100k": 882,
+  "wordpiece": 871
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_29",
+  "words": 740,
+  "cl100k": 858,
+  "wordpiece": 850
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_30",
+  "words": 381,
+  "cl100k": 436,
+  "wordpiece": 444
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_31",
+  "words": 104,
+  "cl100k": 155,
+  "wordpiece": 139
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_32",
+  "words": 374,
+  "cl100k": 466,
+  "wordpiece": 432
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_33",
+  "words": 127,
+  "cl100k": 186,
+  "wordpiece": 175
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_34",
+  "words": 88,
+  "cl100k": 109,
+  "wordpiece": 105
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_35",
+  "words": 254,
+  "cl100k": 308,
+  "wordpiece": 307
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_36",
+  "words": 68,
+  "cl100k": 80,
+  "wordpiece": 81
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_37",
+  "words": 286,
+  "cl100k": 348,
+  "wordpiece": 332
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_38",
+  "words": 95,
+  "cl100k": 117,
+  "wordpiece": 112
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_39",
+  "words": 73,
+  "cl100k": 113,
+  "wordpiece": 111
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_40",
+  "words": 94,
+  "cl100k": 110,
+  "wordpiece": 107
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_41",
+  "words": 38,
+  "cl100k": 42,
+  "wordpiece": 41
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_42",
+  "words": 354,
+  "cl100k": 422,
+  "wordpiece": 420
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_43",
+  "words": 85,
+  "cl100k": 93,
+  "wordpiece": 90
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_44",
+  "words": 214,
+  "cl100k": 238,
+  "wordpiece": 236
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_45",
+  "words": 234,
+  "cl100k": 278,
+  "wordpiece": 278
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_46",
+  "words": 149,
+  "cl100k": 180,
+  "wordpiece": 185
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_47",
+  "words": 48,
+  "cl100k": 53,
+  "wordpiece": 56
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_48",
+  "words": 170,
+  "cl100k": 209,
+  "wordpiece": 218
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_49",
+  "words": 154,
+  "cl100k": 196,
+  "wordpiece": 200
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_50",
+  "words": 14,
+  "cl100k": 16,
+  "wordpiece": 15
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_51",
+  "words": 174,
+  "cl100k": 194,
+  "wordpiece": 191
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_52",
+  "words": 845,
+  "cl100k": 1039,
+  "wordpiece": 1031
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_53",
+  "words": 55,
+  "cl100k": 60,
+  "wordpiece": 58
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_54",
+  "words": 343,
+  "cl100k": 386,
+  "wordpiece": 382
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_55",
+  "words": 200,
+  "cl100k": 244,
+  "wordpiece": 235
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_56",
+  "words": 70,
+  "cl100k": 86,
+  "wordpiece": 90
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_57",
+  "words": 263,
+  "cl100k": 315,
+  "wordpiece": 330
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_58",
+  "words": 219,
+  "cl100k": 270,
+  "wordpiece": 270
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_59",
+  "words": 97,
+  "cl100k": 108,
+  "wordpiece": 108
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_60",
+  "words": 116,
+  "cl100k": 136,
+  "wordpiece": 133
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_61",
+  "words": 147,
+  "cl100k": 194,
+  "wordpiece": 179
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_62",
+  "words": 261,
+  "cl100k": 322,
+  "wordpiece": 323
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_63",
+  "words": 342,
+  "cl100k": 438,
+  "wordpiece": 433
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_64",
+  "words": 191,
+  "cl100k": 223,
+  "wordpiece": 228
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_65",
+  "words": 384,
+  "cl100k": 465,
+  "wordpiece": 468
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_66",
+  "words": 489,
+  "cl100k": 575,
+  "wordpiece": 582
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_67",
+  "words": 320,
+  "cl100k": 383,
+  "wordpiece": 384
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_68",
+  "words": 437,
+  "cl100k": 486,
+  "wordpiece": 494
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_69",
+  "words": 123,
+  "cl100k": 160,
+  "wordpiece": 159
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_70",
+  "words": 244,
+  "cl100k": 301,
+  "wordpiece": 296
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_71",
+  "words": 149,
+  "cl100k": 178,
+  "wordpiece": 181
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_72",
+  "words": 242,
+  "cl100k": 268,
+  "wordpiece": 269
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_73",
+  "words": 358,
+  "cl100k": 418,
+  "wordpiece": 442
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_74",
+  "words": 386,
+  "cl100k": 479,
+  "wordpiece": 501
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_75",
+  "words": 129,
+  "cl100k": 144,
+  "wordpiece": 152
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_76",
+  "words": 397,
+  "cl100k": 472,
+  "wordpiece": 490
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_77",
+  "words": 150,
+  "cl100k": 171,
+  "wordpiece": 178
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_78",
+  "words": 208,
+  "cl100k": 229,
+  "wordpiece": 235
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_79",
+  "words": 210,
+  "cl100k": 239,
+  "wordpiece": 241
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_80",
+  "words": 229,
+  "cl100k": 271,
+  "wordpiece": 275
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_81",
+  "words": 180,
+  "cl100k": 214,
+  "wordpiece": 218
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_82",
+  "words": 171,
+  "cl100k": 206,
+  "wordpiece": 200
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_83",
+  "words": 168,
+  "cl100k": 199,
+  "wordpiece": 202
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_84",
+  "words": 56,
+  "cl100k": 66,
+  "wordpiece": 64
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_85",
+  "words": 81,
+  "cl100k": 86,
+  "wordpiece": 85
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_86",
+  "words": 25,
+  "cl100k": 28,
+  "wordpiece": 27
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_87",
+  "words": 169,
+  "cl100k": 203,
+  "wordpiece": 212
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_88",
+  "words": 245,
+  "cl100k": 292,
+  "wordpiece": 308
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_89",
+  "words": 909,
+  "cl100k": 1107,
+  "wordpiece": 1170
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_90",
+  "words": 206,
+  "cl100k": 240,
+  "wordpiece": 244
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_91",
+  "words": 39,
+  "cl100k": 41,
+  "wordpiece": 40
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_92",
+  "words": 101,
+  "cl100k": 120,
+  "wordpiece": 122
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_93",
+  "words": 67,
+  "cl100k": 78,
+  "wordpiece": 81
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_94",
+  "words": 115,
+  "cl100k": 143,
+  "wordpiece": 137
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_95",
+  "words": 345,
+  "cl100k": 415,
+  "wordpiece": 411
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_96",
+  "words": 451,
+  "cl100k": 537,
+  "wordpiece": 537
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_97",
+  "words": 240,
+  "cl100k": 291,
+  "wordpiece": 281
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_98",
+  "words": 402,
+  "cl100k": 545,
+  "wordpiece": 533
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_99",
+  "words": 97,
+  "cl100k": 112,
+  "wordpiece": 107
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_100",
+  "words": 387,
+  "cl100k": 471,
+  "wordpiece": 452
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_101",
+  "words": 385,
+  "cl100k": 427,
+  "wordpiece": 422
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_102",
+  "words": 122,
+  "cl100k": 146,
+  "wordpiece": 145
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_103",
+  "words": 90,
+  "cl100k": 108,
+  "wordpiece": 113
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_104",
+  "words": 56,
+  "cl100k": 84,
+  "wordpiece": 79
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_105",
+  "words": 250,
+  "cl100k": 282,
+  "wordpiece": 280
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_106",
+  "words": 179,
+  "cl100k": 219,
+  "wordpiece": 212
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_107",
+  "words": 160,
+  "cl100k": 233,
+  "wordpiece": 232
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_108",
+  "words": 212,
+  "cl100k": 279,
+  "wordpiece": 276
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_109",
+  "words": 574,
+  "cl100k": 709,
+  "wordpiece": 650
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_110",
+  "words": 73,
+  "cl100k": 139,
+  "wordpiece": 131
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_111",
+  "words": 459,
+  "cl100k": 624,
+  "wordpiece": 592
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_112",
+  "words": 295,
+  "cl100k": 497,
+  "wordpiece": 473
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_113",
+  "words": 43,
+  "cl100k": 74,
+  "wordpiece": 69
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_114",
+  "words": 44,
+  "cl100k": 58,
+  "wordpiece": 52
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_115",
+  "words": 270,
+  "cl100k": 324,
+  "wordpiece": 303
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_116",
+  "words": 28,
+  "cl100k": 30,
+  "wordpiece": 29
+ },
+ {
+  "act": "PSD2",
+  "article_id": "art_117",
+  "words": 11,
+  "cl100k": 13,
+  "wordpiece": 12
+ }
+]

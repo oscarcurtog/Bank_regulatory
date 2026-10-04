@@ -1,0 +1,25 @@
+# Fixture provenance
+
+Every fixture in this directory is a verbatim excerpt of an official EUR-Lex XHTML
+document: the `<div id="art_N">` subtree, wrapped in a minimal `<html xmlns=...>`
+element so it is a well-formed document on its own. Nothing inside the excerpt was
+edited, reformatted or synthesised.
+
+`tests/integration/test_corpus.py::test_fixtures_match_corpus` proves each excerpt
+yields exactly the same `Article.text` and node paths as the full document does, so
+these files are the real case, not an approximation of it.
+
+Source documents are identified by their CELEX number and by the SHA-256 of the raw
+bytes downloaded on 2026-09-05, as recorded in `data/manifest.json`.
+
+Reuse: EUR-Lex content is reusable under the European Commission reuse policy
+(Decision 2011/833/EU), provided the source is acknowledged. These excerpts are
+included solely as test data.
+
+| Fixture | Act | Article | CELEX | Role | Source SHA-256 | Bytes |
+|---|---|---|---|---|---|---|
+| `dora_art45.xhtml` | DORA | Article 45 | `32022R2554` | original | `cf50d8f023d23b2a...` | 4301 |
+| `dora_art60.xhtml` | DORA | Article 60 | `32022R2554` | original | `cf50d8f023d23b2a...` | 23411 |
+| `psd2_art69.xhtml` | PSD2 | Article 69 | `02015L2366-20151223` | consolidated | `e9063e8919bf93bd...` | 2360 |
+| `psd2_art111.xhtml` | PSD2 | Article 111 | `02015L2366-20151223` | consolidated | `e9063e8919bf93bd...` | 5766 |
+| `psd2_art9.xhtml` | PSD2 | Article 9 | `02015L2366-20151223` | consolidated | `e9063e8919bf93bd...` | 14147 |

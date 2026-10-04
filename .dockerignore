@@ -1,0 +1,59 @@
+# Build context. Without this file, "docker build ." would send the daemon the
+# 161 MB of the directory to build an image whose code weighs 112 KB.
+#
+# Mind the distinction, which is the most confusing part: .dockerignore controls
+# the CONTEXT (what the daemon can see), and COPY controls what goes into each
+# layer. That is why tests/ and pyproject.toml are NOT excluded here: the
+# runtime stage simply does not copy them, but the dev stage needs them.
+#
+# Unlike .gitignore, every pattern is matched from the root of the context: a
+# bare "__pycache__/" only excludes ./__pycache__/, never ingest/__pycache__/.
+# Anything that can appear at any depth needs the "**/" prefix.
+
+# --- the most important one: 141 MB of macOS arm64 binaries that are useless
+# inside a Linux container, and that would also shadow the container's
+# environment.
+.venv/
+venv/
+
+# Git history: no value at run time.
+.git/
+.gitignore
+
+# Data. NONE of it goes into the image (see D-002):
+#   data/raw/           4.8 MB of corpus, not versioned, mounted as a volume
+#   data/processed/     2.1 MB of derived layer, regenerable
+#   data/t2_nodes.json  1.8 MB, derived
+#   data/manifest.json  mounted with the rest of data/, because the manifest and
+#                       the corpus are a pair that must travel together. NOTE:
+#                       nothing checks today that the manifest's sha256 is the
+#                       hash of the RAW bytes. load_processed() only compares the
+#                       processed layer's source_sha256 against the one DECLARED
+#                       in the manifest, so a RAW file swapped behind its back
+#                       would go unnoticed. Mounting them together is a
+#                       convention, not a verified guarantee.
+data/
+
+# Tool caches and bytecode, at any depth. The bytecode is also built for another
+# platform. Without "**/", the .pyc files in ingest/__pycache__/ reached the image.
+**/__pycache__/
+**/*.py[cod]
+**/.mypy_cache/
+**/.ruff_cache/
+**/.pytest_cache/
+
+# Internal working documents: private and not versioned (see .gitignore). The
+# fixture provenance note is the one Markdown file the dev stage keeps.
+docs/
+CLAUDE.md
+**/*.md
+!tests/fixtures/PROVENANCE.md
+
+# Secrets: never in an image, at any depth.
+**/.env
+**/*.pem
+**/*.key
+
+# Local
+**/.DS_Store
+.claude/

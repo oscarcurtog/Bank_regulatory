@@ -1,0 +1,893 @@
+{
+  "per_act": {
+    "DORA": {
+      "source_celex": "32022R2554",
+      "source_role": "original",
+      "n_articles_eli_subdivision": 64,
+      "n_articles_independent_title": 64,
+      "counts_match": true,
+      "with_more_than_3_levels": 10,
+      "pct_more_than_3_levels": 15.6
+    },
+    "MiCA": {
+      "source_celex": "02023R1114-20240109",
+      "source_role": "consolidated",
+      "n_articles_eli_subdivision": 150,
+      "n_articles_independent_title": 150,
+      "counts_match": true,
+      "with_more_than_3_levels": 14,
+      "pct_more_than_3_levels": 9.3
+    },
+    "PSD2": {
+      "source_celex": "02015L2366-20151223",
+      "source_role": "consolidated",
+      "n_articles_eli_subdivision": 117,
+      "n_articles_independent_title": 117,
+      "counts_match": true,
+      "with_more_than_3_levels": 3,
+      "pct_more_than_3_levels": 2.6
+    }
+  },
+  "total_articles": 331,
+  "total_more_than_3_levels": 27,
+  "invariant_check": {
+    "description": "every node must have its parent in the article's own tree",
+    "failures": []
+  },
+  "sample_for_human_review": [
+    {
+      "act": "DORA",
+      "article_id": "art_35",
+      "title": "Powers of the Lead Overseer",
+      "max_depth": 4,
+      "nodes": [
+        "35",
+        "35.1",
+        "35.1.a",
+        "35.1.b",
+        "35.1.c",
+        "35.1.d",
+        "35.1.d.i",
+        "35.1.d.ii",
+        "35.1.d.iii",
+        "35.1.d.iv",
+        "35.2",
+        "35.2.a",
+        "35.2.b",
+        "35.2.c",
+        "35.3",
+        "35.4",
+        "35.5",
+        "35.6",
+        "35.7",
+        "35.8",
+        "35.8.a",
+        "35.8.b",
+        "35.8.c",
+        "35.9",
+        "35.10",
+        "35.11"
+      ],
+      "text_preview": "Article 35 Powers of the Lead Overseer 1. For the purposes of carrying out the duties laid down in this Section, the Lead Overseer shall have the following powers in respect of the critical ICT third-party service provid"
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_6",
+      "title": "ICT risk management framework",
+      "max_depth": 3,
+      "nodes": [
+        "6",
+        "6.1",
+        "6.2",
+        "6.3",
+        "6.4",
+        "6.5",
+        "6.6",
+        "6.7",
+        "6.8",
+        "6.8.a",
+        "6.8.b",
+        "6.8.c",
+        "6.8.d",
+        "6.8.e",
+        "6.8.f",
+        "6.8.g",
+        "6.8.h",
+        "6.9",
+        "6.10"
+      ],
+      "text_preview": "Article 6 ICT risk management framework 1. Financial entities shall have a sound, comprehensive and well-documented ICT risk management framework as part of their overall risk management system, which enables them to add"
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_46",
+      "title": "Competent authorities",
+      "max_depth": 2,
+      "nodes": [
+        "46",
+        "46.a",
+        "46.b",
+        "46.c",
+        "46.d",
+        "46.e",
+        "46.f",
+        "46.g",
+        "46.h",
+        "46.i",
+        "46.j",
+        "46.k",
+        "46.l",
+        "46.m",
+        "46.n",
+        "46.o",
+        "46.p",
+        "46.q"
+      ],
+      "text_preview": "Article 46 Competent authorities Without prejudice to the provisions on the Oversight Framework for critical ICT third-party service providers referred to in Chapter V, Section II, of this Regulation, compliance with thi"
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_38",
+      "title": "General investigations",
+      "max_depth": 3,
+      "nodes": [
+        "38",
+        "38.1",
+        "38.2",
+        "38.2.a",
+        "38.2.b",
+        "38.2.c",
+        "38.2.d",
+        "38.2.e",
+        "38.3",
+        "38.4",
+        "38.5"
+      ],
+      "text_preview": "Article 38 General investigations 1. In order to carry out its duties under this Regulation, the Lead Overseer, assisted by the joint examination team referred to in Article 40(1), may, where necessary, conduct investiga"
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_33",
+      "title": "Tasks of the Lead Overseer",
+      "max_depth": 3,
+      "nodes": [
+        "33",
+        "33.1",
+        "33.2",
+        "33.3",
+        "33.3.a",
+        "33.3.b",
+        "33.3.c",
+        "33.3.d",
+        "33.3.e",
+        "33.3.f",
+        "33.3.g",
+        "33.3.h",
+        "33.3.i",
+        "33.4",
+        "33.5"
+      ],
+      "text_preview": "Article 33 Tasks of the Lead Overseer 1. The Lead Overseer, appointed in accordance with Article 31(1), point (b), shall conduct the oversight of the assigned critical ICT third-party service providers and shall be, for "
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_21",
+      "title": "Centralisation of reporting of major ICT-related incidents",
+      "max_depth": 3,
+      "nodes": [
+        "21",
+        "21.1",
+        "21.2",
+        "21.2.a",
+        "21.2.b",
+        "21.2.c",
+        "21.2.d",
+        "21.2.e",
+        "21.2.f",
+        "21.2.g",
+        "21.3"
+      ],
+      "text_preview": "Article 21 Centralisation of reporting of major ICT-related incidents 1. The ESAs, through the Joint Committee, and in consultation with the ECB and ENISA, shall prepare a joint report assessing the feasibility of furthe"
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_58",
+      "title": "Review clause",
+      "max_depth": 3,
+      "nodes": [
+        "58",
+        "58.1",
+        "58.1.a",
+        "58.1.b",
+        "58.1.c",
+        "58.1.d",
+        "58.1.e",
+        "58.2",
+        "58.3"
+      ],
+      "text_preview": "Article 58 Review clause 1. By 17 January 2028, the Commission shall, after consulting the ESAs and the ESRB, as appropriate, carry out a review and submit a report to the European Parliament and the Council, accompanied"
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_31",
+      "title": "Designation of critical ICT third-party service providers",
+      "max_depth": 4,
+      "nodes": [
+        "31",
+        "31.1",
+        "31.1.a",
+        "31.1.b",
+        "31.2",
+        "31.2.a",
+        "31.2.b",
+        "31.2.b.i",
+        "31.2.b.ii",
+        "31.2.c",
+        "31.2.d",
+        "31.2.d.i",
+        "31.2.d.ii",
+        "31.3",
+        "31.4",
+        "31.5",
+        "31.6",
+        "31.7",
+        "31.8",
+        "31.8.i",
+        "31.8.ii",
+        "31.8.iii",
+        "31.8.iv",
+        "31.9",
+        "31.10",
+        "31.11",
+        "31.12",
+        "31.13"
+      ],
+      "text_preview": "Article 31 Designation of critical ICT third-party service providers 1. The ESAs, through the Joint Committee and upon recommendation from the Oversight Forum established pursuant to Article 32(1), shall: (a) designate t"
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_7",
+      "title": "ICT systems, protocols and tools",
+      "max_depth": 2,
+      "nodes": [
+        "7",
+        "7.a",
+        "7.b",
+        "7.c",
+        "7.d"
+      ],
+      "text_preview": "Article 7 ICT systems, protocols and tools In order to address and manage ICT risk, financial entities shall use and maintain updated ICT systems, protocols and tools that are: (a) appropriate to the magnitude of operati"
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_51",
+      "title": "Exercise of the power to impose administrative penalties and remedial measures",
+      "max_depth": 3,
+      "nodes": [
+        "51",
+        "51.1",
+        "51.1.a",
+        "51.1.b",
+        "51.1.c",
+        "51.1.d",
+        "51.2",
+        "51.2.a",
+        "51.2.b",
+        "51.2.c",
+        "51.2.d",
+        "51.2.e",
+        "51.2.f",
+        "51.2.g"
+      ],
+      "text_preview": "Article 51 Exercise of the power to impose administrative penalties and remedial measures 1. Competent authorities shall exercise the powers to impose administrative penalties and remedial measures referred to in Article"
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_47",
+      "title": "Cooperation with structures and authorities established by Directive (EU) 2022/2555",
+      "max_depth": 2,
+      "nodes": [
+        "47",
+        "47.1",
+        "47.2",
+        "47.3",
+        "47.4"
+      ],
+      "text_preview": "Article 47 Cooperation with structures and authorities established by Directive (EU) 2022/2555 1. To foster cooperation and enable supervisory exchanges between the competent authorities designated under this Regulation "
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_42",
+      "title": "Follow-up by competent authorities",
+      "max_depth": 3,
+      "nodes": [
+        "42",
+        "42.1",
+        "42.2",
+        "42.3",
+        "42.4",
+        "42.5",
+        "42.6",
+        "42.7",
+        "42.8",
+        "42.8.a",
+        "42.8.b",
+        "42.8.c",
+        "42.8.d",
+        "42.8.e",
+        "42.8.f",
+        "42.9",
+        "42.10",
+        "42.11"
+      ],
+      "text_preview": "Article 42 Follow-up by competent authorities 1. Within 60 calendar days of the receipt of the recommendations issued by the Lead Overseer pursuant to Article 35(1), point (d), critical ICT third-party service providers "
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_15",
+      "title": "Further harmonisation of ICT risk management tools, methods, processes and policies",
+      "max_depth": 2,
+      "nodes": [
+        "15",
+        "15.a",
+        "15.b",
+        "15.c",
+        "15.d",
+        "15.e",
+        "15.f",
+        "15.g"
+      ],
+      "text_preview": "Article 15 Further harmonisation of ICT risk management tools, methods, processes and policies The ESAs shall, through the Joint Committee, in consultation with the European Union Agency on Cybersecurity (ENISA), develop"
+    },
+    {
+      "act": "DORA",
+      "article_id": "art_3",
+      "title": "Definitions",
+      "max_depth": 2,
+      "nodes": [
+        "3",
+        "3.1",
+        "3.2",
+        "3.3",
+        "3.4",
+        "3.5",
+        "3.6",
+        "3.7",
+        "3.8",
+        "3.9",
+        "3.10",
+        "3.11",
+        "3.12",
+        "3.13",
+        "3.14",
+        "3.15",
+        "3.16",
+        "3.17",
+        "3.18",
+        "3.19",
+        "3.20",
+        "3.21",
+        "3.22",
+        "3.23",
+        "3.24",
+        "3.25",
+        "3.26",
+        "3.27",
+        "3.28",
+        "3.29",
+        "3.30",
+        "3.31",
+        "3.32",
+        "3.33",
+        "3.34",
+        "3.35",
+        "3.36",
+        "3.37",
+        "3.38",
+        "3.39",
+        "3.40",
+        "3.41",
+        "3.42",
+        "3.43",
+        "3.44",
+        "3.45",
+        "3.46",
+        "3.47",
+        "3.48",
+        "3.49",
+        "3.50",
+        "3.51",
+        "3.52",
+        "3.53",
+        "3.54",
+        "3.55",
+        "3.56",
+        "3.57",
+        "3.58",
+        "3.59",
+        "3.60",
+        "3.61",
+        "3.62",
+        "3.63",
+        "3.64",
+        "3.65"
+      ],
+      "text_preview": "Article 3 Definitions For the purposes of this Regulation, the following definitions shall apply: (1) 'digital operational resilience' means the ability of a financial entity to build, assure and review its operational i"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_77",
+      "title": "Exchange of crypto-assets for funds or other crypto-assets",
+      "max_depth": 2,
+      "nodes": [
+        "77",
+        "77.1",
+        "77.2",
+        "77.3",
+        "77.4"
+      ],
+      "text_preview": "Article 77 Exchange of crypto-assets for funds or other crypto-assets 1. Crypto-asset service providers exchanging crypto-assets for funds or other crypto-assets shall establish a non-discriminatory commercial policy tha"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_54",
+      "title": "Investment of funds received in exchange for e-money tokens",
+      "max_depth": 2,
+      "nodes": [
+        "54",
+        "54.a",
+        "54.b"
+      ],
+      "text_preview": "Article 54 Investment of funds received in exchange for e-money tokens Funds received by issuers of e-money tokens in exchange for e-money tokens and safeguarded in accordance with Article 7(1) of Directive 2009/110/EC s"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_33",
+      "title": "Notification of changes to management body",
+      "max_depth": 1,
+      "nodes": [
+        "33"
+      ],
+      "text_preview": "Article 33 Notification of changes to management body Issuers of asset-referenced tokens shall notify immediately their competent authority of any changes to their management body, and shall provide their competent autho"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_15",
+      "title": "Liability for the information given in a crypto-asset white paper",
+      "max_depth": 3,
+      "nodes": [
+        "15",
+        "15.1",
+        "15.2",
+        "15.3",
+        "15.4",
+        "15.5",
+        "15.5.a",
+        "15.5.b",
+        "15.6"
+      ],
+      "text_preview": "Article 15 Liability for the information given in a crypto-asset white paper 1. Where an offeror, person seeking admission to trading or operator of a trading platform, has infringed Article 6 by providing in its crypto-"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_144",
+      "title": "Amendment to Regulation (EU) No 1093/2010",
+      "max_depth": 1,
+      "nodes": [
+        "144"
+      ],
+      "text_preview": "Article 144 Amendment to Regulation (EU) No 1093/2010 In Article 1(2) of Regulation (EU) No 1093/2010, the first subparagraph is replaced by the following: 'The Authority shall act within the powers conferred by this Reg"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_58",
+      "title": "Specific additional obligations for issuers of e-money tokens",
+      "max_depth": 3,
+      "nodes": [
+        "58",
+        "58.1",
+        "58.1.a",
+        "58.1.b",
+        "58.2",
+        "58.3"
+      ],
+      "text_preview": "Article 58 Specific additional obligations for issuers of e-money tokens 1. Electronic money institutions issuing significant e-money tokens shall be subject to: (a) the requirements referred to in Articles 36, 37, 38 an"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_10",
+      "title": "Result of the offer to the public and safeguarding arrangements",
+      "max_depth": 3,
+      "nodes": [
+        "10",
+        "10.1",
+        "10.2",
+        "10.3",
+        "10.3.a",
+        "10.3.b",
+        "10.4"
+      ],
+      "text_preview": "Article 10 Result of the offer to the public and safeguarding arrangements 1. Offerors of crypto-assets other than asset-referenced tokens or e-money tokens that set a time limit on their offer to the public of those cry"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_2",
+      "title": "Scope",
+      "max_depth": 3,
+      "nodes": [
+        "2",
+        "2.1",
+        "2.2",
+        "2.2.a",
+        "2.2.b",
+        "2.2.c",
+        "2.2.d",
+        "2.2.e",
+        "2.2.f",
+        "2.3",
+        "2.4",
+        "2.4.a",
+        "2.4.b",
+        "2.4.c",
+        "2.4.d",
+        "2.4.e",
+        "2.4.f",
+        "2.4.g",
+        "2.4.h",
+        "2.4.i",
+        "2.4.j",
+        "2.5",
+        "2.6"
+      ],
+      "text_preview": "Article 2 Scope 1. This Regulation applies to natural and legal persons and certain other undertakings that are engaged in the issuance, offer to the public and admission to trading of crypto-assets or that provide servi"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_56",
+      "title": "Classification of e-money tokens as significant e-money tokens",
+      "max_depth": 3,
+      "nodes": [
+        "56",
+        "56.1",
+        "56.1.a",
+        "56.1.b",
+        "56.2",
+        "56.3",
+        "56.4",
+        "56.5",
+        "56.6",
+        "56.7",
+        "56.8",
+        "56.9",
+        "56.10"
+      ],
+      "text_preview": "Article 56 Classification of e-money tokens as significant e-money tokens 1. EBA shall classify e-money tokens as significant e-money tokens where at least three of the criteria set out in Article 43(1) are met: (a) duri"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_148",
+      "title": "Transposition of amendments to Directives 2013/36/EU and (EU) 2019/1937",
+      "max_depth": 2,
+      "nodes": [
+        "148",
+        "148.1",
+        "148.2"
+      ],
+      "text_preview": "Article 148 Transposition of amendments to Directives 2013/36/EU and (EU) 2019/1937 1. Member States shall adopt and publish, by 30 December 2024, the laws, regulations and administrative provisions necessary to comply w"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_43",
+      "title": "Classification of asset-referenced tokens as significant asset-referenced tokens",
+      "max_depth": 3,
+      "nodes": [
+        "43",
+        "43.1",
+        "43.1.a",
+        "43.1.b",
+        "43.1.c",
+        "43.1.d",
+        "43.1.e",
+        "43.1.f",
+        "43.1.g",
+        "43.2",
+        "43.2.a",
+        "43.2.b",
+        "43.3",
+        "43.4",
+        "43.5",
+        "43.6",
+        "43.7",
+        "43.8",
+        "43.9",
+        "43.10",
+        "43.11",
+        "43.11.a",
+        "43.11.b",
+        "43.11.c"
+      ],
+      "text_preview": "Article 43 Classification of asset-referenced tokens as significant asset-referenced tokens 1. The criteria for classifying asset-referenced tokens as significant asset-referenced tokens shall be the following, as furthe"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_55",
+      "title": "Recovery and redemption plans",
+      "max_depth": 1,
+      "nodes": [
+        "55"
+      ],
+      "text_preview": "Article 55 Recovery and redemption plans Title III, Chapter 6 shall apply mutatis mutandis to issuers of e-money tokens. By way of derogation from Article 46(2), the date by which the recovery plan is to be notified to t"
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_85",
+      "title": "Identification of significant crypto-asset service providers",
+      "max_depth": 3,
+      "nodes": [
+        "85",
+        "85.1",
+        "85.2",
+        "85.3",
+        "85.3.a",
+        "85.3.b",
+        "85.3.c",
+        "85.4",
+        "85.5"
+      ],
+      "text_preview": "Article 85 Identification of significant crypto-asset service providers 1. A crypto-asset service provider shall be deemed significant if it has in the Union at least 15 million active users, on average, in one calendar "
+    },
+    {
+      "act": "MiCA",
+      "article_id": "art_11",
+      "title": "Rights of offerors and persons seeking admission to trading of crypto-assets other than asset-referenced tokens or e-money tokens",
+      "max_depth": 2,
+      "nodes": [
+        "11",
+        "11.1",
+        "11.2"
+      ],
+      "text_preview": "Article 11 Rights of offerors and persons seeking admission to trading of crypto-assets other than asset-referenced tokens or e-money tokens 1. After publication of the crypto-asset white paper in accordance with Article"
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_13",
+      "title": "Withdrawal of authorisation",
+      "max_depth": 3,
+      "nodes": [
+        "13",
+        "13.1",
+        "13.1.a",
+        "13.1.b",
+        "13.1.c",
+        "13.1.d",
+        "13.1.e",
+        "13.2",
+        "13.3"
+      ],
+      "text_preview": "Article 13 Withdrawal of authorisation 1. The competent authorities may withdraw an authorisation issued to a payment institution only if the institution: (a) does not make use of the authorisation within 12 months, expr"
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_97",
+      "title": "Authentication",
+      "max_depth": 3,
+      "nodes": [
+        "97",
+        "97.1",
+        "97.1.a",
+        "97.1.b",
+        "97.1.c",
+        "97.2",
+        "97.3",
+        "97.4",
+        "97.5"
+      ],
+      "text_preview": "Article 97 Authentication 1. Member States shall ensure that a payment service provider applies strong customer authentication where the payer: (a) accesses its payment account online; (b) initiates an electronic payment"
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_51",
+      "title": "Prior general information",
+      "max_depth": 2,
+      "nodes": [
+        "51",
+        "51.1",
+        "51.2",
+        "51.3"
+      ],
+      "text_preview": "Article 51 Prior general information 1. Member States shall require that, in good time before the payment service user is bound by any framework contract or offer, the payment service provider provide the payment service"
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_105",
+      "title": "Exercise of the delegation",
+      "max_depth": 2,
+      "nodes": [
+        "105",
+        "105.1",
+        "105.2",
+        "105.3",
+        "105.4",
+        "105.5"
+      ],
+      "text_preview": "Article 105 Exercise of the delegation 1. The power to adopt delegated acts is conferred on the Commission subject to the conditions laid down in this Article. 2. The power to adopt delegated acts referred to in Article "
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_81",
+      "title": "Amounts transferred and amounts received",
+      "max_depth": 2,
+      "nodes": [
+        "81",
+        "81.1",
+        "81.2",
+        "81.3"
+      ],
+      "text_preview": "Article 81 Amounts transferred and amounts received 1. Member States shall require the payment service provider(s) of the payer, the payment service provider(s) of the payee and any intermediaries of the payment service "
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_7",
+      "title": "Initial capital",
+      "max_depth": 2,
+      "nodes": [
+        "7",
+        "7.a",
+        "7.b",
+        "7.c"
+      ],
+      "text_preview": "Article 7 Initial capital Member States shall require payment institutions to hold, at the time of authorisation, initial capital, comprised of one or more of the items referred to in Article 26(1)(a) to (e) of Regulatio"
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_94",
+      "title": "Data protection",
+      "max_depth": 2,
+      "nodes": [
+        "94",
+        "94.1",
+        "94.2"
+      ],
+      "text_preview": "Article 94 Data protection 1. Member States shall permit processing of personal data by payment systems and payment service providers when necessary to safeguard the prevention, investigation and detection of payment fra"
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_103",
+      "title": "Penalties",
+      "max_depth": 2,
+      "nodes": [
+        "103",
+        "103.1",
+        "103.2"
+      ],
+      "text_preview": "Article 103 Penalties 1. Member States shall lay down rules on penalties applicable to infringements of the national law transposing this Directive and shall take all necessary measures to ensure that they are implemente"
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_86",
+      "title": "National payment transactions",
+      "max_depth": 1,
+      "nodes": [
+        "86"
+      ],
+      "text_preview": "Article 86 National payment transactions For national payment transactions, Member States may provide for shorter maximum execution times than those provided for in this Section."
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_38",
+      "title": "Scope",
+      "max_depth": 2,
+      "nodes": [
+        "38",
+        "38.1",
+        "38.2",
+        "38.3"
+      ],
+      "text_preview": "Article 38 Scope 1. This Title applies to single payment transactions, framework contracts and payment transactions covered by them. The parties may agree that it shall not apply in whole or in part when the payment serv"
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_16",
+      "title": "Maintenance of authorisation",
+      "max_depth": 1,
+      "nodes": [
+        "16"
+      ],
+      "text_preview": "Article 16 Maintenance of authorisation Where any change affects the accuracy of information and evidence provided in accordance with Article 5, the payment institution shall, without undue delay, inform the competent au"
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_55",
+      "title": "Termination",
+      "max_depth": 2,
+      "nodes": [
+        "55",
+        "55.1",
+        "55.2",
+        "55.3",
+        "55.4",
+        "55.5",
+        "55.6"
+      ],
+      "text_preview": "Article 55 Termination 1. The payment service user may terminate the framework contract at any time, unless the parties have agreed on a period of notice. Such a period shall not exceed 1 month. 2. Termination of the fra"
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_76",
+      "title": "Refunds for payment transactions initiated by or through a payee",
+      "max_depth": 3,
+      "nodes": [
+        "76",
+        "76.1",
+        "76.1.a",
+        "76.1.b",
+        "76.2",
+        "76.3",
+        "76.3.a",
+        "76.3.b",
+        "76.4"
+      ],
+      "text_preview": "Article 76 Refunds for payment transactions initiated by or through a payee 1. Member States shall ensure that a payer is entitled to a refund from the payment service provider of an authorised payment transaction which "
+    },
+    {
+      "act": "PSD2",
+      "article_id": "art_4",
+      "title": "Definitions",
+      "max_depth": 3,
+      "nodes": [
+        "4",
+        "4.1",
+        "4.1.a",
+        "4.1.b",
+        "4.2",
+        "4.3",
+        "4.4",
+        "4.5",
+        "4.6",
+        "4.7",
+        "4.8",
+        "4.9",
+        "4.10",
+        "4.11",
+        "4.12",
+        "4.13",
+        "4.14",
+        "4.15",
+        "4.16",
+        "4.17",
+        "4.18",
+        "4.19",
+        "4.20",
+        "4.21",
+        "4.22",
+        "4.23",
+        "4.24",
+        "4.25",
+        "4.26",
+        "4.27",
+        "4.28",
+        "4.29",
+        "4.30",
+        "4.31",
+        "4.32",
+        "4.33",
+        "4.34",
+        "4.35",
+        "4.36",
+        "4.37",
+        "4.38",
+        "4.39",
+        "4.40",
+        "4.41",
+        "4.42",
+        "4.43",
+        "4.44",
+        "4.45",
+        "4.46",
+        "4.47",
+        "4.48"
+      ],
+      "text_preview": "Article 4 Definitions For the purposes of this Directive, the following definitions apply: (1) 'home Member State' means either of the following: (a) the Member State in which the registered office of the payment service"
+    }
+  ]
+}
