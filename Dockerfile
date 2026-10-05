@@ -15,8 +15,9 @@
 # ---------------------------------------------------------------------------
 # Exact version, not "3.12": EF-1 pinned CPython 3.12.14 and M-007 showed that
 # the runtime change does not alter any data. Leaving the version floating would
-# give that up. The next level of rigour would be pinning the image digest
-# (python:3.12.14-slim@sha256:...), which cannot be resolved without a registry.
+# give that up. The next level of rigour would be pinning the image digest too
+# (python:3.12.14-slim@sha256:...): every build resolves it and prints it in its
+# log, but it is not pinned here yet.
 #
 # slim (Debian, glibc) and not alpine (musl): checked on PyPI that pydantic-core,
 # tiktoken and tokenizers DO publish musllinux wheels, so alpine would work
@@ -78,8 +79,11 @@ USER fundamento
 # to run in a container, and that is incompatible with a clean runtime image.
 # Two stages solve it: the one above carries neither pytest nor ruff nor mypy.
 #
-# Tests marked "corpus" skip themselves when no data/raw is mounted, which is
-# the behaviour designed in EF-2.
+# Run it with data/ mounted. The manifest tests read data/manifest.json, which is
+# not copied into the image, so without the mount 5 of them fail. Tests marked
+# "corpus" also need data/raw/ and skip themselves when it is missing, as
+# designed in EF-2:
+#   docker run --rm -v "$PWD/data:/app/data" fundamento:dev
 FROM base AS dev
 USER root
 RUN pip install --no-cache-dir "pytest>=8" "ruff>=0.16" "mypy>=2"

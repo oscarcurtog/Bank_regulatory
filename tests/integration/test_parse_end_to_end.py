@@ -122,7 +122,7 @@ def test_paths_are_ltree_safe():
 
 
 def test_max_depth_matches_deepest_node():
-    """Invariant (the user's finding, DORA Art. 35): max_depth must match the
+    """Invariant (found in manual review, DORA Art. 35): max_depth must match the
     level of the deepest node that REALLY exists, not a counter that also counts
     dashes or bullets without a citable marker."""
     for article in _all_articles():

@@ -3,8 +3,8 @@ D-002 and therefore does NOT exist in a clean checkout or on the GitHub Actions
 runner (EF-7). tests/conftest.py skips them automatically when the directory is
 missing, instead of failing for a reason that is not a bug.
 
-On this machine, with the corpus downloaded, they run and validate against the
-331 real articles, not only against the 5 fixtures.
+When the corpus is present, they run and validate against the 331 real
+articles, not only against the 5 fixtures.
 """
 
 from __future__ import annotations

@@ -1,5 +1,6 @@
 # Build context. Without this file, "docker build ." would send the daemon the
-# 161 MB of the directory to build an image whose code weighs 112 KB.
+# whole directory, including a local .venv/ and the downloaded corpus, to build
+# an image that only needs ingest/ and scripts/.
 #
 # Mind the distinction, which is the most confusing part: .dockerignore controls
 # the CONTEXT (what the daemon can see), and COPY controls what goes into each
@@ -10,9 +11,9 @@
 # bare "__pycache__/" only excludes ./__pycache__/, never ingest/__pycache__/.
 # Anything that can appear at any depth needs the "**/" prefix.
 
-# --- the most important one: 141 MB of macOS arm64 binaries that are useless
-# inside a Linux container, and that would also shadow the container's
-# environment.
+# --- the most important one: a local virtual environment is built for the host
+# (for example macOS arm64), is useless inside a Linux container, and would also
+# shadow the container's environment.
 .venv/
 venv/
 
