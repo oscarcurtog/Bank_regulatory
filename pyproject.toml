@@ -5,6 +5,8 @@
 name = "fundamento"
 version = "0.1.0"
 description = "Engineering foundation for a reproducible RAG system over EU financial regulation, with verified ingestion, legal-document parsing, data contracts, testing, Docker and CI."
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 
 # Dependency boundary. pydantic is needed since EF-3: it defines the data

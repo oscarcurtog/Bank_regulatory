@@ -22,9 +22,9 @@ data/t2_nodes.json
 # .claude/settings.json (without "local") IS shared and can be versioned.
 .claude/settings.local.json
 
-# Internal working documents: they stay local while they have no real content
-# to show. To be revisited in S10 (English translation, and which part, if any,
-# becomes public alongside the README).
+# Internal working documents (engineering notes, decision and measurement
+# records): kept outside the public repository. See "Engineering records" in
+# README.md.
 CLAUDE.md
 docs/
 
