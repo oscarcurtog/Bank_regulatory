@@ -57,7 +57,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 372 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 376 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -95,7 +95,7 @@ uv pip install --require-hashes --no-deps -r requirements-dev.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest reports `341 passed, 31 skipped`. The 31 skipped tests are marked
+Without the corpus, pytest reports `345 passed, 31 skipped`. The 31 skipped tests are marked
 `corpus`: they need `data/raw/`, which is not in the repository (see
 [Data and reproducibility](#data-and-reproducibility)).
 
@@ -117,6 +117,8 @@ The tests have their own image, which needs `data/` mounted because the manifest
 ```bash
 docker build --target dev -t fundamento:dev .
 docker run --rm -v "$PWD/data:/app/data" fundamento:dev
+# the same, reusing the host's tokenizer file instead of downloading it (see Tokenizer file)
+docker run --rm -v "$PWD/data:/app/data" -v "$PWD/.cache/tiktoken:/app/.cache/tiktoken" fundamento:dev
 ```
 
 ## Continuous integration
@@ -124,7 +126,9 @@ docker run --rm -v "$PWD/data:/app/data" fundamento:dev
 `.github/workflows/ci.yml` runs two independent jobs on every push and pull request:
 
 - `quality`: installs `requirements-dev.lock.txt` with hash checking, then runs Ruff,
-  `ruff format --check`, mypy and pytest.
+  `ruff format --check`, mypy and pytest. Before pytest it restores `.cache/tiktoken` from the
+  GitHub Actions cache, keyed by runner OS, tiktoken version and encoding, and loads the
+  tokenizer, so only a run with a cold cache downloads it.
 - `runtime-image`: builds the runtime image and runs `ci/check_runtime_image.py` inside it.
 
 The runner does not have the corpus, so the 31 `corpus` tests are skipped there. A green run does
@@ -140,8 +144,9 @@ not validate the full 331-article corpus.
 | `data/processed/` | no | the processed layer, derived from `data/raw/` |
 | `data/t2_nodes.json` | no | per-node measurement output, derived from `data/raw/` |
 | `data/chunks/` | no | the chunk layer, derived from `data/processed/` |
+| `.cache/tiktoken/` | no | the tokenizer file, downloaded the first time (see [Tokenizer file](#tokenizer-file)) |
 
-Without the corpus you can run the test suite (341 tests pass, 31 are skipped), the linters and
+Without the corpus you can run the test suite (345 tests pass, 31 are skipped), the linters and
 type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files
@@ -155,10 +160,9 @@ PYTHONPATH=. .venv/bin/python scripts/run_t2.py          # data/chunks/, data/t2
 ```
 
 With documents that match the SHA-256 values in the manifest, the four versioned reports come out
-identical byte for byte. The scripts download tokenizer files the first time: `cl100k_base` for
-tiktoken (`measure_nodes.py`, `profile_tokens.py`, `run_t2.py`, and the chunker tests, also without
-the corpus), and `bert-base-uncased` from the Hugging Face Hub (`profile_tokens.py`). The runtime
-image runs the first step by default:
+identical byte for byte. The last three scripts need the tokenizer file (see
+[Tokenizer file](#tokenizer-file)), and `profile_tokens.py` also downloads `bert-base-uncased` from
+the Hugging Face Hub. The runtime image runs the first step by default:
 
 ```bash
 docker run --rm -v "$PWD/data:/app/data" fundamento
@@ -166,6 +170,17 @@ docker run --rm -v "$PWD/data:/app/data" fundamento
 
 There is no command to download the corpus yet. `ingest.download.fetch_all()` exists as a library
 function, but a fresh download is not checked against the SHA-256 values recorded in the manifest.
+
+### Tokenizer file
+
+`run_t2.py`, `measure_nodes.py`, `profile_tokens.py` and the chunker tests (also without the
+corpus) count tokens with tiktoken's `cl100k_base`. Its file (1.7 MB) does not ship with the
+tiktoken package: it is downloaded the first time and kept in `.cache/tiktoken` under the working
+directory, or in `TIKTOKEN_CACHE_DIR` if that is set, as it is in the images
+(`/app/.cache/tiktoken`). tiktoken checks the file against a SHA-256 pinned in its own source,
+both when it downloads it and whenever it reads it from the cache. Once the file is there, nothing
+needs the network. Without the file and without network they stop with an explicit error: they
+never count with another tokenizer or with an estimate.
 
 ## Known limitations
 
@@ -181,8 +196,8 @@ function, but a fresh download is not checked against the SHA-256 values recorde
 - The test image installs pytest, Ruff and mypy without pinning their versions. CI uses the hashed
   lock.
 - The images have been built and run with Docker Desktop on macOS, and CI builds and checks the
-  runtime image on Linux. On native Linux, a bind-mounted `data/` keeps its host ownership, so the
-  pipeline needs it to be writable by UID 10001; this has not been tested.
+  runtime image on Linux. On native Linux, a bind-mounted `data/` or `.cache/tiktoken` keeps its
+  host ownership, so it needs to be writable by UID 10001; this has not been tested.
 
 ## Engineering records
 

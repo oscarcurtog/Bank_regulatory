@@ -40,9 +40,12 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 # would break exactly the reproducibility the lock exists to provide.
 ENV PYTHONPATH=/app
 
-# tiktoken caches cl100k_base (1.6 MB) in a random temporary directory and
-# downloads it from openaipublic.blob.core.windows.net the first time. Pinning
-# the path makes it predictable and mountable as a volume.
+# tiktoken downloads cl100k_base (1.7 MB) from openaipublic.blob.core.windows.net
+# the first time and keeps it in TIKTOKEN_CACHE_DIR. This is the directory that
+# ingest/chunks.py uses when the variable is unset (.cache/tiktoken under the
+# working directory), written as an absolute path so that it does not depend on
+# the working directory. The image starts with it empty; mounting the host's
+# .cache/tiktoken on it reuses the file without the network.
 ENV TIKTOKEN_CACHE_DIR=/app/.cache/tiktoken
 
 WORKDIR /app
@@ -107,7 +110,7 @@ USER fundamento
 
 # run_t1.py is the only pipeline step that does NOT need the network: it reads
 # the local XHTML and writes the processed layer. That is why it is the default
-# command. The two measurement scripts are launched by overriding it, and they
-# need the network or a mounted cache (measure_nodes downloads cl100k_base;
-# profile_tokens also downloads bert-base-uncased from HuggingFace).
+# command. The other scripts are launched by overriding it, and they need the
+# network or a mounted cache: run_t2, measure_nodes and profile_tokens need
+# cl100k_base, and profile_tokens also bert-base-uncased from Hugging Face.
 CMD ["python", "scripts/run_t1.py"]

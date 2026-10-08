@@ -27,9 +27,9 @@ import statistics as st
 from pathlib import Path
 from typing import Any
 
-import tiktoken
 from tokenizers import Tokenizer
 
+from ingest import chunks as ch
 from ingest import download as dl
 from ingest import processed as pr
 
@@ -38,7 +38,7 @@ ACTS = ("DORA", "MiCA", "PSD2")
 
 
 def main() -> None:
-    bpe = tiktoken.get_encoding("cl100k_base")
+    bpe = ch.load_encoding("cl100k_base")
     wp = Tokenizer.from_pretrained("bert-base-uncased")
 
     manifest = dl.load_manifest()

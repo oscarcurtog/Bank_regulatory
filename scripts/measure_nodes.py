@@ -24,15 +24,14 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-import tiktoken
-
+from ingest import chunks as ch
 from ingest import download as dl
 from ingest import hierarchy as h
 
 NODES_OUT = Path("data/t2_nodes.json")
 PROFILE_OUT = Path("data/t2_node_profile.json")
 REF_RX = re.compile(r"Articles? \d+[a-z]?\(\d{1,2}\)")
-ENC = tiktoken.get_encoding("cl100k_base")
+ENC = ch.load_encoding("cl100k_base")
 
 
 def reinsert(nd: h.Node) -> str:

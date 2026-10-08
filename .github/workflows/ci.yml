@@ -48,6 +48,37 @@ jobs:
       - name: mypy
         run: python -m mypy ingest scripts tests
 
+      # The tokenizer is a downloaded file, not a package: tiktoken fetches
+      # cl100k_base the first time and keeps it in the directory that
+      # ingest/chunks.py gives it, so both the key and the path come from there.
+      # The key is the runner OS, the exact tiktoken version and the encoding,
+      # because tiktoken pins the URL and the SHA-256 of every encoding in its own
+      # source. Not the Python version: the cache holds a data file, not built
+      # code. No restore-keys, so a cache saved for another tiktoken version is
+      # never restored, and tiktoken checks the SHA-256 of whatever it reads anyway.
+      - name: Tokenizer cache key and path
+        id: tokenizer
+        run: |
+          python - >> "$GITHUB_OUTPUT" <<'EOF'
+          import importlib.metadata
+          from ingest.chunks import TOKENIZER, TOKENIZER_CACHE_DIR
+          print(f"key=tiktoken-{importlib.metadata.version('tiktoken')}-{TOKENIZER}")
+          print(f"path={TOKENIZER_CACHE_DIR}")
+          EOF
+
+      - name: Tokenizer cache (restored here, saved when the job succeeds)
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.tokenizer.outputs.path }}
+          key: ${{ runner.os }}-${{ steps.tokenizer.outputs.key }}
+
+      # From the restored cache, or downloaded on a cold one. Here and not inside
+      # the tests, so that a network failure stops one named step with one explicit
+      # error. The timeout bounds a stalled download, since tiktoken sets none.
+      - name: Load the tokenizer (downloads it only on a cold cache)
+        timeout-minutes: 5
+        run: python -c "from ingest.chunks import TOKENIZER, load_encoding; load_encoding(TOKENIZER)"
+
       - name: Tests (corpus-marked tests skip without data/raw/)
         run: python -m pytest -rs
 

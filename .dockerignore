@@ -43,6 +43,10 @@ data/
 **/.ruff_cache/
 **/.pytest_cache/
 
+# The host's tokenizer cache (.cache/tiktoken). The image starts with an empty
+# one, so a build never depends on what this machine happened to download.
+.cache/
+
 # Internal working documents: private and not versioned (see .gitignore). The
 # fixture provenance note is the one Markdown file the dev stage keeps.
 docs/

@@ -1,5 +1,5 @@
 """Integration tests for the chunker (T2) on real EUR-Lex excerpts, with the real
-tokenizer (cl100k_base; tiktoken downloads it the first time).
+tokenizer (cl100k_base, from the tokenizer cache: see test_tokenizer_cache.py).
 
 Every fixture is checked against all the chunk layer invariants, at the official
 budget and at smaller ones that force deeper splits and budget exceptions on real
@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 
 import pytest
-import tiktoken
 
 from ingest import chunks as ch
 from ingest import download as dl
@@ -19,11 +18,12 @@ from ingest import hierarchy as h
 from ingest import processed as pr
 from tests.conftest import MANIFEST_PATH, assert_chunk_invariants, fixture_path
 
-ENCODING = tiktoken.get_encoding("cl100k_base")
 
-
-def count(text: str) -> int:  # the oracle counts with tiktoken directly
-    return len(ENCODING.encode(text))
+# The oracle counts with the encoding directly, named here and not taken from
+# ch.TOKENIZER. It is loaded on first use, not at import, so that a missing
+# tokenizer fails the tests that need it instead of aborting the collection.
+def count(text: str) -> int:
+    return len(ch.load_encoding("cl100k_base").encode(text))
 
 
 FIXTURES = [

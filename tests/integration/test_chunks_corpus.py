@@ -12,7 +12,6 @@ import json
 from collections import Counter
 
 import pytest
-import tiktoken
 
 from ingest import chunks as ch
 from ingest import download as dl
@@ -22,11 +21,10 @@ from tests.conftest import MANIFEST_PATH, assert_chunk_invariants
 pytestmark = pytest.mark.corpus
 
 ACTS = ("DORA", "MiCA", "PSD2")
-ENCODING = tiktoken.get_encoding("cl100k_base")
 
 
-def count(text: str) -> int:
-    return len(ENCODING.encode(text))
+def count(text: str) -> int:  # as in test_chunker_fixtures.py: by name, on first use
+    return len(ch.load_encoding("cl100k_base").encode(text))
 
 
 def _articles(act: str) -> list[h.Article]:

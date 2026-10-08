@@ -11,8 +11,8 @@ stay as they are.
 
 It reads the processed layer through load_processed(), so it aborts on a stale
 layer, and it checks ownership against it before writing the profile: every
-non-empty own_text must be in exactly one body. tiktoken downloads cl100k_base the
-first time.
+non-empty own_text must be in exactly one body. The tokenizer is read from
+.cache/tiktoken, where tiktoken downloads it the first time (ch.load_encoding).
 """
 
 from __future__ import annotations

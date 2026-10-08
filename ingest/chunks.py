@@ -27,6 +27,7 @@ from the processed layer only, and is not versioned.
 from __future__ import annotations
 
 import json
+import os
 import re
 from collections.abc import Callable
 from pathlib import Path
@@ -43,6 +44,11 @@ from ingest import processed as pr
 CHUNKER_VERSION = "0.1.0"
 Tokenizer = Literal["cl100k_base"]
 TOKENIZER: Tokenizer = "cl100k_base"  # D-005, provisional until the embedding model is chosen
+# Where tiktoken keeps each encoding file after downloading it once, unless
+# TIKTOKEN_CACHE_DIR names another directory. Relative to the working directory,
+# like data/: the same place in a checkout, in CI (which caches it) and in the
+# image, whose Dockerfile sets TIKTOKEN_CACHE_DIR=/app/.cache/tiktoken.
+TOKENIZER_CACHE_DIR = Path(".cache/tiktoken")
 CHUNKS_DIR = Path("data/chunks")
 
 # The template. text = heading, then the inherited context, then the body, as
@@ -127,8 +133,42 @@ def governing_ancestors(article: h.Article, root_path: str) -> list[h.Node]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# the tokenizer: loaded in one place, from one cache
+# ---------------------------------------------------------------------------
+
+
+class TokenizerUnavailableError(Exception):
+    """The tokenizer can be neither read from the cache nor downloaded. There is no
+    fallback on purpose: another tokenizer, or an estimate, would change the token
+    counts and with them every chunk."""
+
+
+def load_encoding(name: str) -> tiktoken.Encoding:
+    """A tiktoken encoding, loaded the one way the project loads it.
+
+    tiktoken downloads the file the first time and keeps it in the directory named
+    by TIKTOKEN_CACHE_DIR. Left unset, tiktoken would pick a folder in the system's
+    temporary directory, outside the project and different on each machine, so
+    TOKENIZER_CACHE_DIR is set first; a value that is already set (the
+    Dockerfile's, or your own) is kept. tiktoken checks the file against the
+    SHA-256 pinned in its own source, on download and on every read from the cache,
+    and it deletes and downloads again a cached file that does not match.
+    """
+    cache_dir = os.environ.setdefault("TIKTOKEN_CACHE_DIR", str(TOKENIZER_CACHE_DIR.absolute()))
+    try:
+        return tiktoken.get_encoding(name)
+    except OSError as e:
+        raise TokenizerUnavailableError(
+            f"the {name} tokenizer is not available: tiktoken could neither read it from its "
+            f"cache in {cache_dir} (TIKTOKEN_CACHE_DIR) nor download it into that cache. Run "
+            "once with network access and a writable cache, or set TIKTOKEN_CACHE_DIR to a "
+            f"directory that already has it. Cause: {e}"
+        ) from e
+
+
 def cl100k_counter() -> TokenCounter:
-    encoding = tiktoken.get_encoding(TOKENIZER)
+    encoding = load_encoding(TOKENIZER)
     return lambda text: len(encoding.encode(text))
 
 

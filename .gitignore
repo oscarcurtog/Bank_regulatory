@@ -7,6 +7,11 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
+# Downloaded files, such as the tokenizer that tiktoken fetches the first time
+# (.cache/tiktoken, see TOKENIZER_CACHE_DIR in ingest/chunks.py). They come from
+# outside the project, are checked by their SHA-256 and are fetched again if missing.
+.cache/
+
 # Downloaded corpus and parsed layer (D-002): not versioned in git, they can be
 # regenerated from data/manifest.json + ingest/. That is why every row of the
 # measurement log records the download date and the snapshot hash: the commit
