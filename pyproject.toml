@@ -11,10 +11,11 @@ requires-python = ">=3.12"
 
 # Dependency boundary. pydantic is needed since EF-3: it defines the data
 # contracts, which are validated at both of their boundaries: the manifest
-# (ingest/download.py), the Node and Article models (ingest/hierarchy.py) and
-# the processed layer (ingest/processed.py). The parsing logic itself still
-# uses only the standard library (xml.etree, re). The T2 measurement scripts
-# need tiktoken and tokenizers (D-005, M-005, M-006).
+# (ingest/download.py), the Node and Article models (ingest/hierarchy.py), the
+# processed layer (ingest/processed.py) and the chunk layer (ingest/chunks.py).
+# The parsing logic itself still uses only the standard library (xml.etree, re).
+# The T2 measurement scripts need tiktoken and tokenizers (D-005, M-005, M-006),
+# and the chunker counts its budget with tiktoken.
 dependencies = [
     "pydantic>=2.13,<3",
     "tiktoken>=0.14,<0.15",

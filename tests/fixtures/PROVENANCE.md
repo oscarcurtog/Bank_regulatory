@@ -14,8 +14,8 @@ bytes downloaded on 2026-09-05, as recorded in `data/manifest.json`.
 
 Reuse: source [EUR-Lex](https://eur-lex.europa.eu), © European Union, 1998-2026.
 Legal documents published in EUR-Lex can be reused under the Commission's reuse
-policy (Decision 2011/833/EU). The consolidated texts (`psd2_art9`, `psd2_art69`
-and `psd2_art111`) are licensed under CC BY 4.0, which requires acknowledging the
+policy (Decision 2011/833/EU). The consolidated texts (`mica_art3`, `psd2_art9`,
+`psd2_art69` and `psd2_art111`) are licensed under CC BY 4.0, which requires acknowledging the
 source and indicating changes: the only change is the extraction described above.
 `psd2_art9_original` comes from the Official Journal text, like the DORA fixtures.
 These excerpts are included solely as test data and are not covered by the
@@ -27,6 +27,7 @@ repository's MIT License.
 | `dora_art60.xhtml` | DORA | Article 60 | `32022R2554` | original | `cf50d8f023d23b2a...` | 23411 |
 | `dora_art15.xhtml` | DORA | Article 15 | `32022R2554` | original | `cf50d8f023d23b2a...` | 7800 |
 | `dora_art36.xhtml` | DORA | Article 36 | `32022R2554` | original | `cf50d8f023d23b2a...` | 14096 |
+| `mica_art3.xhtml` | MiCA | Article 3 | `02023R1114-20240109` | consolidated | `078da6ed766fe117...` | 39498 |
 | `psd2_art69.xhtml` | PSD2 | Article 69 | `02015L2366-20151223` | consolidated | `e9063e8919bf93bd...` | 2360 |
 | `psd2_art111.xhtml` | PSD2 | Article 111 | `02015L2366-20151223` | consolidated | `e9063e8919bf93bd...` | 5766 |
 | `psd2_art9.xhtml` | PSD2 | Article 9 | `02015L2366-20151223` | consolidated | `e9063e8919bf93bd...` | 14147 |

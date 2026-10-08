@@ -63,3 +63,61 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "corpus" in item.keywords:
             item.add_marker(skip)
+
+
+# ---------------------------------------------------------------------------
+# chunk layer invariants (T2): a second implementation, written from the design
+# and not from ingest/chunks.py, so that the chunker is checked by an oracle and
+# not by itself
+# ---------------------------------------------------------------------------
+
+SUBDIVISION_KINDS = ("subparagraph", "unnumbered_paragraph")
+
+
+def expected_context(act: str, article: h.Article, root_path: str) -> str:
+    """Heading, then the own text of every ancestor that governs root_path. An
+    ancestor whose way down goes through an explicit sub_<k>/unp_<k> is skipped:
+    its own text is the implicit first subparagraph, a sibling of the chunk."""
+    by_path = {n.path: n for n in article.nodes}
+    labels = root_path.split(".")
+    lines = []
+    for i in range(1, len(labels)):
+        ancestor = by_path[".".join(labels[:i])]
+        if by_path[".".join(labels[: i + 1])].kind in SUBDIVISION_KINDS:
+            continue
+        if ancestor.own_text:
+            lines.append(reinsert(ancestor))
+    heading = f"{act} Article {article.path}" + (f": {article.title}" if article.title else "")
+    return heading + ("\n\n" + "\n".join(lines) if lines else "")
+
+
+def assert_chunk_invariants(article, act, chunks, max_tokens, count) -> None:
+    """Every invariant of the chunk layer, for one article and its chunks."""
+    nodes = {n.path: n for n in article.nodes}
+    order = {n.path: i for i, n in enumerate(article.nodes)}
+    ids = [c.chunk_id for c in chunks]
+    assert len(ids) == len(set(ids)), "chunk_id must be unique"
+    for c in chunks:
+        assert c.chunk_id == f"{act}:{c.root_path}" + (":own" if c.coverage == "own" else "")
+        # traceability: every source path is one real node of this article
+        assert c.root_path in nodes and all(p in nodes for p in c.source_paths)
+        assert [order[p] for p in c.source_paths] == sorted(order[p] for p in c.source_paths)
+        # coverage: what a chunk owns is exactly its root, or its whole subtree
+        subtree = [
+            p
+            for p in nodes
+            if (p == c.root_path or p.startswith(c.root_path + ".")) and nodes[p].own_text
+        ]
+        assert c.source_paths == ([c.root_path] if c.coverage == "own" else subtree)
+        # body is nothing but its sources; context is the governing structure
+        assert c.body == "\n".join(reinsert(nodes[p]) for p in c.source_paths)
+        assert c.context == expected_context(act, article, c.root_path)
+        assert c.text == c.context + "\n\n" + c.body
+        # tokens recounted with the real tokenizer, budget never silent
+        assert c.token_count == count(c.text)
+        assert (c.token_count > max_tokens) == (c.budget_exception is not None)
+    # lossless ownership: every non-empty own text is in exactly one body
+    owned = Counter(p for c in chunks for p in c.source_paths)
+    sources = {p for p, n in nodes.items() if n.own_text}
+    assert set(owned) == sources, "source partition"
+    assert all(v == 1 for v in owned.values()), "a source owned twice"

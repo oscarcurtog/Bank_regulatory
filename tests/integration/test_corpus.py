@@ -30,6 +30,7 @@ FIXTURES = [
     ("dora_art60", "DORA", "art_60", "doue"),
     ("dora_art15", "DORA", "art_15", "doue"),
     ("dora_art36", "DORA", "art_36", "doue"),
+    ("mica_art3", "MiCA", "art_3", "consolidado"),
     ("psd2_art69", "PSD2", "art_69", "consolidado"),
     ("psd2_art111", "PSD2", "art_111", "consolidado"),
     ("psd2_art9", "PSD2", "art_9", "consolidado"),

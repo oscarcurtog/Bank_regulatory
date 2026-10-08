@@ -17,6 +17,10 @@ data/processed/
 # included), regenerable with scripts/measure_nodes.py. The measurement
 # profiles ARE versioned, like data/t1_report.json.
 data/t2_nodes.json
+# The chunk layer (T2) follows the same rule: derived from data/processed/ by
+# scripts/run_t2.py, with corpus text inside. Its profile, data/t2_chunk_profile.json,
+# IS versioned.
+data/chunks/
 
 # Local Claude Code config: it belongs to this machine, not to the project.
 # .claude/settings.json (without "local") IS shared and can be versioned.

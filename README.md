@@ -10,15 +10,17 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
 ## Status
 
 - **Goal:** a RAG system that answers with verifiable citations to the exact article.
-- **Implemented today:** ingestion and source handling, legal hierarchy parsing, Pydantic data
-  contracts, stale-layer detection, measurement tooling, tests, Docker and CI.
-- **Not implemented yet:** chunking, embeddings, retrieval, generation, citation verification, API,
+- **Implemented today:** ingestion and source handling, legal hierarchy parsing, structural
+  chunking, Pydantic data contracts, stale-layer detection, measurement tooling, tests, Docker and
+  CI.
+- **Not implemented yet:** embeddings, retrieval, generation, citation verification, API,
   evaluation and deployment.
 
 ### Roadmap
 
 - **Foundations:** implemented
-- **Chunking, indexing and retrieval:** next
+- **Chunking:** implemented (structural, v1)
+- **Indexing and retrieval:** next
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -41,14 +43,21 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   for the unnumbered paragraphs of an article). Every node keeps its own text, every article its
   full text, and a path identifies exactly one node of its article. It handles the two markup
   families EUR-Lex uses for original and consolidated texts.
-- **Data contracts** (Pydantic): the manifest and the processed layer (`data/processed/{act}.json`)
-  are validated when they are written and when they are read. Loading aborts instead of returning
+- **Structural chunking** (`ingest/chunks.py`, `scripts/run_t2.py`): each article is cut into the
+  largest legal unit that fits in a token budget, measured with `cl100k_base` on the exact text
+  that will be embedded: the article heading, the text of the ancestors that govern the unit, and
+  the unit itself. The budget is a run parameter (500 by default). A paragraph that does not fit
+  keeps its own text in a chunk of its own, and every source text belongs to exactly one chunk.
+  Chunk IDs are structural, such as `MiCA:3.1.5` or `MiCA:3.1:own`.
+- **Data contracts** (Pydantic): the manifest, the processed layer (`data/processed/{act}.json`)
+  and the chunk layer (`data/chunks/{act}.json`) are validated when they are written and when they
+  are read. Loading aborts instead of returning
   partly checked data.
 - **Stale-layer detection** (`ingest/processed.py`): the processed layer is rejected if another
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 253 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 372 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -86,7 +95,7 @@ uv pip install --require-hashes --no-deps -r requirements-dev.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest reports `228 passed, 25 skipped`. The 25 skipped tests are marked
+Without the corpus, pytest reports `341 passed, 31 skipped`. The 31 skipped tests are marked
 `corpus`: they need `data/raw/`, which is not in the repository (see
 [Data and reproducibility](#data-and-reproducibility)).
 
@@ -118,7 +127,7 @@ docker run --rm -v "$PWD/data:/app/data" fundamento:dev
   `ruff format --check`, mypy and pytest.
 - `runtime-image`: builds the runtime image and runs `ci/check_runtime_image.py` inside it.
 
-The runner does not have the corpus, so the 25 `corpus` tests are skipped there. A green run does
+The runner does not have the corpus, so the 31 `corpus` tests are skipped there. A green run does
 not validate the full 331-article corpus.
 
 ## Data and reproducibility
@@ -126,12 +135,13 @@ not validate the full 331-article corpus.
 | Path | Versioned | What it is |
 |---|---|---|
 | `data/manifest.json` | yes | the exact source documents: URL, SHA-256, size and download date |
-| `data/t1_report.json`, `data/t2_node_profile.json`, `data/t2_token_profile.json` | yes | measurement reports, kept as evidence |
+| `data/t1_report.json`, `data/t2_node_profile.json`, `data/t2_token_profile.json`, `data/t2_chunk_profile.json` | yes | measurement reports, kept as evidence |
 | `data/raw/` | no | the downloaded EUR-Lex documents |
 | `data/processed/` | no | the processed layer, derived from `data/raw/` |
 | `data/t2_nodes.json` | no | per-node measurement output, derived from `data/raw/` |
+| `data/chunks/` | no | the chunk layer, derived from `data/processed/` |
 
-Without the corpus you can run the test suite (228 tests pass, 25 are skipped), the linters and
+Without the corpus you can run the test suite (341 tests pass, 31 are skipped), the linters and
 type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files
@@ -141,12 +151,14 @@ can be rebuilt from the repository root:
 PYTHONPATH=. .venv/bin/python scripts/run_t1.py          # data/processed/, data/t1_report.json
 PYTHONPATH=. .venv/bin/python scripts/measure_nodes.py   # data/t2_nodes.json, data/t2_node_profile.json
 PYTHONPATH=. .venv/bin/python scripts/profile_tokens.py  # data/t2_token_profile.json
+PYTHONPATH=. .venv/bin/python scripts/run_t2.py          # data/chunks/, data/t2_chunk_profile.json
 ```
 
-With documents that match the SHA-256 values in the manifest, the three versioned reports come out
-identical byte for byte. `measure_nodes.py` and `profile_tokens.py` download tokenizer files the
-first time (`cl100k_base` for tiktoken, and `bert-base-uncased` from the Hugging Face Hub). The
-runtime image runs the first step by default:
+With documents that match the SHA-256 values in the manifest, the four versioned reports come out
+identical byte for byte. The scripts download tokenizer files the first time: `cl100k_base` for
+tiktoken (`measure_nodes.py`, `profile_tokens.py`, `run_t2.py`, and the chunker tests, also without
+the corpus), and `bert-base-uncased` from the Hugging Face Hub (`profile_tokens.py`). The runtime
+image runs the first step by default:
 
 ```bash
 docker run --rm -v "$PWD/data:/app/data" fundamento
@@ -158,7 +170,7 @@ function, but a fresh download is not checked against the SHA-256 values recorde
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
-- CI skips the 25 `corpus` tests, so the full corpus is only validated where it is present.
+- CI skips the 31 `corpus` tests, so the full corpus is only validated where it is present.
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4
