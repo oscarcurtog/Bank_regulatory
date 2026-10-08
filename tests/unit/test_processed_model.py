@@ -90,20 +90,40 @@ def test_accepts_kind_and_level_that_do_not_correspond(level, kind):
     assert node.kind == kind
 
 
-def test_accepts_duplicate_paths_within_an_article():
-    """PSD2 Art. 9 has 9.1.a and 9.1.b twice each, because Method B and Method
-    C restart the lettering (D-004, open point). Uniqueness CANNOT live in the
-    schema: it would make it impossible to load the corpus."""
-    dup = _article(
+def test_accepts_the_same_marker_in_different_subparagraphs():
+    """Uniqueness is about paths, not markers. PSD2 Art. 9(1) has a point (a) in
+    Method B and another in Method C; since 1.4.0 they live in different
+    subparagraphs, so their paths differ and the article is valid."""
+    article = _article(
         article_id="art_9",
         path="9",
         nodes=[
             {"path": "9", "level": 1, "marker": "9", "kind": "articulo", "own_text": ""},
-            {"path": "9.1.a", "level": 3, "marker": "a", "kind": "punto", "own_text": "Method B"},
-            {"path": "9.1.a", "level": 3, "marker": "a", "kind": "punto", "own_text": "Method C"},
+            {"path": "9.1.sub_5", "level": 3, "marker": "5", "kind": "subparagraph"},
+            {"path": "9.1.sub_5.a", "level": 4, "marker": "a", "kind": "punto"},
+            {"path": "9.1.sub_7", "level": 3, "marker": "7", "kind": "subparagraph"},
+            {"path": "9.1.sub_7.a", "level": 4, "marker": "a", "kind": "punto"},
         ],
     )
-    assert len(Article.model_validate(dup).nodes) == 3
+    assert len(Article.model_validate(article).nodes) == 5
+
+
+@pytest.mark.parametrize(
+    "path,kind",
+    [("9.1.sub_5", "subparagraph"), ("15.unp_2", "unnumbered_paragraph")],
+)
+def test_accepts_the_subparagraph_kinds(path, kind):
+    """The two kinds added in 1.4.0, in English. The three legacy codes are not
+    renamed (D-012)."""
+    node = Node.model_validate(_node(path=path, level=path.count(".") + 1, kind=kind, marker="2"))
+    assert node.kind == kind
+
+
+@pytest.mark.parametrize("path", ["9.1.sub_5.a", "15.unp_2", "110a.2.sub_3", "45.1.a.iv"])
+def test_accepts_subparagraph_labels_in_paths(path):
+    """A label is a marker (alphanumeric) or sub_<k> / unp_<k>: all valid ltree
+    labels."""
+    assert Node.model_validate(_node(path=path)).path == path
 
 
 def test_accepts_level_that_disagrees_with_the_path():
@@ -134,10 +154,29 @@ def test_empty_marker_is_rejected():
     assert "marker" in str(excinfo.value)
 
 
-@pytest.mark.parametrize("path", ["45..1", "45.'c", "45 1", ".45", "45.", ""])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "45..1",
+        "45.'c",
+        "45 1",
+        ".45",
+        "45.",
+        "",
+        # underscores only exist in subparagraph labels (1.4.0):
+        "45.a_2",
+        "45._2",
+        "45.sub_",
+        "45.sub_2a",
+        "45.foo_2",
+        "sub_2.a",
+    ],
+)
 def test_path_that_is_not_a_valid_ltree_label_is_rejected(path):
     """D-004: every path segment has to be a valid label. The "'c" marker of
-    DORA Art. 60 is the real case that motivated the whitelist."""
+    DORA Art. 60 is the real case that motivated the whitelist. Since 1.4.0 an
+    underscore is accepted only in a subparagraph label, sub_<k> or unp_<k>, and
+    never in the article label, so no other suffix can sneak into identity."""
     with pytest.raises(ValidationError) as excinfo:
         Node.model_validate(_node(path=path))
     assert "path" in str(excinfo.value)
@@ -174,6 +213,41 @@ def test_max_depth_below_one_is_rejected():
     with pytest.raises(ValidationError) as excinfo:
         Article.model_validate(_article(max_depth=0))
     assert "max_depth" in str(excinfo.value)
+
+
+def test_duplicate_paths_within_an_article_are_rejected():
+    """A path identifies exactly one node (1.4.0). Up to 1.3.0 the schema
+    accepted PSD2 Art. 9 with 9.1.a twice, and the two nodes shared one fused
+    own_text without anything failing. Now an article like that cannot exist,
+    neither when the parser builds it nor when a layer is loaded."""
+    dup = _article(
+        article_id="art_9",
+        path="9",
+        nodes=[
+            {"path": "9", "level": 1, "marker": "9", "kind": "articulo", "own_text": ""},
+            {"path": "9.1.a", "level": 3, "marker": "a", "kind": "punto", "own_text": "Method B"},
+            {"path": "9.1.a", "level": 3, "marker": "a", "kind": "punto", "own_text": "Method C"},
+        ],
+    )
+    with pytest.raises(ValidationError) as excinfo:
+        Article.model_validate(dup)
+    message = str(excinfo.value)
+    assert "duplicate node paths" in message
+    assert "9.1.a" in message
+    assert "art_9" in message
+
+
+def test_duplicate_paths_are_rejected_inside_a_document():
+    """The nested structure carries the invariant up: a ProcessedDocument with
+    one such article does not validate."""
+    nodes = [
+        {"path": "45", "level": 1, "marker": "45", "kind": "articulo", "own_text": ""},
+        VALID_NODE,
+        VALID_NODE,
+    ]
+    with pytest.raises(ValidationError) as excinfo:
+        ProcessedDocument.model_validate(_doc(articles=[_article(nodes=nodes)]))
+    assert "duplicate node paths" in str(excinfo.value)
 
 
 def test_a_bad_node_invalidates_the_whole_article():

@@ -1,6 +1,6 @@
 """Regression tests: each one comes from a real incident that already happened,
 described in the measurement log under M-004 (text defects) and M-006 (a D-004
-limitation).
+limitation, fixed in parser 1.4.0).
 
 These tests do not test an isolated function (that is already in
 tests/unit/test_text_cleaning.py with minimal cases): they test that the
@@ -92,20 +92,17 @@ def test_references_survive_full_parse(name, family, expected_refs):
     assert len(_REF_RX.findall(article.text)) == expected_refs
 
 
-def test_psd2_art9_duplicate_paths():
-    """CHARACTERIZATION test, not a correctness one. PSD2 Art. 9(1) contains
-    "Method A", "Method B" and "Method C": three sibling lists under the same
-    paragraph that restart the lettering from (a). The materialized path of
-    D-004 (article.paragraph.point) does not tell which method a point belongs
-    to, so 9.1.a and 9.1.b exist twice with different content (M-006,
-    finding 1).
-
-    This test does NOT fix anything: it pins the current behaviour on purpose.
-    If D-004 is reopened to disambiguate Method A/B/C, this test must START
-    FAILING and has to be updated by hand, not left to pass by accident.
-    See decision D-004, open point."""
-    article = h.parse(fixture_path("psd2_art9"), "consolidado")[0]
+@pytest.mark.parametrize(
+    "name,family", [("psd2_art9", "consolidado"), ("psd2_art9_original", "doue")]
+)
+def test_psd2_art9_paths_are_unique(name, family):
+    """Regression of M-006, finding 1. PSD2 Art. 9(1) has two lists (Method B,
+    Method C) that restart the lettering from (a). Up to 1.3.0 both hung from
+    9.1, so 9.1.a and 9.1.b existed twice and the two copies shared one fused
+    own_text. Since 1.4.0 each list lives in its own subparagraph, in both
+    markup families (the detailed structure is pinned in test_subparagraphs.py),
+    and Article rejects duplicate paths."""
+    article = h.parse(fixture_path(name), family)[0]
     paths = [n.path for n in article.nodes]
-    assert paths.count("9.1.a") == 2
-    assert paths.count("9.1.b") == 2
-    assert paths.count("9.1.c") == 1  # Method C does not reach (c): no collision here
+    assert len(paths) == len(set(paths))
+    assert "9.1.a" not in paths and "9.1.b" not in paths

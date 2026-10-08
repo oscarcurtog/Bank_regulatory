@@ -12,21 +12,7 @@ import re
 import pytest
 
 from ingest import hierarchy as h
-from tests.conftest import fixture_path
-
-
-def _reinsert(node: h.Node) -> str:
-    if node.kind == "apartado":
-        return f"{node.marker}. {node.own_text}"
-    if node.kind == "punto":
-        return f"({node.marker}) {node.own_text}"
-    return node.own_text
-
-
-def _reconstruct(article: h.Article) -> str:
-    head = f"Article {article.path} {article.title}"
-    return h._normalize(" ".join([head] + [_reinsert(n) for n in article.nodes]))
-
+from tests.conftest import fixture_path, reconstruct
 
 # ---------------------------------------------------------------------------
 # happy path: one per family
@@ -86,6 +72,9 @@ def test_parse_consolidado_happy_path():
 FIXTURE_FAMILIES = [
     ("dora_art45", "doue"),
     ("dora_art60", "doue"),
+    ("dora_art15", "doue"),
+    ("dora_art36", "doue"),
+    ("psd2_art9_original", "doue"),
     ("psd2_art69", "consolidado"),
     ("psd2_art111", "consolidado"),
     ("psd2_art9", "consolidado"),
@@ -108,13 +97,14 @@ def test_level_matches_path_segments():
             assert node.level == node.path.count(".") + 1, (article.article_id, node.path)
 
 
-_LTREE_LABEL = re.compile(r"^[0-9A-Za-z]+$")
+_LTREE_LABEL = re.compile(r"^[0-9A-Za-z]+$|^(sub|unp)_[0-9]+$")
 
 
 def test_paths_are_ltree_safe():
-    """Invariant (D-004): every path segment is a valid ltree label
-    (alphanumeric only). DORA Art. 60 has a "'c" marker that would have broken
-    this without the _MARKER_KEEP whitelist."""
+    """Invariant (D-004): every path segment is a valid ltree label: a marker,
+    alphanumeric only, or a subparagraph label sub_<k> / unp_<k> (1.4.0), and
+    nothing else with an underscore. DORA Art. 60 has a "'c" marker that would
+    have broken this without the _MARKER_KEEP whitelist."""
     for article in _all_articles():
         for node in article.nodes:
             for segment in node.path.split("."):
@@ -130,15 +120,26 @@ def test_max_depth_matches_deepest_node():
         assert article.max_depth == deepest, article.article_id
 
 
-@pytest.mark.parametrize("name,family", [("dora_art45", "doue"), ("psd2_art69", "consolidado")])
+@pytest.mark.parametrize(
+    "name,family",
+    [
+        ("dora_art45", "doue"),
+        ("dora_art15", "doue"),
+        ("dora_art36", "doue"),
+        ("psd2_art69", "consolidado"),
+        ("psd2_art111", "consolidado"),
+    ],
+)
 def test_article_reconstructs_from_nodes(name, family):
     """Reconstruction invariant (M-006): reinserting each marker in front of
     own_text, in node order, reproduces Article.text exactly. Two independent
     code paths (string cleaning vs. attribution over the tree) that agree are
     evidence that neither of them loses or duplicates text.
 
-    It is limited to these two fixtures because they are the clean cases: they
-    have no reordering of non-contiguous own_text (67 articles of the full
-    corpus, M-006) nor the real PSD2 Art. 9 problem (see test_known_bugs.py)."""
+    DORA Art. 15 and Art. 36 are here since 1.4.0: up to 1.3.0 their text after
+    a list was attributed to the parent and came out before the list. The two
+    fixtures left out are explained: DORA Art. 60 writes its quoted markers as
+    "'(a)" (marker format, M-006), and PSD2 Art. 9 keeps one reordering inside a
+    point (see tests/integration/test_subparagraphs.py)."""
     article = h.parse(fixture_path(name), family)[0]
-    assert _reconstruct(article) == article.text
+    assert reconstruct(article) == article.text

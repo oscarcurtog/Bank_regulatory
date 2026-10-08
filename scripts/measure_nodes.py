@@ -40,6 +40,7 @@ def reinsert(nd: h.Node) -> str:
         return f"{nd.marker}. {nd.own_text}"
     if nd.kind == "punto":
         return f"({nd.marker}) {nd.own_text}"
+    # the article, a subparagraph and an unnumbered paragraph (1.4.0) print no marker
     return nd.own_text
 
 

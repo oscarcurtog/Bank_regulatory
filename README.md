@@ -35,9 +35,12 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   repository behind EUR-Lex. A response only counts if it has status 200 and a realistic size, and
   each document is recorded in `data/manifest.json` with its URL, SHA-256, size and download date.
 - **Legal hierarchy parsing** (`ingest/hierarchy.py`): turns EUR-Lex XHTML into articles and
-  citable nodes (article, paragraph, point) with materialized paths such as `45.1.a`. Every node
-  keeps its own text, and every article its full text. It handles the two markup families EUR-Lex
-  uses for original and consolidated texts.
+  citable nodes (article, paragraph, subparagraph, point) with materialized paths such as `45.1.a`
+  or `9.1.sub_5.a`. The first subparagraph of a paragraph stays implicit, so the usual paths keep
+  their form; from the second on, a subparagraph is a node of its own (`sub_<k>`, or `unp_<k>`
+  for the unnumbered paragraphs of an article). Every node keeps its own text, every article its
+  full text, and a path identifies exactly one node of its article. It handles the two markup
+  families EUR-Lex uses for original and consolidated texts.
 - **Data contracts** (Pydantic): the manifest and the processed layer (`data/processed/{act}.json`)
   are validated when they are written and when they are read. Loading aborts instead of returning
   partly checked data.
@@ -45,7 +48,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 165 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 253 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -83,7 +86,7 @@ uv pip install --require-hashes --no-deps -r requirements-dev.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest reports `150 passed, 15 skipped`. The 15 skipped tests are marked
+Without the corpus, pytest reports `228 passed, 25 skipped`. The 25 skipped tests are marked
 `corpus`: they need `data/raw/`, which is not in the repository (see
 [Data and reproducibility](#data-and-reproducibility)).
 
@@ -115,7 +118,7 @@ docker run --rm -v "$PWD/data:/app/data" fundamento:dev
   `ruff format --check`, mypy and pytest.
 - `runtime-image`: builds the runtime image and runs `ci/check_runtime_image.py` inside it.
 
-The runner does not have the corpus, so the 15 `corpus` tests are skipped there. A green run does
+The runner does not have the corpus, so the 25 `corpus` tests are skipped there. A green run does
 not validate the full 331-article corpus.
 
 ## Data and reproducibility
@@ -128,7 +131,7 @@ not validate the full 331-article corpus.
 | `data/processed/` | no | the processed layer, derived from `data/raw/` |
 | `data/t2_nodes.json` | no | per-node measurement output, derived from `data/raw/` |
 
-Without the corpus you can run the test suite (150 tests pass, 15 are skipped), the linters and
+Without the corpus you can run the test suite (228 tests pass, 25 are skipped), the linters and
 type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files
@@ -155,11 +158,14 @@ function, but a fresh download is not checked against the SHA-256 values recorde
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
-- CI skips the 15 `corpus` tests, so the full corpus is only validated where it is present.
-- In PSD2 Article 9, three sibling lists restart their lettering, so some paths (`9.1.a`, `9.1.b`)
-  appear twice. A test pins this behaviour; the hierarchy model does not resolve it yet.
+- CI skips the 25 `corpus` tests, so the full corpus is only validated where it is present.
+- Subparagraphs are detected from the markup alone, without reading the words. As a result, a
+  heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
+  after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4
+  articles the text a point has after its sub-points stays joined to its lead-in.
 - The node `kind` and markup `family` fields use five legacy serialized schema codes, documented in
-  `ingest/processed.py`. Renaming them is a deliberate schema migration that has not been done.
+  `ingest/processed.py`; the two node kinds added for subparagraphs are English. Renaming the
+  legacy codes is a deliberate schema migration that has not been done.
 - The test image installs pytest, Ruff and mypy without pinning their versions. CI uses the hashed
   lock.
 - The images have been built and run with Docker Desktop on macOS, and CI builds and checks the

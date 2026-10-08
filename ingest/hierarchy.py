@@ -1,7 +1,8 @@
-"""Extracts the legal hierarchy (article > paragraph > point > sub-point...) of
-an EUR-Lex XHTML as structured metadata: every node with its ltree-style path
-(D-004, e.g. "5.4.c.i"), its level and its own text, plus the full text of the
-article (D-001..D-003 decide which text version gets here).
+"""Extracts the legal hierarchy (article > paragraph > subparagraph > point >
+sub-point...) of an EUR-Lex XHTML as structured metadata: every node with its
+ltree-style path (D-004, e.g. "5.4.c.i" or "9.1.sub_5.a"), its level and its own
+text, plus the full text of the article (D-001..D-003 decide which text version
+gets here).
 
 Two markup families, verified by manual inspection (M-001..M-003):
 
@@ -24,6 +25,12 @@ node. The marker ("(a)", "4.") is NOT part of the own text; it lives in
 belongs to the parent. The "Article N" heading and the title are not own text
 of the article node: they live in Article.path and Article.title.
 
+Subparagraphs (1.4.0, see the section further down): a numbered paragraph is
+divided into unnumbered subparagraphs, and an article without numbered
+paragraphs into unnumbered paragraphs. The first one stays implicit; from the
+second on each one is a node with its own text and its own points. That is what
+gives the two lists of PSD2 Art. 9(1) distinct paths.
+
 Two INDEPENDENT code paths on purpose: Article.text comes from string cleaning
 (_clean_text) and each own_text comes from attribution over the pre-cleaned
 tree (_preclean + walk). If the reconstruction from nodes reproduces
@@ -41,9 +48,9 @@ import re
 import unicodedata
 import xml.etree.ElementTree as ET
 from collections.abc import Iterator
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # 1.1.0: a dash/bullet with no citable marker is not a level (DORA Art. 35, manual review).
 # 1.2.0: 'level' is derived from the path segments, not from a separate counter.
@@ -53,7 +60,11 @@ from pydantic import BaseModel, Field
 #            reintroduced when the code was ported to the repo. (b) FIX: ET.tostring
 #            serializes with an html: prefix, and the tag regexes of _clean_text had not
 #            matched since the port; bug (a) hid it. (c) own_text per node, and a level-1 node.
-PARSER_VERSION = "1.3.0"
+# 1.4.0: subparagraph structure (sub_<k> under a numbered paragraph, unp_<k> under an
+#        article without them), unmarked table items of the doue family walked as
+#        transparent containers, and node paths unique within an article (validated).
+#        PSD2 Art. 9(1) no longer has duplicate paths (T2 phase 1 measurement).
+PARSER_VERSION = "1.4.0"
 
 NS = "{http://www.w3.org/1999/xhtml}"
 SENT = "\x00FN\x00"  # sentinel for footnote references
@@ -67,8 +78,12 @@ def _text(el: ET.Element) -> str:
     return "".join(el.itertext())
 
 
-# Materialized path label (D-004): alphanumeric only, dot-separated.
-LTREE_PATH_PATTERN = r"^[0-9A-Za-z]+(\.[0-9A-Za-z]+)*$"
+# Materialized path (D-004), dot-separated. The first label is the article number;
+# every other label is either a marker (alphanumeric only, see _MARKER_KEEP) or, since
+# 1.4.0, a subparagraph label "sub_<k>" / "unp_<k>". Nothing else may contain "_", so a
+# subparagraph label can never collide with a real marker. Every label is a valid ltree
+# label (letters, digits, underscore).
+LTREE_PATH_PATTERN = r"^[0-9A-Za-z]+(\.([0-9A-Za-z]+|(sub|unp)_[0-9]+))*$"
 
 
 class Node(BaseModel):
@@ -82,21 +97,29 @@ class Node(BaseModel):
     - correspondence between kind and level: 248 nodes would break it. PSD2
       Art. 52 is a numbered list of points at level 2 and DORA Art. 60 has
       quoted paragraphs at level 4. They are different axes.
-    - path uniqueness: PSD2 Art. 9 violates it today on purpose (D-004 open).
     - level == path segments: it is a derived relation and lives in
       tests/integration/test_parse_end_to_end.py, not in the schema.
+    Path uniqueness IS validated, one level up: it is a property of an Article,
+    not of a single node (Article._node_paths_are_unique, 1.4.0).
     """
 
     path: str = Field(pattern=LTREE_PATH_PATTERN)
     level: int = Field(ge=1)  # = number of path segments
-    marker: str = Field(min_length=1)  # "5", "4", "c", "i"; never inside own_text
+    # "5", "4", "c", "i"; for a subparagraph, its ordinal ("2" for sub_2). Never
+    # inside own_text.
+    marker: str = Field(min_length=1)
     # Legacy serialized schema codes, kept on purpose. They are written into every
     # node of data/processed/*.json, so renaming them would be a schema migration,
     # not a translation (see the note on ProcessedDocument.family). Meaning:
     #   "articulo"  the article itself (level 1)
     #   "apartado"  a numbered paragraph ("1.", "2.")
     #   "punto"     a point with a citable marker ("(a)", "(i)", "(1)")
-    kind: Literal["articulo", "apartado", "punto"]
+    # Added in 1.4.0, in English (the legacy codes above are not renamed):
+    #   "subparagraph"          the 2nd, 3rd... subparagraph of a numbered
+    #                           paragraph, path <paragraph>.sub_<k>
+    #   "unnumbered_paragraph"  the 2nd, 3rd... unnumbered paragraph of an article
+    #                           without numbered paragraphs, path <article>.unp_<k>
+    kind: Literal["articulo", "apartado", "punto", "subparagraph", "unnumbered_paragraph"]
     own_text: str = ""  # own text, without the marker, without the children's text
 
 
@@ -114,6 +137,26 @@ class Article(BaseModel):
     # the dict literal in run_t1.py used to write.
     max_depth: int = Field(default=1, ge=1)
     nodes: list[Node] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _node_paths_are_unique(self) -> Self:
+        """A path IS the identity of a node (D-004): its text, its citation and
+        its descendants are all keyed by it. Up to 1.3.0, PSD2 Art. 9 had two
+        nodes for 9.1.a and two for 9.1.b, and their text came out fused without
+        anything failing. A future act or an unknown markup must fail here,
+        loudly, instead of merging or duplicating identity in silence."""
+        seen: set[str] = set()
+        duplicated: set[str] = set()
+        for node in self.nodes:
+            if node.path in seen:
+                duplicated.add(node.path)
+            seen.add(node.path)
+        if duplicated:
+            raise ValueError(
+                f"{self.article_id}: duplicate node paths {sorted(duplicated)}. A path "
+                f"must identify exactly one node of the article."
+            )
+        return self
 
 
 def _article_divs(root: ET.Element) -> Iterator[tuple[str, ET.Element]]:
@@ -265,6 +308,128 @@ def _is_heading(el: ET.Element) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# subparagraphs (1.4.0)
+# ---------------------------------------------------------------------------
+#
+# EU legislation divides a numbered paragraph into unnumbered subparagraphs, and an
+# article without numbered paragraphs into unnumbered paragraphs; points belong to one
+# of them. The EUR-Lex specification of subdivision identifiers (ELI) states it for
+# exactly the PSD2 Art. 9(1) case: "2 lists inside the same numbered paragraph shall
+# be in 2 separate subparagraphs". Up to 1.3.0 the parser hung every point directly
+# from its paragraph, so the two lists of Art. 9(1) collided in 9.1.a and 9.1.b.
+#
+# The rule is structural and deliberately narrow: it never reads words, and it only
+# knows the block carriers measured on the five raw documents (T2 phase 1).
+# - A BLOCK is a carrier with text of its own at paragraph or article level. Never
+#   inside a point, an indent (a list item without a citable marker), a table, or
+#   another block.
+# - Every block opens a new subparagraph. Points belong to the subparagraph of the
+#   last block before them; a list with no block before it is in subparagraph 1.
+# - Subparagraph 1 stays implicit, as in an ELI user reference ("Article 36(1),
+#   point (a)"): its text is the parent's own_text and its points hang from the
+#   parent, so the common case keeps its 1.3.0 path. From the second on, a node:
+#   <paragraph>.sub_<k> ("subparagraph") or <article>.unp_<k> ("unnumbered_paragraph"),
+#   with its own text and its own points.
+#
+# Known limitations, accepted: a heading block ("Method A" in PSD2 Art. 9(1)) and a
+# quoted text block after a colon become subparagraphs of their own; and inside a
+# point nothing is split, because there the markup does not tell a subparagraph from
+# a connector such as "plus".
+
+# Inline elements: their text belongs to the block that contains them.
+_INLINE = frozenset(
+    {"span", "a", "b", "i", "em", "strong", "sub", "sup", "br", "u", "small", "q", "abbr", "font"}
+)
+
+# Block carriers, as (tag, exact set of classes): every owner-level text of the five raw
+# documents sits in one of these (T2 phase 1). An element outside the set never opens a
+# subparagraph; its text stays in the subparagraph that is open.
+_DOUE_BLOCKS = frozenset({("p", frozenset({"oj-normal"}))})
+_CONSOLIDATED_BLOCKS = frozenset(
+    {
+        ("div", frozenset({"norm", "inline-element"})),
+        ("p", frozenset({"norm"})),
+        ("p", frozenset({"norm", "inline-element"})),
+        ("div", frozenset({"list"})),
+    }
+)
+
+
+def _own_direct_text(el: ET.Element) -> str:
+    """The text el carries at its own level: its .text, its inline children and the
+    tails of all its children. The consolidated paragraph number (span.no-parag) is
+    the paragraph's marker, not text."""
+    out = [el.text or ""]
+    for ch in el:
+        tag = _local(ch.tag)
+        if tag in _INLINE and not (tag == "span" and "no-parag" in (ch.get("class", "") or "")):
+            out.append(_text(ch))
+        out.append(ch.tail or "")
+    return "".join(out)
+
+
+def _is_block(el: ET.Element, carriers: frozenset[tuple[str, frozenset[str]]]) -> bool:
+    key = (_local(el.tag), frozenset((el.get("class", "") or "").split()))
+    return key in carriers and bool(_own_direct_text(el).strip())
+
+
+def _is_unmarked_item(table: ET.Element) -> bool:
+    """doue only: a table with a single row of two cells whose FIRST cell is empty
+    (no marker, not even a dash) is an unmarked item. The parser walks its content as
+    if it were not in a table, so the blocks and points inside it are seen.
+
+    Measured: 3 tables in the five raw documents, the three "Method" blocks of PSD2
+    Art. 9(1) in the original text. Walked as transparent containers, that article
+    comes out identical to the consolidated version. Deliberately narrow: an indent (a
+    dash in the first cell) and any other table shape keep their 1.3.0 handling."""
+    rows = [r for r in table if _local(r.tag) == "tr"]
+    for section in table:
+        if _local(section.tag) in ("thead", "tbody", "tfoot"):
+            rows += [r for r in section if _local(r.tag) == "tr"]
+    if len(rows) != 1:
+        return False
+    cells = [c for c in rows[0] if _local(c.tag) == "td"]
+    return len(cells) == 2 and not _text(cells[0]).strip()
+
+
+class _Subdivisions:
+    """Subparagraph counter for one article: per owner (a numbered paragraph, or the
+    article itself), the ordinal of the subparagraph that is open right now."""
+
+    def __init__(self, article_path: str, nodes: list[Node], buf: _Buf) -> None:
+        self.article_path = article_path
+        self.nodes = nodes
+        self.buf = buf
+        self.open_k: dict[str, int] = {}
+
+    def _path(self, owner: str, k: int) -> str:
+        return f"{owner}.{'unp' if owner == self.article_path else 'sub'}_{k}"
+
+    def current(self, owner: str) -> str:
+        """Where the loose text of owner goes right now."""
+        k = self.open_k.get(owner, 0)
+        return owner if k <= 1 else self._path(owner, k)
+
+    def point_base(self, owner: str) -> str:
+        """Parent path for a point of owner. A list with no block before it is in
+        subparagraph 1."""
+        self.open_k.setdefault(owner, 1)
+        return self.current(owner)
+
+    def block(self, owner: str) -> None:
+        """A new block opens a new subparagraph; from the second on, it is a node."""
+        k = self.open_k.get(owner, 0) + 1
+        self.open_k[owner] = k
+        if k >= 2:
+            path = self._path(owner, k)
+            kind: Literal["subparagraph", "unnumbered_paragraph"] = (
+                "unnumbered_paragraph" if owner == self.article_path else "subparagraph"
+            )
+            self.nodes.append(Node(path=path, level=_level_of(path), marker=str(k), kind=kind))
+            self.buf.open(path)
+
+
+# ---------------------------------------------------------------------------
 # "doue" family
 # ---------------------------------------------------------------------------
 
@@ -274,22 +439,34 @@ def _nodes_doue(article_el: ET.Element, article_path: str) -> tuple[list[Node], 
     nodes = [Node(path=article_path, level=1, marker=article_path, kind="articulo")]
     buf = _Buf()
     buf.open(article_path)
-    max_depth = [1]
+    subs = _Subdivisions(article_path, nodes, buf)
+    # The owners whose blocks open subparagraphs: the article and its numbered
+    # paragraphs. A paragraph quoted inside a point (DORA Art. 60) is not one of them.
+    owners = {article_path}
     skip: set[ET.Element] = set()
 
-    def walk(el: ET.Element, owner: str, path: str, depth: int) -> None:
+    def loose(owner: str) -> str:  # where the loose text of owner goes right now
+        return subs.current(owner) if owner in owners else owner
+
+    def walk(
+        el: ET.Element, owner: str, path: str, in_point: bool, in_other: bool, in_block: bool
+    ) -> None:
         if _is_heading(el) or el in skip:
             return
         tag = _local(el.tag)
         m = _PARA_ID.match(el.get("id", "") or "")
-        here_path, here_depth, here_owner = path, depth, owner
+        here_path, here_owner = path, owner
+        here_point, here_other, here_block = in_point, in_other, in_block
         if tag == "div" and m:
             num = m.group(1).lstrip("0") or "0"
             here_path = f"{path}.{num}"
-            here_depth = _level_of(here_path)
             here_owner = here_path
-            nodes.append(Node(path=here_path, level=here_depth, marker=num, kind="apartado"))
+            nodes.append(
+                Node(path=here_path, level=_level_of(here_path), marker=num, kind="apartado")
+            )
             buf.open(here_path)
+            if not in_point:
+                owners.add(here_path)
         elif tag == "table":
             tr = el.find(f".//{NS}tr")
             marker, marker_td = "", None
@@ -298,27 +475,40 @@ def _nodes_doue(article_el: ET.Element, article_path: str) -> tuple[list[Node], 
                 marker = _MARKER_KEEP.sub("", _text(marker_td).strip())
             # marker is only non-empty if marker_td exists; both are checked so as
             # not to rely on a correlation the type checker cannot see.
-            if marker and marker_td is not None:  # with no citable marker (a dash),
-                # the table is the parent's text
-                here_path = f"{path}.{marker}"
-                here_depth = _level_of(here_path)
+            if marker and marker_td is not None:
+                base = path
+                if not in_point and path == owner and owner in owners:
+                    base = subs.point_base(owner)
+                here_path = f"{base}.{marker}"
                 here_owner = here_path
-                nodes.append(Node(path=here_path, level=here_depth, marker=marker, kind="punto"))
+                nodes.append(
+                    Node(path=here_path, level=_level_of(here_path), marker=marker, kind="punto")
+                )
                 buf.open(here_path)
                 skip.add(marker_td)
-        max_depth[0] = max(max_depth[0], here_depth)
-        buf.add(here_owner, el.text)
+                here_point = True
+            elif not (in_point or in_other) and _is_unmarked_item(el):
+                pass  # 1.4.0: a transparent container, see _is_unmarked_item
+            else:
+                # with no citable marker (a dash), the table is the parent's text,
+                # and nothing inside it opens a subparagraph
+                here_other = True
+        elif not (in_point or in_other or in_block) and owner in owners:
+            if _is_block(el, _DOUE_BLOCKS):
+                subs.block(owner)
+                here_block = True
+        buf.add(loose(here_owner), el.text)
         for ch in el:
-            walk(ch, here_owner, here_path, here_depth)
-            buf.add(here_owner, ch.tail)
+            walk(ch, here_owner, here_path, here_point, here_other, here_block)
+            buf.add(loose(here_owner), ch.tail)
 
-    walk(el0, article_path, article_path, 1)
+    walk(el0, article_path, article_path, False, False, False)
     for nd in nodes:
         t = buf.text(nd.path)
         if nd.kind == "apartado":  # in the OJ the "1." is inline in the text; it is the marker
             t = _LEADING_PARA_NUM.sub("", t, count=1)
         nd.own_text = t
-    return nodes, max_depth[0]
+    return nodes, max(nd.level for nd in nodes)
 
 
 # ---------------------------------------------------------------------------
@@ -343,17 +533,27 @@ def _nodes_consolidado(article_el: ET.Element, article_path: str) -> tuple[list[
     nodes = [Node(path=article_path, level=1, marker=article_path, kind="articulo")]
     buf = _Buf()
     buf.open(article_path)
-    max_depth = [1]
+    subs = _Subdivisions(article_path, nodes, buf)
     # list[str | None], not list[None]: the path of the open paragraph gets
     # written into it. mypy inferred list[None], and the assignment further
     # down was an error.
     current_para: list[str | None] = [None]
     skip: set[ET.Element] = set()
 
-    def owner_of(point: str | None) -> str:  # owner of the loose text here
-        return point or current_para[0] or article_path
+    def para() -> str:  # the open paragraph, or the article before the first one
+        return current_para[0] or article_path
 
-    def walk(el: ET.Element, point: str | None, path: str, depth: int, list_depth: int) -> None:
+    def owner_of(point: str | None) -> str:  # owner of the loose text here
+        return point or subs.current(para())
+
+    def walk(
+        el: ET.Element,
+        point: str | None,
+        path: str,
+        list_depth: int,
+        in_other: bool,
+        in_block: bool,
+    ) -> None:
         if _is_heading(el) or el in skip:
             return
         tag = _local(el.tag)
@@ -366,31 +566,39 @@ def _nodes_consolidado(article_el: ET.Element, article_path: str) -> tuple[list[
                 nodes.append(Node(path=p2, level=_level_of(p2), marker=num, kind="apartado"))
                 buf.open(p2)
                 current_para[0] = p2
-                max_depth[0] = max(max_depth[0], 2)
                 return  # the span IS the marker; nothing in it is own text
-        here_path, here_depth, here_point, new_ld = path, depth, point, list_depth
+        here_path, here_point, new_ld = path, point, list_depth
+        here_other, here_block = in_other, in_block
         if _is_list(el):
             marker, col1 = _list_marker(el)
             # same here: _list_marker returns ("", None) or (marker, element).
             if marker and col1 is not None:
-                base = (current_para[0] or article_path) if list_depth == 0 else path
+                base = subs.point_base(para()) if list_depth == 0 else path
                 here_path = f"{base}.{marker}"
-                here_depth = _level_of(here_path)
                 here_point = here_path
                 new_ld = list_depth + 1
-                nodes.append(Node(path=here_path, level=here_depth, marker=marker, kind="punto"))
+                nodes.append(
+                    Node(path=here_path, level=_level_of(here_path), marker=marker, kind="punto")
+                )
                 buf.open(here_path)
                 skip.add(col1)
-                max_depth[0] = max(max_depth[0], here_depth)
+            else:
+                here_other = True  # an indent: a list item without a citable marker
+        elif tag == "table":
+            here_other = True
+        elif list_depth == 0 and not (in_other or in_block):
+            if _is_block(el, _CONSOLIDATED_BLOCKS):
+                subs.block(para())
+                here_block = True
         buf.add(owner_of(here_point), el.text)
         for ch in el:
-            walk(ch, here_point, here_path, here_depth, new_ld)
+            walk(ch, here_point, here_path, new_ld, here_other, here_block)
             buf.add(owner_of(here_point), ch.tail)
 
-    walk(el0, None, article_path, 1, 0)
+    walk(el0, None, article_path, 0, False, False)
     for nd in nodes:
         nd.own_text = buf.text(nd.path)
-    return nodes, max_depth[0]
+    return nodes, max(nd.level for nd in nodes)
 
 
 # ---------------------------------------------------------------------------

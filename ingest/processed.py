@@ -23,11 +23,17 @@ Pydantic validates the shape of those fields. Not the comparison: it is made
 against external state, so it lives in the reader. Same boundary as with the
 manifest's sha256, where the model validates that it LOOKS like a hash and the
 domain checks that it IS one.
+
+Axis 1 is checked BEFORE the schema (1.4.0). A layer written by another parser
+may break today's schema: the 1.3.0 layer of PSD2 has duplicate paths, which
+Article rejects since 1.4.0. That is staleness, not a broken contract, and the
+reader says so instead of reporting a contract violation.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Literal
 
@@ -37,6 +43,9 @@ from ingest import download as dl
 from ingest import hierarchy as h
 
 PROCESSED_DIR = Path("data/processed")
+# Shared by the model and by the early staleness check in load_processed(), so that
+# the two cannot disagree on what a well-formed version is.
+VERSION_PATTERN = r"^\d+\.\d+\.\d+$"
 
 
 class ProcessedError(Exception):
@@ -58,21 +67,21 @@ class ProcessedDocument(BaseModel):
     source_celex: str = Field(pattern=dl.CELEX_PATTERN)
     source_role: Literal["original", "consolidated"]
     source_sha256: str = Field(pattern=dl.SHA256_PATTERN)
-    parser_version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
+    parser_version: str = Field(pattern=VERSION_PATTERN)
     # Legacy serialized schema codes for the markup family, kept on purpose, with
     # the same status as Node.kind in ingest/hierarchy.py:
     #   "doue"         original text as published in the Official Journal
     #                  (DOUE is the Spanish acronym of the Official Journal)
     #   "consolidado"  consolidated text
     #
-    # Known debt, deliberately not addressed yet: moving these codes and Node.kind
-    # to English names (article/paragraph/point and English family names) is a
-    # schema migration, not a cleanup. It needs a PARSER_VERSION bump, regenerating
-    # every derived layer (data/processed/, data/t2_nodes.json), and a review of
-    # stale-vs-schema errors: load_processed() validates the schema before it
-    # compares parser_version, so a layer written with the old codes would be
-    # reported as a contract violation (ProcessedError), not as stale
-    # (StaleLayerError).
+    # Known debt, deliberately not addressed yet: moving these codes and the three
+    # legacy Node.kind codes to English names (article/paragraph/point and English
+    # family names) is a schema migration, not a cleanup. It needs a PARSER_VERSION
+    # bump and regenerating every derived layer (data/processed/,
+    # data/t2_nodes.json). The node kinds added in 1.4.0 are already English. Since
+    # 1.4.0, load_processed() compares parser_version before validating the schema,
+    # so a layer written with the old codes would be reported as stale
+    # (StaleLayerError), not as a contract violation (ProcessedError).
     family: Literal["doue", "consolidado"]
     articles: list[h.Article] = Field(min_length=1)
 
@@ -110,18 +119,25 @@ def load_processed(
         raw = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
         raise ProcessedError(f"{path} is not valid JSON: {e}") from e
+    # --- axis 1, before the schema: the code that wrote it changed. Only a
+    # well-formed version is compared here; a malformed one is a contract violation
+    # and is left to the schema below.
+    version = raw.get("parser_version") if isinstance(raw, dict) else None
+    if (
+        isinstance(version, str)
+        and re.fullmatch(VERSION_PATTERN, version)
+        and version != h.PARSER_VERSION
+    ):
+        raise StaleLayerError(
+            f"{path} was written by parser {version} and the installed one is "
+            f"{h.PARSER_VERSION}. Measuring on it would give another parser's numbers: "
+            f"rerun scripts/run_t1.py before using it."
+        )
+
     try:
         doc = ProcessedDocument.model_validate(raw)
     except ValidationError as e:
         raise ProcessedError(f"{path} does not meet the processed layer contract.\n{e}") from e
-
-    # --- axis 1: the code that wrote it changed
-    if doc.parser_version != h.PARSER_VERSION:
-        raise StaleLayerError(
-            f"{path} was written by parser {doc.parser_version} and the installed one is "
-            f"{h.PARSER_VERSION}. Measuring on it would give another parser's numbers: "
-            f"rerun scripts/run_t1.py before using it."
-        )
 
     # --- axis 2: the corpus it came from changed
     entry = next((d for d in manifest if d.celex == doc.source_celex), None)

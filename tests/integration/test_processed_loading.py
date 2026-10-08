@@ -130,6 +130,35 @@ def test_stale_parser_version_aborts(tmp_path):
     assert "run_t1" in message  # it says what to do
 
 
+def test_older_layer_that_breaks_todays_schema_is_reported_as_stale(tmp_path):
+    """The real case of 1.4.0: the 1.3.0 layer of PSD2 has duplicate paths (Art.
+    9), which Article now rejects. Loading it must say "stale, rerun run_t1",
+    not "broken contract": the version is compared before the schema."""
+    old = _document().model_dump(mode="json")
+    old["parser_version"] = "1.3.0"
+    nodes = old["articles"][0]["nodes"]
+    nodes.append(dict(nodes[1]))  # the same path twice, as PSD2 Art. 9 had
+    (tmp_path / "DORA.json").write_text(json.dumps(old), encoding="utf-8")
+
+    with pytest.raises(pr.StaleLayerError) as excinfo:
+        pr.load_processed("DORA", [_manifest_entry()], tmp_path)
+    assert "1.3.0" in str(excinfo.value)
+    assert "run_t1" in str(excinfo.value)
+
+
+def test_malformed_parser_version_is_a_contract_violation(tmp_path):
+    """Only a well-formed version is compared before the schema. A malformed one
+    is a broken contract, not staleness."""
+    bad = _document().model_dump(mode="json")
+    bad["parser_version"] = "one"
+    (tmp_path / "DORA.json").write_text(json.dumps(bad), encoding="utf-8")
+
+    with pytest.raises(pr.ProcessedError) as excinfo:
+        pr.load_processed("DORA", [_manifest_entry()], tmp_path)
+    assert not isinstance(excinfo.value, pr.StaleLayerError)
+    assert "parser_version" in str(excinfo.value)
+
+
 def test_current_parser_version_is_accepted(tmp_path):
     pr.write_processed(_document(parser_version=h.PARSER_VERSION), "DORA", tmp_path)
     doc = pr.load_processed("DORA", [_manifest_entry()], tmp_path)

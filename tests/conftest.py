@@ -10,9 +10,12 @@ clean checkout or in CI. They are skipped automatically when it is missing.
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 
 import pytest
+
+from ingest import hierarchy as h
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 RAW_DIR = Path(__file__).parent.parent / "data" / "raw"
@@ -23,6 +26,34 @@ MANIFEST_PATH = Path(__file__).parent.parent / "data" / "manifest.json"
 
 def fixture_path(name: str) -> str:
     return str(FIXTURES_DIR / f"{name}.xhtml")
+
+
+# ---------------------------------------------------------------------------
+# reconstruction invariant (M-006): the same principle as scripts/measure_nodes.py,
+# written again here on purpose, so that the tests do not depend on a script
+# ---------------------------------------------------------------------------
+
+
+def reinsert(node: h.Node) -> str:
+    if node.kind == "apartado":
+        return f"{node.marker}. {node.own_text}"
+    if node.kind == "punto":
+        return f"({node.marker}) {node.own_text}"
+    # the article, a subparagraph and an unnumbered paragraph print no marker
+    return node.own_text
+
+
+def reconstruct(article: h.Article) -> str:
+    """'Article <path> <title>' + every node's marker and own_text, in node order."""
+    head = f"Article {article.path} {article.title}"
+    return h._normalize(" ".join([head] + [reinsert(n) for n in article.nodes]))
+
+
+def same_words(article: h.Article) -> bool:
+    """No word of Article.text lost, none duplicated, order aside. Article.text comes
+    from an independent code path (string cleaning), so agreement means that the
+    attribution of text to nodes lost nothing and repeated nothing."""
+    return Counter(reconstruct(article).split()) == Counter(article.text.split())
 
 
 def pytest_collection_modifyitems(config, items):
