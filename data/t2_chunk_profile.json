@@ -1,0 +1,172 @@
+{
+ "chunker_version": "0.1.0",
+ "parser_version": "1.4.0",
+ "tokenizer": "cl100k_base",
+ "max_tokens": 500,
+ "articles": 331,
+ "chunks": {
+  "total": 1354,
+  "by_act": {
+   "DORA": 322,
+   "MiCA": 759,
+   "PSD2": 273
+  }
+ },
+ "token_count": {
+  "min": 14,
+  "median": 101.0,
+  "p95": 376,
+  "max": 497
+ },
+ "token_ranges": {
+  "<20": 5,
+  "20-49": 100,
+  "50-99": 559,
+  "100-199": 434,
+  "200-299": 142,
+  "300-399": 65,
+  "400-500": 49,
+  ">500": 0
+ },
+ "articles_whole": 218,
+ "articles_split": 113,
+ "root_level": {
+  "1": 230,
+  "2": 906,
+  "3": 218
+ },
+ "root_kind": {
+  "article": 230,
+  "paragraph": 721,
+  "point": 376,
+  "subparagraph": 19,
+  "unnumbered_paragraph": 8
+ },
+ "coverage": {
+  "own": 25,
+  "subtree": 1329
+ },
+ "tiny": {
+  "text_tokens_below_50": 105,
+  "body_tokens_below_20": 45,
+  "smallest": [
+   {
+    "chunk_id": "PSD2:9.1.sub_2",
+    "token_count": 14
+   },
+   {
+    "chunk_id": "PSD2:9.1.sub_4",
+    "token_count": 14
+   },
+   {
+    "chunk_id": "PSD2:9.1.sub_6",
+    "token_count": 14
+   },
+   {
+    "chunk_id": "PSD2:117",
+    "token_count": 18
+   },
+   {
+    "chunk_id": "PSD2:3:own",
+    "token_count": 19
+   },
+   {
+    "chunk_id": "DORA:3:own",
+    "token_count": 21
+   },
+   {
+    "chunk_id": "MiCA:141.unp_2:own",
+    "token_count": 21
+   },
+   {
+    "chunk_id": "PSD2:4:own",
+    "token_count": 21
+   },
+   {
+    "chunk_id": "PSD2:50",
+    "token_count": 21
+   },
+   {
+    "chunk_id": "MiCA:3.1:own",
+    "token_count": 22
+   }
+  ]
+ },
+ "budget_exceptions": {
+  "leaf_over_budget": 0,
+  "own_over_budget": 0,
+  "chunks": []
+ },
+ "most_chunks": [
+  {
+   "act": "DORA",
+   "article_id": "art_3",
+   "chunks": 66
+  },
+  {
+   "act": "MiCA",
+   "article_id": "art_3",
+   "chunks": 53
+  },
+  {
+   "act": "PSD2",
+   "article_id": "art_4",
+   "chunks": 49
+  },
+  {
+   "act": "MiCA",
+   "article_id": "art_140",
+   "chunks": 36
+  },
+  {
+   "act": "MiCA",
+   "article_id": "art_94",
+   "chunks": 35
+  },
+  {
+   "act": "PSD2",
+   "article_id": "art_5",
+   "chunks": 26
+  },
+  {
+   "act": "MiCA",
+   "article_id": "art_62",
+   "chunks": 25
+  },
+  {
+   "act": "MiCA",
+   "article_id": "art_130",
+   "chunks": 21
+  },
+  {
+   "act": "DORA",
+   "article_id": "art_46",
+   "chunks": 18
+  },
+  {
+   "act": "MiCA",
+   "article_id": "art_37",
+   "chunks": 18
+  }
+ ],
+ "context_tokens": {
+  "min": 7,
+  "median": 17.0,
+  "p95": 49,
+  "max": 73
+ },
+ "body_tokens": {
+  "min": 2,
+  "median": 79.0,
+  "p95": 353,
+  "max": 488
+ },
+ "source_nodes": {
+  "with_own_text": 3580,
+  "owned_exactly_once": 3580,
+  "missing": [],
+  "duplicated": [],
+  "owned_but_not_a_source": [],
+  "bodies_not_rebuilt_from_their_sources": []
+ }
+}
