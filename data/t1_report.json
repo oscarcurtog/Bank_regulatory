@@ -6,8 +6,8 @@
       "n_articles_eli_subdivision": 64,
       "n_articles_independent_title": 64,
       "counts_match": true,
-      "with_more_than_3_levels": 10,
-      "pct_more_than_3_levels": 15.6
+      "with_more_than_3_levels": 14,
+      "pct_more_than_3_levels": 21.9
     },
     "MiCA": {
       "source_celex": "02023R1114-20240109",
@@ -15,8 +15,8 @@
       "n_articles_eli_subdivision": 150,
       "n_articles_independent_title": 150,
       "counts_match": true,
-      "with_more_than_3_levels": 14,
-      "pct_more_than_3_levels": 9.3
+      "with_more_than_3_levels": 22,
+      "pct_more_than_3_levels": 14.7
     },
     "PSD2": {
       "source_celex": "02015L2366-20151223",
@@ -24,12 +24,12 @@
       "n_articles_eli_subdivision": 117,
       "n_articles_independent_title": 117,
       "counts_match": true,
-      "with_more_than_3_levels": 3,
-      "pct_more_than_3_levels": 2.6
+      "with_more_than_3_levels": 9,
+      "pct_more_than_3_levels": 7.7
     }
   },
   "total_articles": 331,
-  "total_more_than_3_levels": 27,
+  "total_more_than_3_levels": 45,
   "invariant_check": {
     "description": "every node must have its parent in the article's own tree",
     "failures": []
@@ -56,6 +56,7 @@
         "35.2.b",
         "35.2.c",
         "35.3",
+        "35.3.sub_2",
         "35.4",
         "35.5",
         "35.6",
@@ -64,9 +65,11 @@
         "35.8.a",
         "35.8.b",
         "35.8.c",
+        "35.8.sub_2",
         "35.9",
         "35.10",
-        "35.11"
+        "35.11",
+        "35.11.sub_2"
       ],
       "text_preview": "Article 35 Powers of the Lead Overseer 1. For the purposes of carrying out the duties laid down in this Section, the Lead Overseer shall have the following powers in respect of the critical ICT third-party service provid"
     },
@@ -140,8 +143,10 @@
         "38.2.d",
         "38.2.e",
         "38.3",
+        "38.3.sub_2",
         "38.4",
-        "38.5"
+        "38.5",
+        "38.5.sub_2"
       ],
       "text_preview": "Article 38 General investigations 1. In order to carry out its duties under this Regulation, the Lead Overseer, assisted by the joint examination team referred to in Article 40(1), may, where necessary, conduct investiga"
     },
@@ -154,6 +159,7 @@
         "33",
         "33.1",
         "33.2",
+        "33.2.sub_2",
         "33.3",
         "33.3.a",
         "33.3.b",
@@ -165,6 +171,8 @@
         "33.3.h",
         "33.3.i",
         "33.4",
+        "33.4.sub_2",
+        "33.4.sub_3",
         "33.5"
       ],
       "text_preview": "Article 33 Tasks of the Lead Overseer 1. The Lead Overseer, appointed in accordance with Article 31(1), point (b), shall conduct the oversight of the assigned critical ICT third-party service providers and shall be, for "
@@ -203,6 +211,7 @@
         "58.1.d",
         "58.1.e",
         "58.2",
+        "58.2.sub_2",
         "58.3"
       ],
       "text_preview": "Article 58 Review clause 1. By 17 January 2028, the Commission shall, after consulting the ESAs and the ESRB, as appropriate, carry out a review and submit a report to the European Parliament and the Council, accompanied"
@@ -229,6 +238,7 @@
         "31.3",
         "31.4",
         "31.5",
+        "31.5.sub_2",
         "31.6",
         "31.7",
         "31.8",
@@ -239,6 +249,8 @@
         "31.9",
         "31.10",
         "31.11",
+        "31.11.sub_2",
+        "31.11.sub_3",
         "31.12",
         "31.13"
       ],
@@ -304,7 +316,9 @@
         "42",
         "42.1",
         "42.2",
+        "42.2.sub_2",
         "42.3",
+        "42.3.sub_2",
         "42.4",
         "42.5",
         "42.6",
@@ -316,7 +330,9 @@
         "42.8.d",
         "42.8.e",
         "42.8.f",
+        "42.8.sub_2",
         "42.9",
+        "42.9.sub_2",
         "42.10",
         "42.11"
       ],
@@ -335,7 +351,10 @@
         "15.d",
         "15.e",
         "15.f",
-        "15.g"
+        "15.g",
+        "15.unp_2",
+        "15.unp_3",
+        "15.unp_4"
       ],
       "text_preview": "Article 15 Further harmonisation of ICT risk management tools, methods, processes and policies The ESAs shall, through the Joint Committee, in consultation with the European Union Agency on Cybersecurity (ENISA), develop"
     },
@@ -472,9 +491,10 @@
       "act": "MiCA",
       "article_id": "art_144",
       "title": "Amendment to Regulation (EU) No 1093/2010",
-      "max_depth": 1,
+      "max_depth": 2,
       "nodes": [
-        "144"
+        "144",
+        "144.unp_2"
       ],
       "text_preview": "Article 144 Amendment to Regulation (EU) No 1093/2010 In Article 1(2) of Regulation (EU) No 1093/2010, the first subparagraph is replaced by the following: 'The Authority shall act within the powers conferred by this Reg"
     },
@@ -488,6 +508,7 @@
         "58.1",
         "58.1.a",
         "58.1.b",
+        "58.1.sub_2",
         "58.2",
         "58.3"
       ],
@@ -553,13 +574,21 @@
         "56.1.b",
         "56.2",
         "56.3",
+        "56.3.sub_2",
         "56.4",
+        "56.4.sub_2",
         "56.5",
         "56.6",
+        "56.6.sub_2",
         "56.7",
+        "56.7.sub_2",
+        "56.7.sub_3",
         "56.8",
+        "56.8.sub_2",
+        "56.8.sub_3",
         "56.9",
-        "56.10"
+        "56.10",
+        "56.10.sub_2"
       ],
       "text_preview": "Article 56 Classification of e-money tokens as significant e-money tokens 1. EBA shall classify e-money tokens as significant e-money tokens where at least three of the criteria set out in Article 43(1) are met: (a) duri"
     },
@@ -595,12 +624,18 @@
         "43.2.b",
         "43.3",
         "43.4",
+        "43.4.sub_2",
         "43.5",
+        "43.5.sub_2",
         "43.6",
         "43.7",
+        "43.7.sub_2",
         "43.8",
+        "43.8.sub_2",
+        "43.8.sub_3",
         "43.9",
         "43.10",
+        "43.10.sub_2",
         "43.11",
         "43.11.a",
         "43.11.b",
@@ -612,9 +647,11 @@
       "act": "MiCA",
       "article_id": "art_55",
       "title": "Recovery and redemption plans",
-      "max_depth": 1,
+      "max_depth": 2,
       "nodes": [
-        "55"
+        "55",
+        "55.unp_2",
+        "55.unp_3"
       ],
       "text_preview": "Article 55 Recovery and redemption plans Title III, Chapter 6 shall apply mutatis mutandis to issuers of e-money tokens. By way of derogation from Article 46(2), the date by which the recovery plan is to be notified to t"
     },
@@ -631,6 +668,7 @@
         "85.3.a",
         "85.3.b",
         "85.3.c",
+        "85.3.sub_2",
         "85.4",
         "85.5"
       ],
@@ -821,6 +859,9 @@
         "76.1",
         "76.1.a",
         "76.1.b",
+        "76.1.sub_2",
+        "76.1.sub_3",
+        "76.1.sub_4",
         "76.2",
         "76.3",
         "76.3.a",

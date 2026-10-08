@@ -1,90 +1,58 @@
 {
- "parser_version": "1.3.0",
+ "parser_version": "1.4.0",
  "tokenizer": "cl100k_base (D-005, provisional)",
  "own_tokens": {
-  "total_nodes": 3379,
+  "total_nodes": 3847,
   "median": 33,
-  "p95": 129,
-  "max": 583,
+  "p95": 97,
+  "max": 311,
   "by_level": {
    "1": {
     "n": 331,
     "median": 0,
-    "p95": 68,
-    "max": 293
+    "p95": 52,
+    "max": 136
    },
    "2": {
-    "n": 1538,
-    "median": 55.0,
-    "p95": 160,
-    "max": 583
+    "n": 1544,
+    "median": 47.0,
+    "p95": 114,
+    "max": 311
    },
    "3": {
-    "n": 1379,
-    "median": 24,
-    "p95": 66,
+    "n": 1719,
+    "median": 28,
+    "p95": 77,
     "max": 204
    },
    "4": {
-    "n": 130,
-    "median": 21.0,
-    "p95": 71,
-    "max": 105
+    "n": 229,
+    "median": 22,
+    "p95": 69,
+    "max": 155
    },
    "5": {
-    "n": 1,
-    "median": 68,
-    "p95": 68,
+    "n": 24,
+    "median": 21.0,
+    "p95": 47,
     "max": 68
    }
   },
   "exceeding": {
    "300": {
-    "n": 5,
-    "pct": 0.1
+    "n": 1,
+    "pct": 0.0
    },
    "400": {
-    "n": 3,
-    "pct": 0.1
+    "n": 0,
+    "pct": 0.0
    },
    "500": {
-    "n": 1,
+    "n": 0,
     "pct": 0.0
    }
   },
   "largest": [
-   {
-    "act": "PSD2",
-    "article_id": "art_89",
-    "path": "89.2",
-    "level": 2,
-    "own_tokens": 583,
-    "inclusive_tokens": 583
-   },
-   {
-    "act": "PSD2",
-    "article_id": "art_89",
-    "path": "89.1",
-    "level": 2,
-    "own_tokens": 440,
-    "inclusive_tokens": 440
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_37",
-    "path": "37.6",
-    "level": 2,
-    "own_tokens": 412,
-    "inclusive_tokens": 590
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_19",
-    "path": "19.1",
-    "level": 2,
-    "own_tokens": 359,
-    "inclusive_tokens": 359
-   },
    {
     "act": "MiCA",
     "article_id": "art_149",
@@ -92,38 +60,6 @@
     "level": 2,
     "own_tokens": 311,
     "inclusive_tokens": 311
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_145",
-    "path": "145",
-    "level": 1,
-    "own_tokens": 293,
-    "inclusive_tokens": 293
-   },
-   {
-    "act": "PSD2",
-    "article_id": "art_9",
-    "path": "9.1",
-    "level": 2,
-    "own_tokens": 290,
-    "inclusive_tokens": 656
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_4",
-    "path": "4.3",
-    "level": 2,
-    "own_tokens": 273,
-    "inclusive_tokens": 359
-   },
-   {
-    "act": "PSD2",
-    "article_id": "art_28",
-    "path": "28.2",
-    "level": 2,
-    "own_tokens": 269,
-    "inclusive_tokens": 269
    },
    {
     "act": "PSD2",
@@ -134,12 +70,12 @@
     "inclusive_tokens": 268
    },
    {
-    "act": "DORA",
-    "article_id": "art_29",
-    "path": "29.2",
+    "act": "MiCA",
+    "article_id": "art_145",
+    "path": "145.unp_2",
     "level": 2,
-    "own_tokens": 263,
-    "inclusive_tokens": 263
+    "own_tokens": 264,
+    "inclusive_tokens": 264
    },
    {
     "act": "PSD2",
@@ -148,13 +84,77 @@
     "level": 2,
     "own_tokens": 258,
     "inclusive_tokens": 258
+   },
+   {
+    "act": "MiCA",
+    "article_id": "art_144",
+    "path": "144.unp_2",
+    "level": 2,
+    "own_tokens": 214,
+    "inclusive_tokens": 214
+   },
+   {
+    "act": "PSD2",
+    "article_id": "art_111",
+    "path": "111.1.b",
+    "level": 3,
+    "own_tokens": 204,
+    "inclusive_tokens": 204
+   },
+   {
+    "act": "PSD2",
+    "article_id": "art_112",
+    "path": "112.2",
+    "level": 2,
+    "own_tokens": 201,
+    "inclusive_tokens": 201
+   },
+   {
+    "act": "PSD2",
+    "article_id": "art_6",
+    "path": "6.1",
+    "level": 2,
+    "own_tokens": 188,
+    "inclusive_tokens": 188
+   },
+   {
+    "act": "DORA",
+    "article_id": "art_58",
+    "path": "58.1.c",
+    "level": 3,
+    "own_tokens": 187,
+    "inclusive_tokens": 187
+   },
+   {
+    "act": "MiCA",
+    "article_id": "art_102",
+    "path": "102.2",
+    "level": 2,
+    "own_tokens": 175,
+    "inclusive_tokens": 175
+   },
+   {
+    "act": "DORA",
+    "article_id": "art_22",
+    "path": "22.1",
+    "level": 2,
+    "own_tokens": 173,
+    "inclusive_tokens": 173
+   },
+   {
+    "act": "DORA",
+    "article_id": "art_28",
+    "path": "28.2",
+    "level": 2,
+    "own_tokens": 172,
+    "inclusive_tokens": 172
    }
   ]
  },
  "inclusive_tokens": {
-  "total_nodes": 3379,
+  "total_nodes": 3847,
   "median": 46,
-  "p95": 377,
+  "p95": 346,
   "max": 2899,
   "by_level": {
    "1": {
@@ -164,42 +164,42 @@
     "max": 2899
    },
    "2": {
-    "n": 1538,
+    "n": 1544,
     "median": 67.0,
-    "p95": 247,
+    "p95": 248,
     "max": 2498
    },
    "3": {
-    "n": 1379,
-    "median": 25,
-    "p95": 77,
-    "max": 384
+    "n": 1719,
+    "median": 30,
+    "p95": 89,
+    "max": 401
    },
    "4": {
-    "n": 130,
-    "median": 21.0,
-    "p95": 71,
-    "max": 105
+    "n": 229,
+    "median": 23,
+    "p95": 78,
+    "max": 172
    },
    "5": {
-    "n": 1,
-    "median": 68,
-    "p95": 68,
+    "n": 24,
+    "median": 21.0,
+    "p95": 47,
     "max": 68
    }
   },
   "exceeding": {
    "300": {
-    "n": 223,
-    "pct": 6.6
+    "n": 228,
+    "pct": 5.9
    },
    "400": {
-    "n": 157,
-    "pct": 4.6
+    "n": 159,
+    "pct": 4.1
    },
    "500": {
-    "n": 113,
-    "pct": 3.3
+    "n": 114,
+    "pct": 3.0
    }
   },
   "largest": [
@@ -315,288 +315,36 @@
  },
  "invariant": {
   "articles": 331,
-  "with_difference": 77,
-  "total_words_lost": 4365,
-  "total_words_extra": 4549,
+  "with_difference": 13,
+  "total_words_lost": 209,
+  "total_words_extra": 220,
   "detail": [
-   {
-    "act": "DORA",
-    "article_id": "art_9",
-    "tokens_text": 651,
-    "tokens_rec": 651,
-    "words_lost": 70,
-    "words_extra": 70,
-    "lost_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "the",
-     "first",
-     "subparagraph,",
-     "point"
-    ],
-    "extra_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "the",
-     "first",
-     "subparagraph,",
-     "point"
-    ]
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_11",
-    "tokens_text": 913,
-    "tokens_rec": 913,
-    "words_lost": 55,
-    "words_extra": 55,
-    "lost_sample": [
-     "(a)",
-     "test",
-     "the",
-     "ICT",
-     "business",
-     "continuity",
-     "plans",
-     "and"
-    ],
-    "extra_sample": [
-     "(a)",
-     "test",
-     "the",
-     "ICT",
-     "business",
-     "continuity",
-     "plans",
-     "and"
-    ]
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_15",
-    "tokens_text": 561,
-    "tokens_rec": 561,
-    "words_lost": 113,
-    "words_extra": 113,
-    "lost_sample": [
-     "When",
-     "developing",
-     "those",
-     "draft",
-     "regulatory",
-     "technical",
-     "standards,",
-     "the"
-    ],
-    "extra_sample": [
-     "When",
-     "developing",
-     "those",
-     "draft",
-     "regulatory",
-     "technical",
-     "standards,",
-     "the"
-    ]
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_16",
-    "tokens_text": 887,
-    "tokens_rec": 887,
-    "words_lost": 93,
-    "words_extra": 93,
-    "lost_sample": [
-     "When",
-     "developing",
-     "those",
-     "draft",
-     "regulatory",
-     "technical",
-     "standards,",
-     "the"
-    ],
-    "extra_sample": [
-     "When",
-     "developing",
-     "those",
-     "draft",
-     "regulatory",
-     "technical",
-     "standards,",
-     "the"
-    ]
-   },
    {
     "act": "DORA",
     "article_id": "art_20",
     "tokens_text": 506,
     "tokens_rec": 506,
-    "words_lost": 228,
-    "words_extra": 228,
+    "words_lost": 82,
+    "words_extra": 82,
     "lost_sample": [
-     "(a)",
-     "common",
-     "draft",
-     "regulatory",
-     "technical",
-     "standards",
-     "in",
-     "order"
-    ],
-    "extra_sample": [
-     "(a)",
-     "common",
-     "draft",
-     "regulatory",
-     "technical",
-     "standards",
-     "in",
-     "order"
-    ]
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_26",
-    "tokens_text": 1417,
-    "tokens_rec": 1417,
-    "words_lost": 86,
-    "words_extra": 86,
-    "lost_sample": [
-     "When",
-     "developing",
-     "those",
-     "draft",
-     "regulatory",
-     "technical",
-     "standards,",
-     "the"
-    ],
-    "extra_sample": [
-     "When",
-     "developing",
-     "those",
-     "draft",
-     "regulatory",
-     "technical",
-     "standards,",
-     "the"
-    ]
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_28",
-    "tokens_text": 1711,
-    "tokens_rec": 1711,
-    "words_lost": 24,
-    "words_extra": 24,
-    "lost_sample": [
-     "(a)",
-     "disruption",
-     "to",
-     "their",
-     "business",
-     "activities,",
-     "(b)",
-     "limiting"
-    ],
-    "extra_sample": [
-     "(a)",
-     "disruption",
-     "to",
-     "their",
-     "business",
-     "activities,",
-     "(b)",
-     "limiting"
-    ]
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_29",
-    "tokens_text": 442,
-    "tokens_rec": 442,
-    "words_lost": 42,
-    "words_extra": 42,
-    "lost_sample": [
-     "Financial",
-     "entities",
-     "shall",
-     "weigh",
+     "(i)",
+     "establish",
      "the",
-     "benefits",
-     "and",
-     "costs"
-    ],
-    "extra_sample": [
-     "Financial",
-     "entities",
-     "shall",
-     "weigh",
+     "content",
+     "of",
      "the",
-     "benefits",
-     "and",
-     "costs"
-    ]
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_30",
-    "tokens_text": 1292,
-    "tokens_rec": 1292,
-    "words_lost": 73,
-    "words_extra": 73,
-    "lost_sample": [
-     "By",
-     "way",
-     "of",
-     "derogation",
-     "from",
-     "point",
-     "(e),",
-     "the"
+     "reports",
+     "for"
     ],
     "extra_sample": [
-     "By",
-     "way",
+     "(i)",
+     "establish",
+     "the",
+     "content",
      "of",
-     "derogation",
-     "from",
-     "point",
-     "(e),",
-     "the"
-    ]
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_32",
-    "tokens_text": 899,
-    "tokens_rec": 899,
-    "words_lost": 18,
-    "words_extra": 18,
-    "lost_sample": [
-     "The",
-     "Oversight",
-     "Forum",
-     "may,",
-     "where",
-     "appropriate,",
-     "seek",
-     "the"
-    ],
-    "extra_sample": [
-     "The",
-     "Oversight",
-     "Forum",
-     "may,",
-     "where",
-     "appropriate,",
-     "seek",
-     "the"
+     "the",
+     "reports",
+     "for"
     ]
    },
    {
@@ -604,8 +352,8 @@
     "article_id": "art_35",
     "tokens_text": 1500,
     "tokens_rec": 1500,
-    "words_lost": 57,
-    "words_extra": 57,
+    "words_lost": 33,
+    "words_extra": 33,
     "lost_sample": [
      "For",
      "the",
@@ -625,118 +373,6 @@
      "(iv)",
      "of",
      "this"
-    ]
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_36",
-    "tokens_text": 900,
-    "tokens_rec": 900,
-    "words_lost": 46,
-    "words_extra": 46,
-    "lost_sample": [
-     "The",
-     "powers",
-     "referred",
-     "to",
-     "in",
-     "the",
-     "first",
-     "subparagraph"
-    ],
-    "extra_sample": [
-     "The",
-     "powers",
-     "referred",
-     "to",
-     "in",
-     "the",
-     "first",
-     "subparagraph"
-    ]
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_39",
-    "tokens_text": 578,
-    "tokens_rec": 578,
-    "words_lost": 31,
-    "words_extra": 31,
-    "lost_sample": [
-     "(a)",
-     "enter",
-     "any",
-     "such",
-     "business",
-     "premises,",
-     "land",
-     "or"
-    ],
-    "extra_sample": [
-     "the",
-     "inspection.",
-     "(a)",
-     "enter",
-     "any",
-     "such",
-     "business",
-     "premises,"
-    ]
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_40",
-    "tokens_text": 323,
-    "tokens_rec": 323,
-    "words_lost": 36,
-    "words_extra": 36,
-    "lost_sample": [
-     "Members",
-     "of",
-     "the",
-     "joint",
-     "examination",
-     "team",
-     "shall",
-     "have"
-    ],
-    "extra_sample": [
-     "Members",
-     "of",
-     "the",
-     "joint",
-     "examination",
-     "team",
-     "shall",
-     "have"
-    ]
-   },
-   {
-    "act": "DORA",
-    "article_id": "art_42",
-    "tokens_text": 1249,
-    "tokens_rec": 1249,
-    "words_lost": 53,
-    "words_extra": 53,
-    "lost_sample": [
-     "Competent",
-     "authorities",
-     "shall",
-     "grant",
-     "financial",
-     "entities",
-     "the",
-     "necessary"
-    ],
-    "extra_sample": [
-     "Competent",
-     "authorities",
-     "shall",
-     "grant",
-     "financial",
-     "entities",
-     "the",
-     "necessary"
     ]
    },
    {
@@ -829,1154 +465,6 @@
    },
    {
     "act": "MiCA",
-    "article_id": "art_4",
-    "tokens_text": 1189,
-    "tokens_rec": 1189,
-    "words_lost": 79,
-    "words_extra": 79,
-    "lost_sample": [
-     "(a)",
-     "the",
-     "crypto-asset",
-     "is",
-     "offered",
-     "for",
-     "free;",
-     "(b)"
-    ],
-    "extra_sample": [
-     "(a)",
-     "the",
-     "crypto-asset",
-     "is",
-     "offered",
-     "for",
-     "free;",
-     "(b)"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_6",
-    "tokens_text": 1494,
-    "tokens_rec": 1494,
-    "words_lost": 54,
-    "words_extra": 54,
-    "lost_sample": [
-     "In",
-     "cases",
-     "where",
-     "the",
-     "crypto-asset",
-     "white",
-     "paper",
-     "is"
-    ],
-    "extra_sample": [
-     "In",
-     "cases",
-     "where",
-     "the",
-     "crypto-asset",
-     "white",
-     "paper",
-     "is"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_7",
-    "tokens_text": 548,
-    "tokens_rec": 548,
-    "words_lost": 52,
-    "words_extra": 52,
-    "lost_sample": [
-     "Where",
-     "the",
-     "marketing",
-     "communication",
-     "is",
-     "prepared",
-     "by",
-     "the"
-    ],
-    "extra_sample": [
-     "Where",
-     "the",
-     "marketing",
-     "communication",
-     "is",
-     "prepared",
-     "by",
-     "the"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_14",
-    "tokens_text": 326,
-    "tokens_rec": 326,
-    "words_lost": 37,
-    "words_extra": 37,
-    "lost_sample": [
-     "Union",
-     "standards.",
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "point",
-     "(d)"
-    ],
-    "extra_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "point",
-     "(d)",
-     "of",
-     "the"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_16",
-    "tokens_text": 537,
-    "tokens_rec": 537,
-    "words_lost": 83,
-    "words_extra": 83,
-    "lost_sample": [
-     "(a)",
-     "a",
-     "legal",
-     "person",
-     "or",
-     "other",
-     "undertaking",
-     "that"
-    ],
-    "extra_sample": [
-     "(a)",
-     "a",
-     "legal",
-     "person",
-     "or",
-     "other",
-     "undertaking",
-     "that"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_19",
-    "tokens_text": 1337,
-    "tokens_rec": 1337,
-    "words_lost": 111,
-    "words_extra": 111,
-    "lost_sample": [
-     "(a)",
-     "information",
-     "about",
-     "the",
-     "issuer",
-     "of",
-     "the",
-     "asset-referenced"
-    ],
-    "extra_sample": [
-     "(a)",
-     "information",
-     "about",
-     "the",
-     "issuer",
-     "of",
-     "the",
-     "asset-referenced"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_22",
-    "tokens_text": 720,
-    "tokens_rec": 720,
-    "words_lost": 72,
-    "words_extra": 72,
-    "lost_sample": [
-     "(a)",
-     "the",
-     "number",
-     "of",
-     "holders;",
-     "(b)",
-     "the",
-     "value"
-    ],
-    "extra_sample": [
-     "(a)",
-     "the",
-     "number",
-     "of",
-     "holders;",
-     "(b)",
-     "the",
-     "value"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_24",
-    "tokens_text": 769,
-    "tokens_rec": 769,
-    "words_lost": 26,
-    "words_extra": 26,
-    "lost_sample": [
-     "The",
-     "issuer",
-     "of",
-     "the",
-     "asset-referenced",
-     "token",
-     "shall",
-     "notify"
-    ],
-    "extra_sample": [
-     "The",
-     "issuer",
-     "of",
-     "the",
-     "asset-referenced",
-     "token",
-     "shall",
-     "notify"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_25",
-    "tokens_text": 1042,
-    "tokens_rec": 1042,
-    "words_lost": 91,
-    "words_extra": 91,
-    "lost_sample": [
-     "Issuers",
-     "of",
-     "asset-referenced",
-     "tokens",
-     "shall",
-     "notify",
-     "the",
-     "competent"
-    ],
-    "extra_sample": [
-     "Issuers",
-     "of",
-     "asset-referenced",
-     "tokens",
-     "shall",
-     "notify",
-     "the",
-     "competent"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_32",
-    "tokens_text": 405,
-    "tokens_rec": 405,
-    "words_lost": 29,
-    "words_extra": 29,
-    "lost_sample": [
-     "(a)",
-     "the",
-     "requirements",
-     "for",
-     "the",
-     "policies",
-     "and",
-     "procedures"
-    ],
-    "extra_sample": [
-     "(a)",
-     "the",
-     "requirements",
-     "for",
-     "the",
-     "policies",
-     "and",
-     "procedures"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_34",
-    "tokens_text": 1401,
-    "tokens_rec": 1401,
-    "words_lost": 100,
-    "words_extra": 100,
-    "lost_sample": [
-     "Where",
-     "issuers",
-     "of",
-     "asset-referenced",
-     "tokens",
-     "enter",
-     "into",
-     "arrangements"
-    ],
-    "extra_sample": [
-     "Where",
-     "issuers",
-     "of",
-     "asset-referenced",
-     "tokens",
-     "enter",
-     "into",
-     "arrangements"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_35",
-    "tokens_text": 1037,
-    "tokens_rec": 1037,
-    "words_lost": 90,
-    "words_extra": 90,
-    "lost_sample": [
-     "(a)",
-     "EUR",
-     "350",
-     "000;",
-     "(b)",
-     "2",
-     "%",
-     "of"
-    ],
-    "extra_sample": [
-     "(a)",
-     "EUR",
-     "350",
-     "000;",
-     "(b)",
-     "2",
-     "%",
-     "of"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_36",
-    "tokens_text": 1632,
-    "tokens_rec": 1632,
-    "words_lost": 111,
-    "words_extra": 111,
-    "lost_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "points",
-     "(a),",
-     "(b)",
-     "and"
-    ],
-    "extra_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "points",
-     "(a),",
-     "(b)",
-     "and"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_37",
-    "tokens_text": 1779,
-    "tokens_rec": 1779,
-    "words_lost": 157,
-    "words_extra": 157,
-    "lost_sample": [
-     "(a)",
-     "credit",
-     "institutions",
-     "shall",
-     "hold",
-     "in",
-     "custody",
-     "funds"
-    ],
-    "extra_sample": [
-     "(a)",
-     "credit",
-     "institutions",
-     "shall",
-     "hold",
-     "in",
-     "custody",
-     "funds"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_38",
-    "tokens_text": 638,
-    "tokens_rec": 638,
-    "words_lost": 96,
-    "words_extra": 96,
-    "lost_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "point",
-     "(d)(i)",
-     "of",
-     "the"
-    ],
-    "extra_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "point",
-     "(d)(i)",
-     "of",
-     "the"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_39",
-    "tokens_text": 445,
-    "tokens_rec": 445,
-    "words_lost": 43,
-    "words_extra": 43,
-    "lost_sample": [
-     "Where",
-     "issuers,",
-     "when",
-     "selling",
-     "an",
-     "asset-referenced",
-     "token,",
-     "accept"
-    ],
-    "extra_sample": [
-     "Where",
-     "issuers,",
-     "when",
-     "selling",
-     "an",
-     "asset-referenced",
-     "token,",
-     "accept"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_45",
-    "tokens_text": 809,
-    "tokens_rec": 809,
-    "words_lost": 91,
-    "words_extra": 91,
-    "lost_sample": [
-     "(a)",
-     "the",
-     "minimum",
-     "content",
-     "of",
-     "the",
-     "governance",
-     "arrangements"
-    ],
-    "extra_sample": [
-     "(a)",
-     "the",
-     "minimum",
-     "content",
-     "of",
-     "the",
-     "governance",
-     "arrangements"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_48",
-    "tokens_text": 412,
-    "tokens_rec": 412,
-    "words_lost": 37,
-    "words_extra": 37,
-    "lost_sample": [
-     "Notwithstanding",
-     "the",
-     "first",
-     "subparagraph,",
-     "upon",
-     "the",
-     "written",
-     "consent"
-    ],
-    "extra_sample": [
-     "Notwithstanding",
-     "the",
-     "first",
-     "subparagraph,",
-     "upon",
-     "the",
-     "written",
-     "consent"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_51",
-    "tokens_text": 1567,
-    "tokens_rec": 1567,
-    "words_lost": 82,
-    "words_extra": 82,
-    "lost_sample": [
-     "The",
-     "crypto-asset",
-     "white",
-     "paper",
-     "shall",
-     "also",
-     "include",
-     "the"
-    ],
-    "extra_sample": [
-     "The",
-     "crypto-asset",
-     "white",
-     "paper",
-     "shall",
-     "also",
-     "include",
-     "the"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_58",
-    "tokens_text": 293,
-    "tokens_rec": 293,
-    "words_lost": 46,
-    "words_extra": 46,
-    "lost_sample": [
-     "By",
-     "way",
-     "of",
-     "derogation",
-     "from",
-     "Article",
-     "36(9),",
-     "the"
-    ],
-    "extra_sample": [
-     "By",
-     "way",
-     "of",
-     "derogation",
-     "from",
-     "Article",
-     "36(9),",
-     "the"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_68",
-    "tokens_text": 1004,
-    "tokens_rec": 1004,
-    "words_lost": 39,
-    "words_extra": 39,
-    "lost_sample": [
-     "(a)",
-     "the",
-     "measures",
-     "ensuring",
-     "continuity",
-     "and",
-     "regularity",
-     "in"
-    ],
-    "extra_sample": [
-     "(a)",
-     "the",
-     "measures",
-     "ensuring",
-     "continuity",
-     "and",
-     "regularity",
-     "in"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_72",
-    "tokens_text": 430,
-    "tokens_rec": 430,
-    "words_lost": 43,
-    "words_extra": 43,
-    "lost_sample": [
-     "(a)",
-     "the",
-     "requirements",
-     "for",
-     "the",
-     "policies",
-     "and",
-     "procedures"
-    ],
-    "extra_sample": [
-     "(a)",
-     "the",
-     "requirements",
-     "for",
-     "the",
-     "policies",
-     "and",
-     "procedures"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_73",
-    "tokens_text": 473,
-    "tokens_rec": 473,
-    "words_lost": 34,
-    "words_extra": 34,
-    "lost_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "point",
-     "(g)",
-     "of",
-     "the"
-    ],
-    "extra_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "point",
-     "(g)",
-     "of",
-     "the"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_76",
-    "tokens_text": 1633,
-    "tokens_rec": 1633,
-    "words_lost": 94,
-    "words_extra": 94,
-    "lost_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "point",
-     "(a)",
-     "of",
-     "the"
-    ],
-    "extra_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "point",
-     "(a)",
-     "of",
-     "the"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_79",
-    "tokens_text": 273,
-    "tokens_rec": 273,
-    "words_lost": 36,
-    "words_extra": 36,
-    "lost_sample": [
-     "Crypto-asset",
-     "service",
-     "providers",
-     "placing",
-     "crypto-assets",
-     "shall,",
-     "before",
-     "placing"
-    ],
-    "extra_sample": [
-     "Crypto-asset",
-     "service",
-     "providers",
-     "placing",
-     "crypto-assets",
-     "shall,",
-     "before",
-     "placing"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_81",
-    "tokens_text": 1733,
-    "tokens_rec": 1733,
-    "words_lost": 130,
-    "words_extra": 130,
-    "lost_sample": [
-     "Notwithstanding",
-     "point",
-     "(b)",
-     "of",
-     "the",
-     "first",
-     "subparagraph,",
-     "minor"
-    ],
-    "extra_sample": [
-     "Notwithstanding",
-     "point",
-     "(b)",
-     "of",
-     "the",
-     "first",
-     "subparagraph,",
-     "minor"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_85",
-    "tokens_text": 383,
-    "tokens_rec": 383,
-    "words_lost": 46,
-    "words_extra": 46,
-    "lost_sample": [
-     "The",
-     "competent",
-     "authority",
-     "of",
-     "the",
-     "home",
-     "Member",
-     "State"
-    ],
-    "extra_sample": [
-     "The",
-     "competent",
-     "authority",
-     "of",
-     "the",
-     "home",
-     "Member",
-     "State"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_88",
-    "tokens_text": 478,
-    "tokens_rec": 478,
-    "words_lost": 30,
-    "words_extra": 30,
-    "lost_sample": [
-     "(a)",
-     "appropriate",
-     "public",
-     "disclosure",
-     "of",
-     "inside",
-     "information",
-     "as"
-    ],
-    "extra_sample": [
-     "(a)",
-     "appropriate",
-     "public",
-     "disclosure",
-     "of",
-     "inside",
-     "information",
-     "as"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_89",
-    "tokens_text": 535,
-    "tokens_rec": 535,
-    "words_lost": 35,
-    "words_extra": 35,
-    "lost_sample": [
-     "This",
-     "Article",
-     "also",
-     "applies",
-     "to",
-     "any",
-     "person",
-     "who"
-    ],
-    "extra_sample": [
-     "This",
-     "Article",
-     "also",
-     "applies",
-     "to",
-     "any",
-     "person",
-     "who"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_92",
-    "tokens_text": 402,
-    "tokens_rec": 402,
-    "words_lost": 47,
-    "words_extra": 47,
-    "lost_sample": [
-     "(a)",
-     "appropriate",
-     "arrangements,",
-     "systems",
-     "and",
-     "procedures",
-     "for",
-     "persons"
-    ],
-    "extra_sample": [
-     "(a)",
-     "appropriate",
-     "arrangements,",
-     "systems",
-     "and",
-     "procedures",
-     "for",
-     "persons"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_103",
-    "tokens_text": 674,
-    "tokens_rec": 674,
-    "words_lost": 51,
-    "words_extra": 51,
-    "lost_sample": [
-     "A",
-     "prohibition",
-     "or",
-     "restriction",
-     "may",
-     "apply",
-     "in",
-     "certain"
-    ],
-    "extra_sample": [
-     "A",
-     "prohibition",
-     "or",
-     "restriction",
-     "may",
-     "apply",
-     "in",
-     "certain"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_104",
-    "tokens_text": 679,
-    "tokens_rec": 679,
-    "words_lost": 51,
-    "words_extra": 51,
-    "lost_sample": [
-     "A",
-     "prohibition",
-     "or",
-     "restriction",
-     "may",
-     "apply",
-     "in",
-     "certain"
-    ],
-    "extra_sample": [
-     "A",
-     "prohibition",
-     "or",
-     "restriction",
-     "may",
-     "apply",
-     "in",
-     "certain"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_105",
-    "tokens_text": 872,
-    "tokens_rec": 872,
-    "words_lost": 70,
-    "words_extra": 70,
-    "lost_sample": [
-     "Where",
-     "the",
-     "conditions",
-     "set",
-     "out",
-     "in",
-     "the",
-     "first"
-    ],
-    "extra_sample": [
-     "Where",
-     "the",
-     "conditions",
-     "set",
-     "out",
-     "in",
-     "the",
-     "first"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_109",
-    "tokens_text": 1245,
-    "tokens_rec": 1245,
-    "words_lost": 28,
-    "words_extra": 28,
-    "lost_sample": [
-     "(a)",
-     "crypto-asset",
-     "white",
-     "papers",
-     "for",
-     "crypto-assets",
-     "other",
-     "than"
-    ],
-    "extra_sample": [
-     "(a)",
-     "crypto-asset",
-     "white",
-     "papers",
-     "for",
-     "crypto-assets",
-     "other",
-     "than"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_110a",
-    "tokens_text": 898,
-    "tokens_rec": 898,
-    "words_lost": 36,
-    "words_extra": 36,
-    "lost_sample": [
-     "(a)",
-     "any",
-     "other",
-     "metadata",
-     "to",
-     "accompany",
-     "the",
-     "information;"
-    ],
-    "extra_sample": [
-     "(a)",
-     "any",
-     "other",
-     "metadata",
-     "to",
-     "accompany",
-     "the",
-     "information;"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_111",
-    "tokens_text": 1748,
-    "tokens_rec": 1748,
-    "words_lost": 245,
-    "words_extra": 245,
-    "lost_sample": [
-     "(a)",
-     "infringements",
-     "of",
-     "Articles",
-     "4",
-     "to",
-     "14;",
-     "(b)"
-    ],
-    "extra_sample": [
-     "(a)",
-     "infringements",
-     "of",
-     "Articles",
-     "4",
-     "to",
-     "14;",
-     "(b)"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_114",
-    "tokens_text": 533,
-    "tokens_rec": 533,
-    "words_lost": 58,
-    "words_extra": 58,
-    "lost_sample": [
-     "In",
-     "the",
-     "case",
-     "of",
-     "a",
-     "decision",
-     "to",
-     "publish"
-    ],
-    "extra_sample": [
-     "In",
-     "the",
-     "case",
-     "of",
-     "a",
-     "decision",
-     "to",
-     "publish"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_119",
-    "tokens_text": 1253,
-    "tokens_rec": 1253,
-    "words_lost": 107,
-    "words_extra": 107,
-    "lost_sample": [
-     "(a)",
-     "the",
-     "preparation",
-     "of",
-     "the",
-     "non-binding",
-     "opinion",
-     "referred"
-    ],
-    "extra_sample": [
-     "(a)",
-     "the",
-     "preparation",
-     "of",
-     "the",
-     "non-binding",
-     "opinion",
-     "referred"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_123",
-    "tokens_text": 850,
-    "tokens_rec": 850,
-    "words_lost": 27,
-    "words_extra": 27,
-    "lost_sample": [
-     "A",
-     "college",
-     "as",
-     "referred",
-     "to",
-     "in",
-     "Article",
-     "119(1)"
-    ],
-    "extra_sample": [
-     "A",
-     "college",
-     "as",
-     "referred",
-     "to",
-     "in",
-     "Article",
-     "119(1)"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_131",
-    "tokens_text": 691,
-    "tokens_rec": 691,
-    "words_lost": 34,
-    "words_extra": 34,
-    "lost_sample": [
-     "An",
-     "infringement",
-     "shall",
-     "be",
-     "considered",
-     "to",
-     "have",
-     "been"
-    ],
-    "extra_sample": [
-     "An",
-     "infringement",
-     "shall",
-     "be",
-     "considered",
-     "to",
-     "have",
-     "been"
-    ]
-   },
-   {
-    "act": "MiCA",
-    "article_id": "art_141",
-    "tokens_text": 781,
-    "tokens_rec": 781,
-    "words_lost": 29,
-    "words_extra": 29,
-    "lost_sample": [
-     "Competent",
-     "authorities",
-     "shall",
-     "provide",
-     "ESMA",
-     "with",
-     "the",
-     "information"
-    ],
-    "extra_sample": [
-     "Competent",
-     "authorities",
-     "shall",
-     "provide",
-     "ESMA",
-     "with",
-     "the",
-     "information"
-    ]
-   },
-   {
-    "act": "MiCA",
     "article_id": "art_146",
     "tokens_text": 150,
     "tokens_rec": 150,
@@ -2037,170 +525,30 @@
    },
    {
     "act": "PSD2",
-    "article_id": "art_5",
-    "tokens_text": 1639,
-    "tokens_rec": 1639,
-    "words_lost": 155,
-    "words_extra": 155,
-    "lost_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "points",
-     "(d),",
-     "(e)",
-     "(f)"
-    ],
-    "extra_sample": [
-     "For",
-     "the",
-     "purposes",
-     "of",
-     "points",
-     "(d),",
-     "(e)",
-     "(f)"
-    ]
-   },
-   {
-    "act": "PSD2",
     "article_id": "art_9",
     "tokens_text": 912,
-    "tokens_rec": 1114,
-    "words_lost": 96,
-    "words_extra": 269,
+    "tokens_rec": 912,
+    "words_lost": 16,
+    "words_extra": 16,
     "lost_sample": [
-     "(a)",
-     "4,0",
-     "%",
-     "of",
-     "the",
-     "slice",
-     "of",
-     "PV"
+     "(i)",
+     "interest",
+     "income;",
+     "(ii)",
+     "interest",
+     "expenses;",
+     "(iii)",
+     "commissions"
     ],
     "extra_sample": [
-     "4,0",
-     "%",
-     "of",
-     "the",
-     "slice",
-     "of",
-     "PV",
-     "up"
-    ]
-   },
-   {
-    "act": "PSD2",
-    "article_id": "art_14",
-    "tokens_text": 258,
-    "tokens_rec": 258,
-    "words_lost": 30,
-    "words_extra": 30,
-    "lost_sample": [
-     "Branches",
-     "of",
-     "payment",
-     "institutions",
-     "shall",
-     "be",
-     "entered",
-     "in"
-    ],
-    "extra_sample": [
-     "Branches",
-     "of",
-     "payment",
-     "institutions",
-     "shall",
-     "be",
-     "entered",
-     "in"
-    ]
-   },
-   {
-    "act": "PSD2",
-    "article_id": "art_28",
-    "tokens_text": 882,
-    "tokens_rec": 882,
-    "words_lost": 32,
-    "words_extra": 32,
-    "lost_sample": [
-     "Where",
-     "the",
-     "payment",
-     "institution",
-     "intends",
-     "to",
-     "outsource",
-     "operational"
-    ],
-    "extra_sample": [
-     "Where",
-     "the",
-     "payment",
-     "institution",
-     "intends",
-     "to",
-     "outsource",
-     "operational"
-    ]
-   },
-   {
-    "act": "PSD2",
-    "article_id": "art_29",
-    "tokens_text": 858,
-    "tokens_rec": 858,
-    "words_lost": 15,
-    "words_extra": 15,
-    "lost_sample": [
-     "EBA",
-     "shall",
-     "submit",
-     "those",
-     "draft",
-     "regulatory",
-     "technical",
-     "standards"
-    ],
-    "extra_sample": [
-     "EBA",
-     "shall",
-     "submit",
-     "those",
-     "draft",
-     "regulatory",
-     "technical",
-     "standards"
-    ]
-   },
-   {
-    "act": "PSD2",
-    "article_id": "art_35",
-    "tokens_text": 308,
-    "tokens_rec": 308,
-    "words_lost": 20,
-    "words_extra": 20,
-    "lost_sample": [
-     "(a)",
-     "payment",
-     "systems",
-     "designated",
-     "under",
-     "Directive",
-     "98/26/EC;",
-     "(b)"
-    ],
-    "extra_sample": [
-     "(a)",
-     "payment",
-     "systems",
-     "designated",
-     "under",
-     "Directive",
-     "98/26/EC;",
-     "(b)"
+     "(i)",
+     "interest",
+     "income;",
+     "(ii)",
+     "interest",
+     "expenses;",
+     "(iii)",
+     "commissions"
     ]
    },
    {
@@ -2227,146 +575,6 @@
      "(5)",
      "(6)",
      "(7)"
-    ]
-   },
-   {
-    "act": "PSD2",
-    "article_id": "art_74",
-    "tokens_text": 479,
-    "tokens_rec": 479,
-    "words_lost": 60,
-    "words_extra": 60,
-    "lost_sample": [
-     "(a)",
-     "the",
-     "loss,",
-     "theft",
-     "or",
-     "misappropriation",
-     "of",
-     "a"
-    ],
-    "extra_sample": [
-     "(a)",
-     "the",
-     "loss,",
-     "theft",
-     "or",
-     "misappropriation",
-     "of",
-     "a"
-    ]
-   },
-   {
-    "act": "PSD2",
-    "article_id": "art_76",
-    "tokens_text": 472,
-    "tokens_rec": 472,
-    "words_lost": 53,
-    "words_extra": 53,
-    "lost_sample": [
-     "(a)",
-     "the",
-     "authorisation",
-     "did",
-     "not",
-     "specify",
-     "the",
-     "exact"
-    ],
-    "extra_sample": [
-     "(a)",
-     "the",
-     "authorisation",
-     "did",
-     "not",
-     "specify",
-     "the",
-     "exact"
-    ]
-   },
-   {
-    "act": "PSD2",
-    "article_id": "art_87",
-    "tokens_text": 203,
-    "tokens_rec": 203,
-    "words_lost": 17,
-    "words_extra": 17,
-    "lost_sample": [
-     "The",
-     "obligation",
-     "laid",
-     "down",
-     "in",
-     "this",
-     "paragraph",
-     "shall"
-    ],
-    "extra_sample": [
-     "The",
-     "obligation",
-     "laid",
-     "down",
-     "in",
-     "this",
-     "paragraph",
-     "shall"
-    ]
-   },
-   {
-    "act": "PSD2",
-    "article_id": "art_100",
-    "tokens_text": 471,
-    "tokens_rec": 471,
-    "words_lost": 14,
-    "words_extra": 14,
-    "lost_sample": [
-     "They",
-     "shall",
-     "not",
-     "be",
-     "payment",
-     "service",
-     "providers,",
-     "with"
-    ],
-    "extra_sample": [
-     "They",
-     "shall",
-     "not",
-     "be",
-     "payment",
-     "service",
-     "providers,",
-     "with"
-    ]
-   },
-   {
-    "act": "PSD2",
-    "article_id": "art_108",
-    "tokens_text": 279,
-    "tokens_rec": 279,
-    "words_lost": 13,
-    "words_extra": 13,
-    "lost_sample": [
-     "If",
-     "appropriate,",
-     "the",
-     "Commission",
-     "shall",
-     "submit",
-     "a",
-     "legislative"
-    ],
-    "extra_sample": [
-     "If",
-     "appropriate,",
-     "the",
-     "Commission",
-     "shall",
-     "submit",
-     "a",
-     "legislative"
     ]
    },
    {
