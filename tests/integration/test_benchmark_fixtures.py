@@ -61,3 +61,20 @@ def test_the_lexical_twin_of_n001_is_byte_identical():
     assert texts[("DORA", "64")] == texts[("MiCA", "149.1")]
     qrels = {(r.act, r.path): r for r in bm.load_benchmark(bm.FIXTURES_DIR).qrels}
     assert qrels[("DORA", "64")].text_sha256 == qrels[("MiCA", "149.1")].text_sha256
+
+
+@pytest.mark.corpus
+def test_the_overlap_of_the_fixture_queries():
+    """The diagnostic on the real evidence: the expert English query of N003 shares
+    most of its words, the user-vocabulary query of N002 shares none."""
+    docs = bm.load_corpus()
+    fixtures = bm.load_benchmark(bm.FIXTURES_DIR)
+    evidence = bm.evidence_texts(fixtures, "N002", docs)
+    assert "MiCA Article 50: Prohibition of granting interest" in evidence
+    share = {
+        q.query_id: bm.lexical_overlap(q.text, bm.evidence_texts(fixtures, q.need_id, docs)).share
+        for q in fixtures.queries
+    }
+    assert share["N002-en-1"] == 0.0
+    assert share["N003-en-1"] > 0.5
+    assert max(share[q] for q in share if q.endswith("-es-1")) < 0.2

@@ -689,3 +689,116 @@ def seal(
         encoding="utf-8",
     )
     return manifest
+
+
+# ---------------------------------------------------------------------------
+# query variants: the prompt sees the need statement and nothing else
+# ---------------------------------------------------------------------------
+
+QUERY_TEMPLATE_ID = "query_variants.v1"
+PROMPT_MARKER = "---PROMPT---"
+
+
+def render_query_prompt(
+    statement: str,
+    variants: Sequence[tuple[str, str]],
+    template_id: str = QUERY_TEMPLATE_ID,
+    templates_dir: Path = TEMPLATES_DIR,
+) -> str:
+    """The prompt that asks an LLM for formulations of ONE need.
+
+    It takes the statement as a plain string and the (lang, style) pairs wanted,
+    so it cannot leak what it never receives: no Need fields such as the acts or
+    the drivers, no node, no article text, no qrel, no answer. Spanish is natural
+    only, as in the Query contract."""
+    if not statement.strip():
+        raise BenchmarkError("a query prompt needs a non-empty statement")
+    for lang, style in variants:
+        try:
+            Query.model_validate(
+                {
+                    "query_id": f"N000-{lang}-1",
+                    "need_id": "N000",
+                    "lang": lang,
+                    "style": style,
+                    "origin": "human",
+                    "text": "x",
+                }
+            )
+        except ValidationError as e:
+            raise BenchmarkError(f"formulation {lang} {style} is not allowed: {e}") from e
+    if not variants or len(set(variants)) != len(variants):
+        raise BenchmarkError("ask for at least one formulation, each once")
+    text = template_path(template_id, templates_dir).read_text(encoding="utf-8")
+    if text.count(PROMPT_MARKER) != 1:
+        raise BenchmarkError(f"template {template_id} must contain {PROMPT_MARKER} exactly once")
+    prompt = text.split(PROMPT_MARKER, 1)[1].strip()
+    wanted = "\n".join(f"- {lang} {style}" for lang, style in variants)
+    # variants first: a statement that happened to contain "{variants}" is left as it is
+    return prompt.replace("{variants}", wanted).replace("{statement}", statement.strip()) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# lexical overlap: a leakage diagnostic, never a filter
+# ---------------------------------------------------------------------------
+
+# How many consecutive query words shared with the evidence count as a likely copy.
+# Terms of art such as "major ICT-related incident" are shorter.
+COPY_RUN = 6
+_WORD = re.compile(r"[^\W_]+(?:-[^\W_]+)*")
+# English function words. Code stays in English (D-019), so Spanish queries keep
+# their function words as content: against an English corpus their share is near
+# zero anyway, and the diagnostic is read per language.
+_STOPWORDS = frozenset(
+    "a an the of to for in on at by and or is are be do does any its it from with what which "
+    "how can under this that their our we has have will must as not no if when who whom".split()
+)
+
+
+@dataclass(frozen=True)
+class Overlap:
+    share: float  # content words of the query that appear in the evidence
+    longest_run: int  # consecutive query words found verbatim in one evidence text
+
+    @property
+    def possible_copy(self) -> bool:
+        return self.longest_run >= COPY_RUN
+
+
+def _words(text: str) -> list[str]:
+    return [w.casefold() for w in _WORD.findall(text)]
+
+
+def lexical_overlap(query: str, evidence: Sequence[str]) -> Overlap:
+    """How much a query shares with the text of its evidence (grade >= 2 nodes
+    and their article headings). Reported per query to see whether retrieval
+    depends on shared words; an expert may legitimately use official terms."""
+    words = _words(query)
+    content = {w for w in words if w not in _STOPWORDS}
+    vocabulary = {w for text in evidence for w in _words(text)}
+    joined = [" " + " ".join(_words(text)) + " " for text in evidence]
+    longest = 0
+    for start in range(len(words)):
+        for end in range(len(words), start + longest, -1):
+            run = " " + " ".join(words[start:end]) + " "
+            if any(run in text for text in joined):
+                longest = end - start
+                break
+    share = len(content & vocabulary) / len(content) if content else 0.0
+    return Overlap(share, longest)
+
+
+def evidence_texts(
+    benchmark: Benchmark, need_id: str, docs: Mapping[str, pr.ProcessedDocument]
+) -> list[str]:
+    """The text a chunk would show for the evidence of a need: the own text of every
+    non-ambiguous grade >= 2 node, and the heading of its article."""
+    texts = node_texts(docs)
+    titles = {(act, a.path): a.title for act, doc in docs.items() for a in doc.articles}
+    out: list[str] = []
+    for r in benchmark.qrels_of(need_id):
+        if r.grade >= RELEVANT_GRADE and not r.ambiguous:
+            article = r.path.split(".")[0]
+            out.append(f"{r.act} Article {article}: {titles.get((r.act, article), '')}")
+            out.append(texts.get(r.node, ""))
+    return out

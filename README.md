@@ -11,16 +11,18 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
 
 - **Goal:** a RAG system that answers with verifiable citations to the exact article.
 - **Implemented today:** ingestion and source handling, legal hierarchy parsing, structural
-  chunking, Pydantic data contracts, stale-layer detection, measurement tooling, tests, Docker and
-  CI.
-- **Not implemented yet:** embeddings, retrieval, generation, citation verification, API,
-  evaluation and deployment.
+  chunking, the infrastructure of a retrieval benchmark (contracts, validation, node-to-chunk
+  projection and metrics), Pydantic data contracts, stale-layer detection, measurement tooling,
+  tests, Docker and CI.
+- **Not implemented yet:** the benchmark's DEV questions, embeddings, retrieval, generation,
+  citation verification, API and deployment.
 
 ### Roadmap
 
 - **Foundations:** implemented
 - **Chunking:** implemented (structural, v1)
-- **Indexing and retrieval:** next
+- **Retrieval benchmark:** infrastructure implemented; a DEV pilot of about 30 questions is next
+- **Indexing and retrieval:** after the benchmark
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -49,15 +51,18 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   the unit itself. The budget is a run parameter (500 by default). A paragraph that does not fit
   keeps its own text in a chunk of its own, and every source text belongs to exactly one chunk.
   Chunk IDs are structural, such as `MiCA:3.1.5` or `MiCA:3.1:own`.
-- **Data contracts** (Pydantic): the manifest, the processed layer (`data/processed/{act}.json`)
-  and the chunk layer (`data/chunks/{act}.json`) are validated when they are written and when they
-  are read. Loading aborts instead of returning
-  partly checked data.
+- **Retrieval benchmark** (`ingest/benchmark.py`, `ingest/evaluation.py`, `ingest/ir_metrics.py`,
+  `scripts/benchmark.py`): information needs, their queries in English and Spanish, and relevance
+  judgments graded 0-3 on legal nodes (`MiCA:50.2`), never on chunks, so the same judgments
+  evaluate any chunking. See [Retrieval benchmark](#retrieval-benchmark).
+- **Data contracts** (Pydantic): the manifest, the processed layer (`data/processed/{act}.json`),
+  the chunk layer (`data/chunks/{act}.json`) and the benchmark files are validated when they are
+  written and when they are read. Loading aborts instead of returning partly checked data.
 - **Stale-layer detection** (`ingest/processed.py`): the processed layer is rejected if another
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 376 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 550 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -66,12 +71,12 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
 ## Repository layout
 
 ```
-ingest/              library: download, legal hierarchy parser, processed-layer contract
+ingest/              library: download, parser, processed and chunk layers, benchmark
 scripts/             pipeline and measurement entry points
 tests/unit/          isolated tests, no files involved
 tests/integration/   tests on real EUR-Lex excerpts (tests/fixtures/, see PROVENANCE.md)
 ci/                  runtime image contract, run by CI
-data/                manifest and measurement reports (the corpus itself is not versioned)
+data/                manifest, measurement reports and the benchmark (the corpus is not versioned)
 ```
 
 ## Running the checks
@@ -95,7 +100,7 @@ uv pip install --require-hashes --no-deps -r requirements-dev.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest reports `345 passed, 31 skipped`. The 31 skipped tests are marked
+Without the corpus, pytest reports `512 passed, 38 skipped`. The 38 skipped tests are marked
 `corpus`: they need `data/raw/`, which is not in the repository (see
 [Data and reproducibility](#data-and-reproducibility)).
 
@@ -121,6 +126,11 @@ docker run --rm -v "$PWD/data:/app/data" fundamento:dev
 docker run --rm -v "$PWD/data:/app/data" -v "$PWD/.cache/tiktoken:/app/.cache/tiktoken" fundamento:dev
 ```
 
+The test image does not install the benchmark evaluator (`ir_measures`): its backend,
+`pytrec-eval-terrier`, publishes no Linux ARM64 wheel. The image declares
+`FUNDAMENTO_EVALUATOR=unsupported`, which is the only thing that skips the 17 tests marked
+`evaluator`, and pytest prints the reason. Those tests run in the project venv and in CI.
+
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs two independent jobs on every push and pull request:
@@ -131,8 +141,9 @@ docker run --rm -v "$PWD/data:/app/data" -v "$PWD/.cache/tiktoken:/app/.cache/ti
   tokenizer, so only a run with a cold cache downloads it.
 - `runtime-image`: builds the runtime image and runs `ci/check_runtime_image.py` inside it.
 
-The runner does not have the corpus, so the 31 `corpus` tests are skipped there. A green run does
-not validate the full 331-article corpus.
+The runner does not have the corpus, so the 38 `corpus` tests are skipped there. A green run does
+not validate the full 331-article corpus. The `evaluator` tests do run there: CI checks the
+benchmark machinery on synthetic data, while evaluation against the real corpus runs locally.
 
 ## Data and reproducibility
 
@@ -145,8 +156,10 @@ not validate the full 331-article corpus.
 | `data/t2_nodes.json` | no | per-node measurement output, derived from `data/raw/` |
 | `data/chunks/` | no | the chunk layer, derived from `data/processed/` |
 | `.cache/tiktoken/` | no | the tokenizer file, downloaded the first time (see [Tokenizer file](#tokenizer-file)) |
+| `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
+| `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 
-Without the corpus you can run the test suite (345 tests pass, 31 are skipped), the linters and
+Without the corpus you can run the test suite (512 tests pass, 38 are skipped), the linters and
 type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files
@@ -182,10 +195,38 @@ both when it downloads it and whenever it reads it from the cache. Once the file
 needs the network. Without the file and without network they stop with an explicit error: they
 never count with another tokenizer or with an estimate.
 
+### Retrieval benchmark
+
+A benchmark directory holds `needs.jsonl` (what a user wants to know, the unit of the DEV/TEST
+split), `queries.jsonl` (how it is asked: English, and natural Spanish), `qrels.jsonl` (which
+legal nodes answer it, graded 0-3, each with a rationale and the SHA-256 of the judged text) and a
+`manifest.json` that seals them against the parser, the corpus snapshot and the files. The
+evaluation datasets under `data/benchmark/` contain Spanish queries on purpose, because
+retrieval from Spanish questions over the English corpus is one of the things measured; code
+and documentation stay in English.
+
+```bash
+PYTHONPATH=. .venv/bin/python scripts/benchmark.py validate data/benchmark/dev
+PYTHONPATH=. .venv/bin/python scripts/benchmark.py seal data/benchmark/dev --role dev --version 0.2.0
+PYTHONPATH=. .venv/bin/python scripts/benchmark.py prompt data/benchmark/dev N004
+PYTHONPATH=. .venv/bin/python scripts/build_psd2_exclusions.py --check
+```
+
+`validate` checks the seal, the dataset rules and the corpus, and reports the lexical overlap of
+every query with its evidence. `seal` is the only writer of a manifest and writes nothing if a
+check fails. `prompt` prints the query-variant prompt of a question, built from its statement
+alone. `data/benchmark/psd2_excluded_articles.json` lists the nine PSD2 articles amended after the
+parsed snapshot (by Directive 2022/2556 and Regulation 2024/886); no question may rely on them. It
+is derived by comparing the parsed version with the consolidated version of 2025-01-17, kept in
+`data/reference/`, without changing which version Fundamento parses.
+
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
-- CI skips the 31 `corpus` tests, so the full corpus is only validated where it is present.
+- CI skips the 38 `corpus` tests, so the full corpus is only validated where it is present.
+- The DEV benchmark has no questions yet and there is no retriever, so no retrieval metric has
+  been measured. The benchmark evaluator is not in the Docker images (no Linux ARM64 wheel for
+  its backend).
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4
@@ -213,7 +254,8 @@ The MIT License does not cover the regulatory texts. The source documents come f
 [EUR-Lex](https://eur-lex.europa.eu), © European Union, 1998-2026. The repository contains parts
 of them: the excerpts in `tests/fixtures/` (sources in
 [PROVENANCE.md](tests/fixtures/PROVENANCE.md)), the article titles and text previews in
-`data/t1_report.json`, and short quotations in the tests.
+`data/t1_report.json`, and short quotations in the tests and in the rationales of the benchmark
+(`data/benchmark/`).
 
 - Legal documents published in EUR-Lex can be reused under the Commission's reuse policy
   (Decision 2011/833/EU).
