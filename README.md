@@ -224,14 +224,15 @@ parsed snapshot (by Directive 2022/2556 and Regulation 2024/886); no question ma
 is derived by comparing the parsed version with the consolidated version of 2025-01-17, kept in
 `data/reference/`, without changing which version Fundamento parses.
 
-`data/benchmark/dev/` holds the first DEV batch, N004 to N013, built and judged with
-`data/benchmark/PROTOCOL.md`: the needs and their queries were committed before any evidence was
-searched, and every qrel was graded twice, by two passes that did not see each other's grades.
-`data/benchmark/dev/CALIBRATION.md` records what the batch measured. Its proposals became protocol
-v1.1, and the review of the batch against v1.1 led to v1.2: a definition counts only when it is
-necessary, a hard negative needs a scope check, and every disagreement between two judges goes to
-an independent third one, recorded in `adjudications.jsonl` next to the data. The first batch is
-being revised under v1.2.
+`data/benchmark/dev/` holds the first DEV batch, ten needs built and judged with
+`data/benchmark/PROTOCOL.md`. Every need and its queries were committed before any evidence was
+searched. Every candidate was graded by two judges who did not see each other's grades, and every
+disagreement by an independent third judge; `adjudications.jsonl` records the three judgments
+next to the data. `data/benchmark/dev/CALIBRATION.md` records what the batch measured. Its
+proposals became protocol v1.1, and the review of the batch against v1.1 led to v1.2: a
+definition counts only when it is necessary, a hard negative needs a scope check, and the first
+judge never settles its own disagreement. Under v1.2 two needs were replaced (N005 by N014, N007
+by N015) and four were narrowed, each with new queries and its own lock.
 
 ## Known limitations
 
