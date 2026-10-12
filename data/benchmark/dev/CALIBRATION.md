@@ -464,3 +464,85 @@ the twin of. Its distractors share words or a topic with the need (the terms of 
 agreement, payment information) but are not twins of an answering node. The field stays empty.
 With the same reading, `lexical_twin` holds in N004, N006, N008 and N011, where a corpus node is a
 twin of the answer; N014 and N015 rest on the parallel-regime clause only.
+
+### 11. Protocol v1.3 (2026-10-12)
+
+The review of section 10 left two gaps of v1.2 open, and the person closed them with two rules.
+v1.3 writes them into PROTOCOL.md: applicability and ambiguity in sections 2 and 4, escalation
+after a change of protocol in section 12, and the drivers in section 13. The head of PROTOCOL.md
+says what changed from v1.2, what did not, and why it came before the next 20 needs. No need was
+rewritten and no query changed. DEV is sealed at 0.6.0.
+
+**How batch 1 was checked against v1.3.**
+
+- All 118 labels were screened twice against the three changed clauses, each screen blind to the
+  other. The session that judged as A wrote its screen first (18:12 UTC). A fresh context received
+  the needs, the nodes, the labels with their rationales and the current rules, and nothing else.
+- Both screens flagged PSD2 76(1) fourth subparagraph in N013. The fresh screen also flagged MiCA
+  59(5) in N009.
+- Each flagged label was an agreement of A and B, so it went to a fresh judge C as an escalated
+  agreement (section 12). Each C received the two earlier rationales as "Rationale A" and
+  "Rationale B" in random order, the open fact stated neutrally, and the v1.3 rules. Neither C saw
+  the screens or the reason for the flag.
+- Each transcript shows one file read and no other tool.
+
+| Need | Node | A and B (v1.2) | Judge C (v1.3) | Result |
+|---|---|---|---|---|
+| N013 | PSD2 76(1), fourth subparagraph | 3 and 3 | 2 | Changed. The node answers directly, but applies only to "direct debits as referred to in Article 1 of Regulation (EU) No 260/2012": a fact the need does not state, and one that could reasonably hold. |
+| N009 | MiCA 59(5) | 1 and 1 | 1 | Kept. Even if the content of the emails brought them under it, Article 61(2) and the second subparagraph of 61(1) already answer the email question. |
+
+The judge C of section 10 kept grade 3 under v1.2, which had no rule for this case. v1.3 has one,
+and this decision supersedes that one.
+
+The other labels of the changed clauses held:
+
+- The other 13 grade 3 nodes apply on facts the need states.
+- DORA 42(6) in N014 stays ambiguous. Its doubt is one of interpretation: whether "must be able
+  to end" covers a termination ordered by an authority. The missing fact, whether the vendor is
+  critical, is not the only ground.
+- The grade 2 nodes that depend on an unstated fact depend on one that could reasonably hold:
+  PSD2 101(2) second subparagraph in N012, and 76(3) and its points in N013.
+
+**Impact on the metrics: none.** A grade 2 is still relevant, so N013 keeps 8 relevant nodes and
+DEV keeps 27. The node shares its chunk with 76(1), grade 3, at 500 tokens (`PSD2:76`) and at 300
+(`PSD2:76.1`). A chunk takes the maximum grade of the nodes it owns, so the chunk grades, and with
+them the ideal ranking of nDCG, do not move. N013 keeps 2 relevant chunks at 500 and 3 at 300.
+Computed on the nine evaluated needs and both layers: the chunk grades and the relevant nodes
+before (0.5.0) and after (0.6.0) are identical. Recall@K, MRR, nDCG and Recall@T are therefore
+the same for any run. Only a graded measure at node level would see the change, and Fundamento
+computes none.
+
+**Drivers under section 13.** For each need, the nodes that make each driver hold:
+
+| Need | Drivers | Why they hold |
+|---|---|---|
+| N004 | numeric, lexical_twin | 6(5): "at least once a year". The twin is DORA 16(2): the review of the simplified framework, the same duty for the entities of 16(1). |
+| N006 | exception, lexical_twin | 2(1)(b) decides that the payment-institution exemption does not take the business out of DORA. The twin is 2(1)(d): the same inclusion, for exempted e-money institutions. |
+| N008 | numeric, lexical_twin | 75(5): "at least once every three months". The twin is MiCA 81(14) with its second subparagraph: the periodic statement of portfolio management, "every three months". |
+| N009 | exception, negation, cross_reference (added) | The exception is 61(1) with its second subparagraph, and the negation is 61(2): "shall not entitle". 61(1) names "the requirement for authorisation under Article 59", and 59(1) is graded 2; 61(2) refers back to "paragraph 1". |
+| N010 | none | A `none` need has no relevant node, so it has no twin and no reference. Its gap is a Level 1 act, Regulation (EU) 2023/1113, not a figure, a date or a Level 2 act. Its distractors (MiCA 82(1)(a) and (b), PSD2 31(2), 45(1)(a), 57(1)(a)) share words or a topic, not a duty. |
+| N011 | lexical_twin (cross_reference removed) | The twin is MiCA 34(9): the same article title, "Governance arrangements", and the same continuity duty for issuers of asset-referenced tokens. 68(7) refers to DORA Articles 11 and 12, but every one of their nodes is graded 1, so the reference only marks where to look. |
+| N012 | numeric, exception | 101(2): 15 business days, and 35 in exceptional situations; the derogation is in 101(2), second subparagraph. PSD2 77(2), with its 10 business days, is a different duty: a distractor, not a twin. |
+| N013 | numeric, exception, cross_reference | 77(1): 8 weeks. The exception is 76(3) with its points, and the conditions are 76(1)(a) and (b). 77(1) names "the refund referred to in Article 76", and 76(1) fourth subparagraph names paragraph 3 and Article 77. PSD2 73(1) and 71(1) are ruled out by the facts (the debit was authorised): distractors, not twins. |
+| N014 | lexical_twin | The twin is MiCA 73(3): the right to terminate outsourcing agreements, for crypto-asset service providers. |
+| N015 | numeric, lexical_twin | The `gap_note` names the maximum fine as missing. The twin is MiCA 111(3): maximum administrative fines, for infringements of MiCA. |
+
+Counts after v1.3:
+
+| Driver | Needs |
+|---|---|
+| lexical_twin | 6 |
+| numeric | 5 |
+| exception | 4 |
+| cross_reference | 2 |
+| negation | 1 |
+| cross_act, date, level2_gap | 0 each |
+
+**One choice of wording.** `cross_reference` could have meant "a relevant node contains an
+explicit reference", and N011 would have kept it. Section 13 also asks that the referred provision
+be relevant: v1.2 had already decided that a reference marks where to look, and under the looser
+reading N011 would sit in a slice where following the reference finds nothing relevant.
+
+**Record.** `adjudications.jsonl` holds the two escalated agreements, each with its reason.
+`validate` reports them apart from the 18 disagreements: one label kept by judge C, one changed.
+

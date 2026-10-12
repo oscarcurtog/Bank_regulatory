@@ -80,13 +80,16 @@ def adjudication(benchmark: bm.Benchmark) -> str:
     if not records:
         return "  adjudication record: none"
     disagreements = [a for a in records if not a.agree]
-    outcome = Counter(_c_outcome(a) for a in records if a.c is not None)
+    outcome = Counter(_c_outcome(a) for a in disagreements)
+    escalated = [a for a in records if a.escalated is not None]
+    kept = sum(a.c is not None and a.c.label == a.a.label for a in escalated)
     lines = [
         f"  adjudication: {len(records)} labels judged by A and B, "
         f"{len(records) - len(disagreements)} agreed, {len(disagreements)} went to judge C "
         f"({sum(a.crosses_threshold for a in disagreements)} across the relevance line), "
-        f"{sum(a.escalated is not None for a in records)} agreements escalated",
-        f"    judge C chose: {dict(sorted(outcome.items()))}",
+        f"{len(escalated)} agreements escalated",
+        f"    judge C chose, on the disagreements: {dict(sorted(outcome.items()))}",
+        f"    escalated agreements: {kept} kept by judge C, {len(escalated) - kept} changed",
     ]
     return "\n".join(lines)
 

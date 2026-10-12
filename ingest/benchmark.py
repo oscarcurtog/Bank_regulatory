@@ -70,8 +70,9 @@ Split = Literal["dev", "test"]
 # never counts as DEV: its queries may have been written knowing the evidence.
 Role = Literal["dev", "test", "fixture"]
 NeedType = Literal["direct", "multi_provision", "exception_confusion", "partial_out_of_scope"]
-# Properties of the EVIDENCE. Properties of a formulation (paraphrase, vocabulary,
-# language) come from Query.lang, Query.style, Query.origin and the measured overlap.
+# Properties of the EVIDENCE, defined in PROTOCOL.md section 13. Properties of a
+# formulation (paraphrase, vocabulary, language) come from Query.lang, Query.style,
+# Query.origin and the measured overlap.
 Driver = Literal[
     "cross_act",
     "negation",
@@ -494,8 +495,9 @@ class Judgment(BaseModel):
 class Adjudication(BaseModel):
     """How one label of one need was decided. There is no majority: when A and B
     disagree, C decides against the text, and may pick A's label, B's, another or
-    ambiguous. An agreement goes to C only when it breaks an automatic check, and
-    then 'escalated' says which."""
+    ambiguous. An agreement goes to C only when it breaks an automatic check, or when
+    a later protocol version changes the rule it rests on, and then 'escalated' says
+    which."""
 
     model_config = STRICT
 

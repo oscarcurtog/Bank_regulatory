@@ -232,7 +232,9 @@ next to the data. `data/benchmark/dev/CALIBRATION.md` records what the batch mea
 proposals became protocol v1.1, and the review of the batch against v1.1 led to v1.2: a
 definition counts only when it is necessary, a hard negative needs a scope check, and the first
 judge never settles its own disagreement. Under v1.2 two needs were replaced (N005 by N014, N007
-by N015) and four were narrowed, each with new queries and its own lock.
+by N015) and four were narrowed, each with new queries and its own lock. The methodological review
+of the batch led to v1.3: a grade 3 needs the facts of the need to establish that the node
+applies, ambiguity is kept for interpretation, and the drivers have a definition.
 
 ## Known limitations
 

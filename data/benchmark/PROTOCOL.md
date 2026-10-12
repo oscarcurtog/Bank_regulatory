@@ -1,4 +1,4 @@
-# Retrieval benchmark protocol, v1.2
+# Retrieval benchmark protocol, v1.3
 
 How one information need goes from an idea to the DEV benchmark (`data/benchmark/dev/`).
 Decisions D-019 to D-023 govern it; `ingest/benchmark.py` enforces what can be checked by code.
@@ -14,15 +14,25 @@ ambiguous, never turned silently into ground truth.
 | v1 | 2026-10-12 | First version. Batch 1 (N004 to N013) was built with it. |
 | v1.1 | 2026-10-12 | From the calibration of batch 1: one primary retrieval problem per need (section 9); grades 3 and 2 decided by the question, with a worked example (section 2); a hard negative must be wrong whatever the need leaves open (section 2); the area of the act and numeric or date answers in the coverage grid (section 10); the person's review checks the method, not the law (section 11). No data schema changed. |
 | v1.2 | 2026-10-12 | From the review of batch 1 against v1.1: a definition is graded by necessity, not by mapping; a reference to whole articles marks where to look, not what is relevant; a grade 0 needs a scope check and must be definitely wrong on the stated facts (all three in section 2); every disagreement between judges A and B goes to an independent judge C, recorded in `adjudications.jsonl` (section 12); a replacement keeps its id only when it narrows the same need (section 5). No data schema changed: the adjudication record is a new file, outside the seal. |
+| v1.3 | 2026-10-12 | From the methodological review of batch 1: a grade 3 needs applicability established by the facts the need states; a node that would answer, or holds a condition that changes the answer, but applies only under a fact the need does not state that could reasonably hold, is a 2; ambiguity is for an interpretation, never for a missing fact (sections 2 and 4); a later protocol version escalates an agreed label to judge C when it changes the rule the label rests on (section 12); the drivers are defined (section 13). No data schema changed. |
 
 The data files do not record the protocol version: each batch states it in `dev/CALIBRATION.md`.
+
+v1.3 changes three things and nothing else. It decides how a node is graded when it applies only
+under a fact the need does not state, which v1.2 left open: v1.2 tied the facts of the need to a
+grade 0 only. It keeps ambiguity for an interpretation that cannot be settled. And it defines the
+drivers, which v1.2 used without a definition. The grades, their tests, the scope check,
+answerability, the adjudication by judges A, B and C, the parameters and the coverage grid are
+unchanged. It comes before the next 20 needs because both gaps showed up in batch 1, and every
+new need would have repeated them: each batch judged under a looser rule is one more batch to
+review again.
 
 ## 1. Workflow
 
 | Step | What happens | Output |
 |---|---|---|
 | 0. Gap | Pick the cell of the coverage grid (section 10) that is missing: type, act, area of the act, answerability, and whether a number or a date is expected in the answer. Without reading the legal text. | a cell |
-| 1. Need | Write `statement` in English: the actor, the situation, and one primary question (section 9). Set type, drivers, difficulty, acts and answerability provisionally. No article numbers or legal wording the user would not know. | need, `status: draft` |
+| 1. Need | Write `statement` in English: the actor, the situation, and one primary question (section 9). Set type, drivers (section 13), difficulty, acts and answerability provisionally. No article numbers or legal wording the user would not know. | need, `status: draft` |
 | 2. Queries, locked | At least one English query (formal or natural) and one natural Spanish query, from the statement alone. LLM variants come from `scripts/benchmark.py prompt <dir> <need_id>`, run in a fresh context that has not read the corpus; record `origin: llm_from_need` and the template. Commit the need and its queries before any evidence search: the history is the record of the lock. After that only typos are fixed; a new wording is a new query. | queries |
 | 3. Evidence search | Structural (article titles, the definitions article, the articles a candidate refers to, parent and sibling nodes), lexical over the own text with the official terms, and twins (identical own text, the same article title, the parallel regime). | candidates |
 | 4. Qrels, judge A | Judge A grades every candidate examined, and the answerability, with the rules of section 2, and writes them down before judge B starts. The rationale cites the node's words. `text_sha256` is `ingest.benchmark.sha256_text(own_text)` from the processed layer, never typed. A `span` only for a long node with several ideas. | qrels |
@@ -30,7 +40,7 @@ The data files do not record the protocol version: each batch states it in `dev/
 | 6. Answerability | List the elements the need asks for (section 3). Set `gap_note` when something is missing. | answerability |
 | 7. Judges B and C, then review | Judge B, a fresh context, grades the same candidates and the answerability without seeing judge A or any earlier label. Every disagreement goes to judge C (section 12): the first judge never settles its own disagreement. Then a person reviews the method, not the law (section 11). | `status: reviewed`, `adjudications.jsonl` |
 | 8. Validation | `scripts/benchmark.py validate data/benchmark/dev`: the seal, the dataset rules, the corpus, and the lexical overlap of each query. | report |
-| 9. Ready | `status: ready`, then `scripts/benchmark.py seal data/benchmark/dev --role dev --version <next>`. Log the time spent on the need. | DEV |
+| 9. Ready | Confirm the drivers on the final qrels (section 13); the calibration record names the nodes that make each one hold. `status: ready`, then `scripts/benchmark.py seal data/benchmark/dev --role dev --version <next>`. Log the time spent on the need. | DEV |
 
 ## 2. Grades
 
@@ -38,8 +48,8 @@ A grade says what the node does for the answer to the need.
 
 | Grade | Test |
 |---|---|
-| 3 | It answers a primary question of the need directly and completely: read with its article heading and the lead-in that governs it, it states the rule, figure or deadline asked for, or one element of the list asked for. |
-| 2 | It is not the answer, but without it the answer would not be legally correct or complete: a definition needed to read the need or to decide whether a rule applies; an exception, condition or derogation that can change the answer; the lead-in that turns a point into a rule; a specific provision that the main rule refers to and that the answer needs. |
+| 3 | It answers a primary question of the need directly and completely, and the facts the need states establish that it applies: read with its article heading and the lead-in that governs it, it states the rule, figure or deadline asked for, or one element of the list asked for. |
+| 2 | It is not the answer, but without it the answer would not be legally correct or complete: a definition needed to read the need or to decide whether a rule applies; an exception, condition or derogation that can change the answer; the lead-in that turns a point into a rule; a specific provision that the main rule refers to and that the answer needs. Also a node that would answer, but applies only under a fact the need does not state that could reasonably hold (see "Applicability that depends on unstated facts"). |
 | 1 | Useful context that a correct and complete answer can leave out. |
 | 0 | Examined explicitly and definitely not relevant on the facts the need states, after the scope check below; never "probably not relevant". Not the same as unjudged: only examined nodes are graded. |
 
@@ -89,11 +99,32 @@ notification.
   ambiguous when it cannot be told which part is needed. A cross-reference never adds qrels by
   itself.
 - **Exceptions, conditions and derogations.** 2 when they can apply to the need and would change
-  the answer; 1 when the facts of the need rule them out.
+  the answer; 1 when the facts of the need rule them out. "Can apply" has the meaning of the
+  next subsection: a fact the need does not state, and that could reasonably hold.
 - **Mandates for technical standards.** 2 when they say where the element asked for is fixed;
   otherwise 1 or left unjudged.
 - **Twins and repeated wording.** Only the right article is relevant. The parallel regime and
   the same wording elsewhere are graded 0 when examined, if they pass the scope check below.
+
+### Applicability that depends on unstated facts
+
+A node can state exactly what the need asks and still apply only under a fact the need does not
+give, such as the size, status or location of a party, or the kind of instrument or transaction.
+Its grade follows from what the facts of the need establish:
+
+- **3** needs both: the node answers a primary question directly, and the facts the need states
+  establish that it applies. "The need does not exclude it" never establishes that it applies.
+- **2** when the node answers directly, or holds a condition that would change the answer, but
+  applies only if a fact the need does not state holds, and that fact could reasonably hold.
+- **1** when the node is useful context that a correct and complete answer can leave out, whether
+  or not the fact holds.
+- **Ambiguous** only for a real doubt of interpretation that the text and this protocol cannot
+  settle (section 4). A missing fact alone is not ambiguity: the three rules above grade it.
+
+When the facts the need states rule the node out, the rules for exceptions above and for a grade
+0 below apply. A `complete` need still needs a grade 3 (section 3): if every node that answers it
+depends on a fact it does not state, the need itself depends on that fact and is clarified before
+the lock (section 5).
 
 ### Hard negatives and the scope check
 
@@ -103,9 +134,12 @@ it applies (its actor, conditions, exceptions, field and eligibility, and the fa
 The adjudication record names those provisions (`scope_basis`). If the node could be relevant
 under a reasonable reading of facts that the need does not specify, it is not a 0:
 
+- grade it 2 when, if that fact holds, it would answer the need or change the answer
+  (applicability, above);
 - grade it 1 when it is potentially useful context;
 - leave it unjudged when it does not deserve a judgment;
-- mark it ambiguous when its applicability cannot be settled;
+- mark it ambiguous only when its applicability turns on an interpretation the text cannot
+  settle (section 4), never because a fact is missing;
 - clarify the need, only if it is not locked yet and the fact is essential to it.
 
 A locked need is never rewritten to manufacture a hard negative.
@@ -130,7 +164,8 @@ A locked need is never rewritten to manufacture a hard negative.
 
 When the grade depends on an interpretation rather than on what the text says, set
 `ambiguous: true` on the qrel (it then counts as unjudged), or `ambiguity_note` on the need if
-the doubt affects all of it. An ambiguous need never enters TEST; it stays in DEV only if it
+the doubt affects all of it. A fact that the need does not state is not an interpretation: the
+applicability rules of section 2 grade the node, and the qrel is not ambiguous for that reason. An ambiguous need never enters TEST; it stays in DEV only if it
 helps calibration.
 
 ## 5. Reject a need when
@@ -174,6 +209,7 @@ Since v1.1, also: the areas of the act covered and the share of numeric or date 
 | lexical overlap, reported per query | duplicate needs with different words |
 | the adjudication record: final labels are the qrels; no A/B disagreement without judge C; every grade 0 names its scope provisions, and they exist | the scope check itself, and whether each 0 holds |
 | definitions graded 2 or 3, listed by `validate` | whether each one is necessary; which nodes of a referred article the answer needs |
+| drivers are known values, none repeated | whether each driver holds on the final qrels (section 13) |
 
 ## 8. Parameters
 
@@ -291,8 +327,9 @@ The first judge never settles its own disagreement, and nobody counts votes.
 | C | a fresh context | the need (and a query when needed), the candidate node, the strictly necessary legal context, the rules, and the two positions as "Rationale A" and "Rationale B" in random order | which judge was first, any earlier label |
 
 - **A and B agree** (the same grade and ambiguous flag, both unjudged, or the same answerability):
-  the label is final, unless it breaks an automatic check such as a dataset rule; then it goes to
-  C with the reason (`escalated`).
+  the label is final, unless it breaks an automatic check such as a dataset rule, or a later
+  protocol version changes the rule it rests on; then it goes to C with the reason (`escalated`,
+  which names the check or the version and the rule), and the record keeps A and B as they were.
 - **A and B disagree:** C decides. It may take A's label, B's, another, or mark the node
   ambiguous, and it justifies the label against the text and this protocol. "Two judges said so"
   is never a reason.
@@ -310,3 +347,27 @@ A typical flow: A grades a node 1, B grades it 2, so the record shows a disagree
 relevance line. C reads the node, its context and both rationales, presented as A and B in random
 order, and returns 2 with a rationale that quotes the text. The qrel takes grade 2, and the record
 keeps the three judgments.
+
+## 13. Drivers
+
+A driver names a property of the relevant evidence (the nodes of grade 2 or 3) or of the retrieval
+problem it poses: what makes the right nodes hard to find, or easy to confuse with others. It is
+not a property of a formulation (language, style, origin and the measured overlap describe the
+queries), and it is not a list of every word, topic or figure that a distractor shares with the
+need.
+
+Drivers are set provisionally with the need (step 1) and confirmed on its final qrels (step 9):
+each one must hold on those qrels, and the calibration record names the nodes that make it hold.
+An empty list is valid. A `none` need has no relevant evidence, so only the drivers about what is
+missing (`numeric`, `date`, `level2_gap`) can apply to it, through its `gap_note`.
+
+| Driver | Holds when |
+|---|---|
+| `cross_act` | The relevant evidence lies in more than one act: no single act answers the need. |
+| `negation` | A grade 3 node states its part of the answer as a prohibition or a negative rule ("shall not", "shall not apply", "does not entitle"): the same words without the negation would give the opposite answer. |
+| `exception` | The answer turns on an exception, exemption, condition or derogation: a relevant node states one that can apply and would change the answer, or the grade 3 node decides whether an exemption or exclusion takes the case out of a rule. One that the facts of the need rule out does not count. |
+| `numeric` | The answer is a figure or turns on one: an amount, a percentage, a period, a frequency or a count. A relevant node states it or, in a `partial` or `none` need, the `gap_note` names it as what the corpus lacks. |
+| `date` | The same for a calendar date: a date of application or of entry into force, or a deadline fixed as a date. |
+| `lexical_twin` | The corpus holds a twin of a relevant node, as step 3 and section 2 define it: identical own text, the same article title, or the parallel regime. A parallel regime is the same duty or right laid down for another actor, instrument, service or act: it would hold the answer if the need were about that one, and nothing else in the question changed. A purely lexical retriever can take the twin for the relevant node. Sharing words, a topic or a figure is not enough: a node that sets a different duty with similar words, or that the facts of the need rule out, is a distractor, not a twin. The twin is examined and graded, usually 0. |
+| `cross_reference` | The relevant evidence is linked by an explicit reference: a relevant node names another provision ("Article 59", "paragraph 3", "the time limits laid down in Article 77"), and the answer needs that provision, which is graded 2 or 3 too. A reference whose target is only context (graded 1, or unjudged) marks where to look and does not make the driver hold (section 2, references to whole articles); neither does the lead-in of a list. |
+| `level2_gap` | An element of the answer is fixed in a Level 2 act outside the corpus (regulatory or implementing technical standards, guidelines) that a relevant node mandates, and the `gap_note` names it. A gap in national law or in another Level 1 act is not a Level 2 gap. |
