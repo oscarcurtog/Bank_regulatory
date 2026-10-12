@@ -268,3 +268,161 @@ these proposals in four points:
 - the person's review checks the method, never the law (section 11).
 
 This batch was built with v1. Any change that its review against v1.1 suggests waits for approval.
+
+## Batch 1, revised under protocol v1.2 (2026-10-12)
+
+The review of batch 1 against v1.1 found six needs that ask more than one primary question, and
+gaps in the grading rules that v1.2 closed. This revision applies v1.2 to every need of the
+batch, the kept ones included. Query template `query_variants.v1`, unchanged. DEV was sealed at
+0.4.0 when the replacements were locked (commit `82e1fea`), and at 0.5.0 once judged (commit
+`4c97ae3`).
+
+### 1. What replaced what
+
+| Before | After | Decision | Why |
+|---|---|---|---|
+| N004 | N004 | kept | One question and an allowed second, both answered by DORA 6(5). |
+| N005 | N014 | replaced, new id | Three primary questions. Kept: in which situations the bank must be able to end its contract with the vendor. The retrieval problem changed, so the id changed. |
+| N006 | N006 | narrowed, same id | Scope and regime are two rules. Kept: whether DORA applies to the business at all. |
+| N007 | N015 | replaced, new id | Three primary questions. Kept: the maximum fine the national supervisor could impose (partial). |
+| N008 | N008 | kept | One rule, MiCA 75(5), answers both asks. |
+| N009 | N009 | kept | Article 61(2) limits the exemption of 61(1). |
+| N010 | N010 | narrowed, same id | The self-hosted wallet checks are a second obligation. Kept: the information that must accompany a transfer to another exchange. |
+| N011 | N011 | narrowed, same id | The testing frequency is another obligation in another act. Kept: what the continuity policy must contain. |
+| N012 | N012 | kept | One rule, PSD2 101(2), answers both asks. |
+| N013 | N013 | narrowed and clarified, same id | The bank's response time is a later moment. Kept: whether, six weeks on, she can get the money back; the statement now says that the form fixed no amount. |
+
+The data files hold only the current needs, and the schema has no field for a replacement. A
+field would let a script follow N005 to N014; without one, this table and the history are the
+record. A field was not added because nothing in the pipeline needs to follow the link. A test
+keeps the retired ids N005 and N007, and the 18 queries written for the old statements, out of
+DEV.
+
+### 2. How it was done
+
+- **Statements.** One fresh model context rewrote the six statements, given only the old
+  statement and an instruction (what to keep, and for N013 the fact to add); no corpus text and
+  no qrel. It was asked once more to drop the self-hosted wallets still named in N010's situation
+  and a repeated phrase in N013.
+- **Queries.** A fresh context per need wrote English formal, English natural and natural Spanish
+  queries from `query_variants.v1`.
+- **Lock.** Statements and queries were committed in `82e1fea`, pushed at 16:54:32 UTC and checked
+  by CI run 38280656114. The evidence search began at 16:55:01 UTC. Of the 30 queries, 12 date
+  from the batch 1 lock (`01e0014`) and 18 from `82e1fea`, and none has changed since.
+- **Judges.**
+  - Judge A, the session that searched the evidence, wrote its grades down at 17:03 UTC, before
+    judge B started.
+  - Judge B was a fresh context per need. It received the rules of section 2 with the batch-1
+    examples removed, and each candidate with its legal context and the provisions that fix its
+    scope; it saw no grade.
+  - Judge C was a fresh context for each need with a disagreement. It saw the two positions as
+    "Rationale A" and "Rationale B" in an order drawn at random for each item, never which judge
+    was first or the earlier label.
+- **Isolation check.** In the transcripts of the 26 contexts, the only tool call besides returning
+  the result is reading its own file.
+
+### 3. The batch
+
+| Need | Act | Type | Difficulty | Answerability | Relevant nodes | Relevant chunks at 500 / 300 | Hard negatives |
+|---|---|---|---|---|---|---|---|
+| N004 | DORA | direct | easy | complete | 1 | 1 / 1 | 2 |
+| N006 | DORA | exception_confusion | medium | complete | 2 | 1 / 1 | 2 |
+| N008 | MiCA | direct | easy | complete | 1 | 1 / 1 | 3 |
+| N009 | MiCA | exception_confusion | medium | complete | 4 | 2 / 3 | 2 |
+| N010 | MiCA | partial_out_of_scope | hard | none | 0 | not evaluated | 5 |
+| N011 | MiCA | direct | medium | complete | 1 | 1 / 1 | 2 |
+| N012 | PSD2 | direct | easy | complete | 2 | 1 / 1 | 3 |
+| N013 | PSD2 | multi_provision | medium | complete | 8 | 2 / 3 | 2 |
+| N014 | DORA | direct | medium | complete | 5 | 1 / 1 | 1 |
+| N015 | DORA | partial_out_of_scope | medium | partial | 3 | 2 / 2 | 5 |
+
+- Acts: DORA 4, MiCA 4, PSD2 2.
+- Types: direct 5, exception_confusion 2, partial_out_of_scope 2, multi_provision 1.
+- Difficulty: easy 3, medium 6, hard 1.
+- Answerability: 8 complete, 1 partial, 1 none.
+- A numeric driver in 5 needs of 10, a date driver in none.
+- The grade 2 and 3 evidence covers 9 areas of the grid, each once.
+
+### 4. Qrels and adjudication
+
+There are 118 qrels: 27 of grade 0, 64 of grade 1, 13 of grade 2 and 14 of grade 3. One is
+ambiguous: DORA 42(6) in N014, which reaches only critical providers, and the need does not say
+whether the vendor is one.
+
+| | Count |
+|---|---|
+| Grades on which A and B agree | 100 of 118 (0.85) |
+| Answerabilities on which A and B agree | 10 of 10 |
+| Disagreements, all sent to judge C | 18: 7 between 0 and 1, 7 between 1 and 2, 2 between 2 and 3, 2 ambiguous against judged |
+| Judge C's decision | A's label 10, B's label 7, ambiguous 1, another label 0 |
+| Disagreements across the relevance line | 5, all of which ended below it |
+| Agreements escalated to C | 0 |
+
+`adjudications.jsonl` keeps the three judgments of each label, and the provisions read for every
+grade 0.
+
+### 5. Against batch 1 as judged under v1
+
+74 nodes were judged under the same need in both versions. Eleven labels changed, six of them
+across the relevance line:
+
+- **The need was narrowed:**
+  - DORA 16(1) in N006 went from 3 to 1;
+  - DORA 11(6)(a) in N011 from 3 to 1;
+  - PSD2 77(2) in N013 from 3 to 1, and its second subparagraph from 2 to 1.
+- **The reference rule:** DORA 11(3) and 11(4) in N011 went from 2 to 1. MiCA 68(7) names the
+  plans itself, so the DORA articles it refers to are context, and N011 now rests on MiCA alone.
+- **The hard-negative rule:** three former grade 0s became 1, because each bears on the subject
+  of the need and so is not definitely irrelevant:
+  - DORA 11(6) third subparagraph in N004, the review of a part of the framework;
+  - DORA 2(3)(d) in N006, an exclusion from the same scope that the facts rule out (the
+    exceptions rule);
+  - PSD2 101(3) in N012, a further step of the same complaint.
+- **Ambiguities settled:**
+  - PSD2 32(1) in N006 became 1 under the necessity rule;
+  - DORA 2(1)(f) in N011 became 1 once the testing question was dropped.
+
+All 27 grade 0s now name the provisions read to fix their scope. That includes 11 new hard
+negatives, among them the fine regimes of MiCA (111(3), 132(3)), of PSD2 (103(1)) and of the Lead
+Overseer (DORA 35(6), 35(8)) in N015.
+
+### 6. Recall@5 by design
+
+No evaluated need has more than 3 relevant chunks at 500 or 300 tokens, so a perfect ranking
+reaches Recall@5 = 1 for every one. The two needs that could not, N005 and N007, were replaced.
+
+### 7. Leakage, duplicates and PSD2
+
+| Formulation | Queries | Share of content words, median / max | Longest verbatim run, median / max | Possible copy |
+|---|---|---|---|---|
+| English formal | 9 | 0.33 / 0.53 | 3 / 5 | 0 |
+| English natural | 9 | 0.11 / 0.20 | 1 / 3 | 0 |
+| Spanish natural | 9 | 0.02 / 0.05 | 1 / 1 | 0 |
+
+- **Near duplicates:** the highest Jaccard similarity of content words is 0.14 between statements
+  (fixtures included) and 0.21 between English queries of different needs; no pair reached 0.35.
+- **PSD2:** the qrels use PSD2 Articles 4, 31, 32, 33, 45, 57, 64, 71, 73, 76, 77, 99, 101, 102
+  and 103, none of them in `psd2_excluded_articles.json`.
+
+### 8. Cost
+
+It took 32 minutes of wall clock from the first rewritten statement (16:46 UTC) to the judged
+commit (17:18 UTC). The 26 model contexts used about 1.46 million tokens:
+- the statement writer, 0.06 million;
+- the six query writers, 0.22 million;
+- judge B, 0.72 million;
+- judge C, 0.46 million.
+
+### 9. Critical review
+
+- **The batch now leans on single-provision needs.** Narrowing to one question left 5 direct
+  needs and 1 multi_provision. The reference rule also removed the only cross-act need. The next
+  batch has to plan questions that are single but need several provisions, or two acts.
+- **Judge C did not favour either side.** It took A's label 10 times and B's 7, and the labels it
+  saw were random. Ten decisions are too few to rule out a lean towards one style of rationale.
+- **A grade 0 now means one of three things:** a parallel regime, a lure whose scope rules it
+  out, or a duty about another object, such as DORA 8(2) on risk scenarios. A node that bears on
+  the subject of the need became 1. That leaves fewer hard negatives in the kept needs and more
+  in the new ones.
+- **No definition is graded 2.** Every definition in the batch maps an obvious term.
+- **Still pending:** the person's methodological review (protocol step 7).
