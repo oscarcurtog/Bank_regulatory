@@ -27,6 +27,7 @@ from dataclasses import dataclass
 
 from ingest import benchmark as bm
 from ingest import chunks as ch
+from ingest import ir_metrics
 
 # Recall@T budgets for v1, in cl100k tokens of the chunk text (D-020).
 TOKEN_BUDGETS = (1000, 2000)
@@ -352,3 +353,37 @@ def aggregate(
         for lang, a in pairs
     }
     return Report(per_need, by_language, by_pair, tuple(sorted(missing_rankings)))
+
+
+# ---------------------------------------------------------------------------
+# the whole evaluation
+# ---------------------------------------------------------------------------
+
+
+def evaluate(
+    benchmark: bm.Benchmark,
+    layer: ChunkLayer,
+    run: Run,
+    recall_cutoffs: Sequence[int] = ir_metrics.DEFAULT_RECALL_CUTOFFS,
+    budgets: Sequence[int] = TOKEN_BUDGETS,
+) -> Report:
+    """A run of one system on one chunk layer, against the benchmark: the standard
+    metrics from ir_metrics, Recall@T from here, then the aggregation. Every query
+    of every evaluable need is scored; one absent from the run scores 0."""
+    evaluable = [(t, q) for t in targets(benchmark, layer) for q in t.queries]
+    expected = [q.query_id for _, q in evaluable]
+    check_run(run, layer, expected)
+    rankings = {q: list(run.rankings.get(q, ())) for q in expected}
+    standard = ir_metrics.standard_scores(
+        {q.query_id: t.chunk_grades for t, q in evaluable}, rankings, recall_cutoffs
+    )
+    scores = []
+    for target, query in evaluable:
+        values = dict(standard[query.query_id])
+        for budget in budgets:
+            recall = recall_at_tokens(
+                rankings[query.query_id], layer, target.relevant_nodes, budget, run.depth
+            )
+            values[f"Recall@T={budget}"] = recall.value
+        scores.append(QueryScores(query, target.need.answerability, values))
+    return aggregate(scores, expected, (q for q in expected if q not in run.rankings))

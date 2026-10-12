@@ -29,6 +29,10 @@ dev = [
     "pytest>=8",   # EF-2
     "ruff>=0.16",  # EF-4
     "mypy>=2",     # EF-5
+    # D-020: standard retrieval metrics for the benchmark, through ingest/ir_metrics.py
+    # only. Its backend, pytrec-eval-terrier, publishes no Linux ARM64 wheel, so the
+    # evaluator runs in the venv and in CI, not in the Docker images.
+    "ir-measures>=0.4.3,<0.5",
 ]
 
 [build-system]
@@ -45,6 +49,7 @@ testpaths = ["tests"]
 # automatically when the directory does not exist.
 markers = [
     "corpus: needs the full corpus downloaded into data/raw/",
+    "evaluator: needs ir_measures (requirements-dev.lock.txt); skipped only where FUNDAMENTO_EVALUATOR=unsupported",
 ]
 
 # ---------------------------------------------------------------------------

@@ -96,7 +96,12 @@ COPY tests/ ./tests/
 # caches in /app. It is the price of a development image.
 RUN chown -R fundamento:fundamento /app
 USER fundamento
-CMD ["python", "-m", "pytest", "-q"]
+# The benchmark evaluator (ir_measures, D-020) is not installed here: its backend,
+# pytrec-eval-terrier, publishes no Linux ARM64 wheel. This declaration is the only
+# thing that skips the tests marked "evaluator", and -rs prints why. Without it, a
+# missing ir_measures fails those tests, as it does in the venv and in CI.
+ENV FUNDAMENTO_EVALUATOR=unsupported
+CMD ["python", "-m", "pytest", "-q", "-rs"]
 
 # ---------------------------------------------------------------------------
 # Runtime stage: the image that runs

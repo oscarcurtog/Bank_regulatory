@@ -13,31 +13,7 @@ import pytest
 from ingest import benchmark as bm
 from ingest import chunks as ch
 from ingest import evaluation as ev
-
-# MiCA chunks of the official 500-token layer that fixture N002 touches, plus the
-# two that close its known ranking. Checked against the real layer below.
-N002_EXCERPT = (
-    ("MiCA:40", ("40.1", "40.2", "40.3"), 167),
-    ("MiCA:50", ("50.1", "50.2", "50.3"), 170),
-    ("MiCA:3.1.6", ("3.1.6",), 73),
-    ("MiCA:3.1.7", ("3.1.7",), 61),
-    ("MiCA:3.1.5", ("3.1.5",), 58),
-    (
-        "MiCA:39",
-        ("39.1", "39.2", "39.2.a", "39.2.b", "39.2.c", "39.2.d", "39.2.e", "39.2.sub_2", "39.3"),
-        442,
-    ),
-    ("MiCA:3.1.15", ("3.1.15",), 78),
-)
-N002_RANKING = ["MiCA:40", "MiCA:50", "MiCA:3.1.6", "MiCA:3.1.7", "MiCA:3.1.5", "MiCA:39"]
-
-
-def _excerpt_layer() -> ev.ChunkLayer:
-    refs = [
-        ev.ChunkRef(cid, tuple(("MiCA", p) for p in paths), tokens)
-        for cid, paths, tokens in N002_EXCERPT
-    ]
-    return ev.layer_from_refs(refs, max_tokens=500, parser_version="1.4.0", sources={})
+from tests.conftest import N002_EXCERPT, N002_RANKING, n002_excerpt_layer
 
 
 def _n002() -> tuple[dict, frozenset]:
@@ -48,7 +24,7 @@ def _n002() -> tuple[dict, frozenset]:
 
 def test_n002_projects_onto_its_chunks():
     judged, relevant = _n002()
-    assert ev.project(judged, _excerpt_layer()) == {
+    assert ev.project(judged, n002_excerpt_layer()) == {
         "MiCA:50": 3,  # owns 50.1 (1), 50.2 (3) and 50.3 (2): the maximum
         "MiCA:3.1.7": 2,
         "MiCA:3.1.6": 1,
@@ -67,7 +43,7 @@ def test_n002_recall_at_tokens(budget, covered, tokens, chunks):
     MiCA:40 (167) fits and MiCA:50 (170) does not, so the walk stops at 0/3."""
     _, relevant = _n002()
     r = ev.recall_at_tokens(
-        N002_RANKING, _excerpt_layer(), relevant, budget, depth=ev.MIN_RUN_DEPTH
+        N002_RANKING, n002_excerpt_layer(), relevant, budget, depth=ev.MIN_RUN_DEPTH
     )
     assert (r.covered, r.relevant, r.tokens_used, r.chunks_used) == (covered, 3, tokens, chunks)
 

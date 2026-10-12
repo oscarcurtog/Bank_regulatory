@@ -10,11 +10,13 @@ clean checkout or in CI. They are skipped automatically when it is missing.
 
 from __future__ import annotations
 
+import os
 from collections import Counter
 from pathlib import Path
 
 import pytest
 
+from ingest import evaluation as ev
 from ingest import hierarchy as h
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -56,7 +58,22 @@ def same_words(article: h.Article) -> bool:
     return Counter(reconstruct(article).split()) == Counter(article.text.split())
 
 
+# The "evaluator" tests need ir_measures (D-020), which is in requirements-dev.lock.txt
+# and deliberately not in the Docker images: its backend publishes no Linux ARM64
+# wheel. They are skipped ONLY where the environment declares it, as the dev image
+# does. Anywhere else a missing ir_measures fails the tests that need it.
+EVALUATOR_ENV = "FUNDAMENTO_EVALUATOR"
+
+
 def pytest_collection_modifyitems(config, items):
+    if os.environ.get(EVALUATOR_ENV) == "unsupported":
+        skip_evaluator = pytest.mark.skip(
+            reason=f"{EVALUATOR_ENV}=unsupported: this environment does not ship ir_measures "
+            f"by design (D-020); these tests run in the venv and in CI"
+        )
+        for item in items:
+            if "evaluator" in item.keywords:
+                item.add_marker(skip_evaluator)
     if RAW_DIR.exists() and any(RAW_DIR.iterdir()):
         return
     skip = pytest.mark.skip(reason="data/raw/ is missing in this checkout (D-002: not versioned)")
@@ -121,3 +138,35 @@ def assert_chunk_invariants(article, act, chunks, max_tokens, count) -> None:
     sources = {p for p, n in nodes.items() if n.own_text}
     assert set(owned) == sources, "source partition"
     assert all(v == 1 for v in owned.values()), "a source owned twice"
+
+
+# ---------------------------------------------------------------------------
+# retrieval benchmark (D-019, D-020): an excerpt of the real 500-token layer for
+# fixture N002, so that its known values also run where data/raw/ is missing.
+# tests/integration/test_evaluation_fixtures.py checks it against the real layer.
+# ---------------------------------------------------------------------------
+
+# MiCA chunks of the official 500-token layer that fixture N002 touches, plus the
+# two that close its known ranking. Checked against the real layer below.
+N002_EXCERPT = (
+    ("MiCA:40", ("40.1", "40.2", "40.3"), 167),
+    ("MiCA:50", ("50.1", "50.2", "50.3"), 170),
+    ("MiCA:3.1.6", ("3.1.6",), 73),
+    ("MiCA:3.1.7", ("3.1.7",), 61),
+    ("MiCA:3.1.5", ("3.1.5",), 58),
+    (
+        "MiCA:39",
+        ("39.1", "39.2", "39.2.a", "39.2.b", "39.2.c", "39.2.d", "39.2.e", "39.2.sub_2", "39.3"),
+        442,
+    ),
+    ("MiCA:3.1.15", ("3.1.15",), 78),
+)
+N002_RANKING = ["MiCA:40", "MiCA:50", "MiCA:3.1.6", "MiCA:3.1.7", "MiCA:3.1.5", "MiCA:39"]
+
+
+def n002_excerpt_layer() -> ev.ChunkLayer:
+    refs = [
+        ev.ChunkRef(cid, tuple(("MiCA", p) for p in paths), tokens)
+        for cid, paths, tokens in N002_EXCERPT
+    ]
+    return ev.layer_from_refs(refs, max_tokens=500, parser_version="1.4.0", sources={})
