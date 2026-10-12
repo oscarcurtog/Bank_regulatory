@@ -289,6 +289,12 @@ DATASET_CASES = {
     "evidence that is only ambiguous": lambda r: _with(
         r, qrels=[_qrel("MiCA", "149.2", 3, ambiguous=True), _qrel("MiCA", "149.1", 1)]
     ),
+    "complete need whose evidence is only support": lambda r: _with(
+        r, qrels=[_qrel("MiCA", "149.2", 2), _qrel("MiCA", "149.1", 1)]
+    ),
+    "complete need whose only answer is ambiguous": lambda r: _with(
+        r, qrels=[_qrel("MiCA", "149.2", 3, ambiguous=True), _qrel("MiCA", "149.1", 2)]
+    ),
     "acts that do not match the evidence": lambda r: _with(r, need=[_need(acts=["DORA"])]),
     "none need with evidence": lambda r: _with(
         r,
@@ -306,6 +312,8 @@ DATASET_MESSAGES = {
     "ready need without a Spanish query": "without a query in 'es'",
     "complete need without evidence": "without any non-ambiguous qrel of grade >= 2",
     "evidence that is only ambiguous": "without any non-ambiguous qrel of grade >= 2",
+    "complete need whose evidence is only support": "without a non-ambiguous qrel of grade 3",
+    "complete need whose only answer is ambiguous": "without a non-ambiguous qrel of grade 3",
     "acts that do not match the evidence": "acts ['DORA'] but its evidence",
     "none need with evidence": "answerability 'none' but it has qrels of grade >= 2",
 }
@@ -319,6 +327,16 @@ def test_seal_refuses_a_broken_dataset(tmp_path, case):
         bm.seal(directory, "0.1.0", "dev", _docs())
     assert DATASET_MESSAGES[case] in str(raised.value)
     assert not (directory / bm.MANIFEST_FILE).exists()
+
+
+def test_a_partial_need_may_rest_on_support_alone(tmp_path):
+    """Only a complete need must have a grade-3 answer: when the answer itself lives
+    outside the corpus, grade 2 support is all the corpus can give."""
+    directory = tmp_path / "dev"
+    _, queries, _ = _records()
+    partial = _need(type="partial_out_of_scope", answerability="partial", gap_note="Elsewhere.")
+    _write(directory, [partial], queries, [_qrel("MiCA", "149.2", 2), _qrel("MiCA", "149.1", 1)])
+    bm.seal(directory, "0.1.0", "dev", _docs())
 
 
 def test_an_ambiguous_need_cannot_enter_test(tmp_path):

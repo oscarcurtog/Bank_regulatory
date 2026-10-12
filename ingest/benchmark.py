@@ -417,6 +417,13 @@ def dataset_problems(
                     f"need {need.need_id}: answerability {need.answerability!r} without any "
                     f"non-ambiguous qrel of grade >= {RELEVANT_GRADE}"
                 )
+            # grade 3 answers the primary question (PROTOCOL.md v1.1, section 2): a need
+            # resting on grade 2 alone has support but no answer, so it is not complete
+            if need.answerability == "complete" and evidence and max(r.grade for r in evidence) < 3:
+                problems.append(
+                    f"need {need.need_id}: answerability 'complete' without a non-ambiguous "
+                    f"qrel of grade 3 that answers its primary question"
+                )
             evidence_acts = {r.act for r in evidence}
             if evidence and set(need.acts) != evidence_acts:
                 problems.append(

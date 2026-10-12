@@ -245,7 +245,7 @@ The test suite passes with the corpus (565 tests).
     testing (Chapter IV), or the PSD2 information requirements and liability for unauthorised
     transactions.
 
-### 14. Proposed for protocol v1.1 (not adopted; awaiting approval)
+### 14. Proposed for protocol v1.1
 
 1. **Breadth.** One question per need, or two that one rule is likely to answer together; a
    need whose questions point to different rules is split into separate needs.
@@ -256,3 +256,15 @@ The test suite passes with the corpus (565 tests).
    leaves unstated. A node that is relevant only under such a fact is graded 1.
 4. **Grid.** Add the area of the act to the grid (for example asset-referenced tokens, market
    abuse, testing, payment information) and cap the numeric driver at about half of a batch.
+
+**Adopted** on 2026-10-12 as protocol v1.1, in the wording of `PROTOCOL.md`, which differs from
+these proposals in four points:
+
+- a second question is allowed only when it depends on the same rule, the same evidence answers
+  both, and a separate need would be redundant (section 9);
+- a node whose relevance depends on a fact the need leaves open is graded 1, left unjudged, or the
+  need is clarified before the lock (section 2);
+- the numeric or date share is a heuristic, not a cap (section 10);
+- the person's review checks the method, never the law (section 11).
+
+This batch was built with v1. Any change that its review against v1.1 suggests waits for approval.

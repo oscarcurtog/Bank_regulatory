@@ -1,7 +1,7 @@
-# Retrieval benchmark protocol, v1
+# Retrieval benchmark protocol, v1.1
 
 How one information need goes from an idea to the DEV benchmark (`data/benchmark/dev/`).
-Decisions D-019 and D-020 govern it; `ingest/benchmark.py` enforces what can be checked by code.
+Decisions D-019 to D-022 govern it; `ingest/benchmark.py` enforces what can be checked by code.
 The three needs in `data/benchmark/fixtures/` are test data for the pipeline, not DEV: their
 queries were written knowing the evidence.
 
@@ -9,48 +9,98 @@ Nobody here is a legal expert. Every judgment must be grounded in the words of t
 and explained in its rationale; a question that the text alone cannot settle is marked as
 ambiguous, never turned silently into ground truth.
 
+| Version | Since | What changed |
+|---|---|---|
+| v1 | 2026-10-12 | First version. Batch 1 (N004 to N013) was built with it. |
+| v1.1 | 2026-10-12 | From the calibration of batch 1: one primary retrieval problem per need (section 9); grades 3 and 2 decided by the question, with a worked example (section 2); a hard negative must be wrong whatever the need leaves open (section 2); the area of the act and numeric or date answers in the coverage grid (section 10); the person's review checks the method, not the law (section 11). No data schema changed. |
+
+The data files do not record the protocol version: each batch states it in `dev/CALIBRATION.md`.
+
 ## 1. Workflow
 
 | Step | What happens | Output |
 |---|---|---|
-| 0. Gap | Pick the cell of the coverage grid (type, act, answerability) that is missing, without reading the legal text. | a cell |
-| 1. Need | Write `statement` in English: the actor, the situation, what they want to know. Set type, drivers, difficulty, acts and answerability provisionally. No article numbers or legal wording the user would not know. | need, `status: draft` |
+| 0. Gap | Pick the cell of the coverage grid (section 10) that is missing: type, act, area of the act, answerability, and whether a number or a date is expected in the answer. Without reading the legal text. | a cell |
+| 1. Need | Write `statement` in English: the actor, the situation, and one primary question (section 9). Set type, drivers, difficulty, acts and answerability provisionally. No article numbers or legal wording the user would not know. | need, `status: draft` |
 | 2. Queries, locked | At least one English query (formal or natural) and one natural Spanish query, from the statement alone. LLM variants come from `scripts/benchmark.py prompt <dir> <need_id>`, run in a fresh context that has not read the corpus; record `origin: llm_from_need` and the template. Commit the need and its queries before any evidence search: the history is the record of the lock. After that only typos are fixed; a new wording is a new query. | queries |
 | 3. Evidence search | Structural (article titles, the definitions article, the articles a candidate refers to, parent and sibling nodes), lexical over the own text with the official terms, and twins (identical own text, the same article title, the parallel regime). | candidates |
-| 4. Qrels | Grade every candidate examined, grade 0 included, with the rules of section 2. The rationale cites the node's words. `text_sha256` is `ingest.benchmark.sha256_text(own_text)` from the processed layer, never typed. A `span` only for a long node with several ideas. | qrels |
-| 5. Hard negatives | One to three per need when a twin or a plausible distractor exists, graded 0. The rationale says why it tempts and why it is wrong. | grade-0 qrels |
+| 4. Qrels | Grade every candidate examined with the rules of section 2, grade 0 included. The rationale cites the node's words. `text_sha256` is `ingest.benchmark.sha256_text(own_text)` from the processed layer, never typed. A `span` only for a long node with several ideas. | qrels |
+| 5. Hard negatives | One to three per need when a twin or a plausible distractor exists, graded 0 only if they pass the test of section 2. The rationale says why the node tempts and why it is wrong whatever the need leaves open. | grade-0 qrels |
 | 6. Answerability | List the elements the need asks for (section 3). Set `gap_note` when something is missing. | answerability |
-| 7. Second pass | A fresh pass grades the same candidates without seeing the first grades. A disagreement is settled against the text or marked `ambiguous`, never by majority. A person checks consistency, not legal validity: rationales match the words, queries were committed before the qrels, the Spanish is natural, and every `POSSIBLE COPY` has a reason. | `status: reviewed` |
+| 7. Second pass and review | A fresh pass grades the same candidates without seeing the first grades. A disagreement is settled against the text or marked `ambiguous`, never by majority. Then a person reviews the method, not the law (section 11). | `status: reviewed` |
 | 8. Validation | `scripts/benchmark.py validate data/benchmark/dev`: the seal, the dataset rules, the corpus, and the lexical overlap of each query. | report |
 | 9. Ready | `status: ready`, then `scripts/benchmark.py seal data/benchmark/dev --role dev --version <next>`. Log the time spent on the need. | DEV |
 
 ## 2. Grades
 
+A grade says what the node does for the answer to the need.
+
 | Grade | Test |
 |---|---|
-| 3 | Returned alone, with its article heading, this node shows the rule, date or figure the need asks for. |
-| 2 | Without this node the answer would be wrong or incomplete: a definition that maps the need's words to a legal term, an exception or derogation that changes the answer, the provision that a grade-3 node refers to. |
+| 3 | It answers a primary question of the need directly and completely: read with its article heading and the lead-in that governs it, it states the rule, figure or deadline asked for, or one element of the list asked for. |
+| 2 | It is not the answer, but without it the answer would not be legally correct or complete: a definition that maps the need's words to a legal term; an exception, condition or derogation that can change the answer; the lead-in that turns a point into a rule; a provision that the main rule refers to directly. |
 | 1 | Useful context that a correct and complete answer can leave out. |
-| 0 | Examined and not relevant. Not the same as unjudged: only examined nodes are graded. |
+| 0 | Examined explicitly and wrong for this need, under the hard-negative test below. Not the same as unjudged: only examined nodes are graded. |
 
-Frequent cases:
-
-- **List item and lead-in.** The item that answers is 3. The lead-in is 2 if it carries the
-  operative verb or condition ("this Regulation applies to the following entities:"), 1
-  otherwise. When the rule lives in the lead-in and the item only names its object, the
-  grades swap (DORA 19(4) and its point (a)).
-- **Definitions.** 2 when the need's own words must be mapped to a defined term; 1 when the need
-  already uses the term in its legal sense.
-- **Mandates for technical standards.** 2 when they say where the element asked for is fixed;
-  otherwise 1 or left unjudged.
-- **Twins and repeated wording.** Only the right article is relevant. The parallel regime and
-  the same wording elsewhere are graded 0 when examined.
+When the answer is a list, each point that states one element of it is a 3: "completely" means
+that the node holds its part of the answer, not the whole list. A need with an allowed second
+question (section 9) can have a grade-3 node for each of its two questions.
 
 Binary relevance is grade >= 2. A chunk takes the maximum grade of the nodes it owns.
 
+### Lead-in and list: a worked example
+
+The grade follows the question, not the position in the list. The second subparagraph of DORA
+Article 28(8) is one lead-in and three points:
+
+> Financial entities shall ensure that they are able to exit contractual arrangements without:
+> (a) disruption to their business activities,
+> (b) limiting compliance with regulatory requirements,
+> (c) detriment to the continuity and quality of services provided to clients.
+
+| Question of the need | Lead-in | (a) | (b) | (c) | Why |
+|---|---|---|---|---|---|
+| When a bank leaves an ICT provider, what must the exit avoid? | 2 | 3 | 3 | 3 | The points hold the answer, one element each. The lead-in is what makes them a duty; without it they are three nouns. |
+| Does DORA require a bank to be able to leave its ICT providers? | 3 | 2 | 2 | 2 | The answer is the duty itself, and it lives in the lead-in. The points say what "able to exit" means: an answer without them is incomplete. |
+
+The two passes of batch 1 split on this lead-in (N005); v1.1 settles such a case by the question.
+The usual case is DORA Article 28(7): for "in which situations must a bank be able to end the
+contract?", each of the points (a) to (d) is a 3 and the lead-in ("may be terminated in any of
+the following circumstances:") is a 2. Article 19(4) is the reverse case: the duty to submit, the
+addressee and the time limits are in the lead-in, and point (a) only names the initial
+notification.
+
+### Frequent cases
+
+- **Definitions.** 2 when the need's own words must be mapped to a defined term; 1 when the need
+  already uses the term in its legal sense.
+- **Exceptions, conditions and derogations.** 2 when they can apply to the need and would change
+  the answer; 1 when the facts of the need rule them out.
+- **Mandates for technical standards.** 2 when they say where the element asked for is fixed;
+  otherwise 1 or left unjudged.
+- **Twins and repeated wording.** Only the right article is relevant. The parallel regime and
+  the same wording elsewhere are graded 0 when examined, if they pass the hard-negative test.
+
+### Hard negatives
+
+A grade 0 must stay wrong under every reasonable reading of the facts the need states, and must
+not depend on a fact that the need does not give. Before grading a node 0, try to make it right:
+add a fact that the statement leaves open and that a reader could plausibly assume. If, with that
+fact, the node would answer the need or its relevance would change, it is not a hard negative.
+Instead:
+
+- grade it 1 when it is useful context under that fact;
+- leave it unjudged (no qrel) when even grade 1 would be a guess;
+- clarify the need before the lock when the fact is essential to it. After the lock the
+  statement cannot change: the need is replaced (section 5).
+
+Batch 1 had the case: DORA 42(6) lets the authority require the termination of arrangements with
+critical ICT third-party service providers, and the need did not say whether the vendor was one.
+
 ## 3. Answerability
 
-- **complete**: every element the need asks for is stated by a node of grade >= 2.
+- **complete**: every element the need asks for is stated by a node of grade >= 2, and at least
+  one node of grade 3 answers its primary question.
 - **partial**: some element lives outside the corpus (a Level 2 act, an annex, another act,
   national law), but useful evidence of grade >= 2 exists. `gap_note` names what is missing.
   It is evaluated on the evidence the corpus has, and reported apart.
@@ -68,6 +118,9 @@ helps calibration.
 ## 5. Reject a need when
 
 - it is vague, or depends on facts it does not state;
+- it asks more than one primary question (section 9). Before the lock it is split. After the
+  lock its statement can no longer change, so it is replaced, and each replacement goes through
+  the workflow again with its own lock;
 - it is navigation only ("show me Article 28");
 - it duplicates another need: the same intent and the same grade-3 evidence;
 - it can only be phrased by copying the node;
@@ -78,11 +131,13 @@ helps calibration.
   after the snapshot Fundamento parses; the validator refuses any qrel on them. If you cannot
   tell whether a PSD2 need is safe, it does not enter.
 
-## 6. Calibration after the first 10 needs
+## 6. Calibration after each batch
 
 Before writing more, review the batch: grades by type, hard negatives per need, the share of
 ambiguous judgments, the overlap distribution by language and style, and the time per need.
-Adjust this protocol first; a change of rules is a new protocol version.
+Since v1.1, also: the areas of the act covered and the share of numeric or date answers
+(section 10), and the needs with more relevant chunks than the smallest cut-off of Recall@k
+(section 9). Adjust this protocol first; a change of rules is a new protocol version.
 
 ## 7. Checked by code, reviewed by reason
 
@@ -91,17 +146,112 @@ Adjust this protocol first; a change of rules is a new protocol version.
 | ids, references, enums, unknown keys | whether the statement is a real need |
 | split by need; evidence-aware queries only in fixtures | whether the queries were written blind |
 | evidence rules for reviewed and ready needs | every grade and its rationale |
+| a complete need has a non-ambiguous grade 3 | one primary question per need |
 | node exists, has text, still has the judged text | partial or none, and its gap |
-| the seal: files, templates, parser, corpus snapshot | ambiguity |
+| the seal: files, templates, parser, corpus snapshot | ambiguity, and hard negatives that hold whatever the need leaves open |
 | PSD2 exclusions | a flagged possible copy |
 | lexical overlap, reported per query | duplicate needs with different words |
 
-## 8. Parameters of v1
+## 8. Parameters
 
-Fixed for v1, not for ever. Changing one is recorded and versioned like any other rule.
+Fixed for v1 and unchanged in v1.1. Changing one is recorded and versioned like any other rule.
 
 | Parameter | Value | Meaning |
 |---|---|---|
 | `MIN_RUN_DEPTH` (`ingest/evaluation.py`) | 100 | Results a run must return per query. A run too short to fill a token budget is refused, never truncated. |
 | `COPY_RUN` (`ingest/benchmark.py`) | 6 | Consecutive query words found verbatim in the evidence that raise `POSSIBLE COPY`. A diagnostic heuristic, not a definition of leakage: it never rejects a query by itself. A legitimate match of legal terminology is approved after a reasoned review, and the reason is written in the calibration record of the batch. |
-| Query template | `query_variants.v1` | Frozen for the first batch; the manifest seals its SHA-256. It receives the statement and the formulations requested, nothing else. The renderer refuses a statement that cites an article, a paragraph or point, a structural unit, a node path or a CELEX number. |
+| Query template | `query_variants.v1` | Frozen since the first batch; the manifest seals its SHA-256. It receives the statement and the formulations requested, nothing else. The renderer refuses a statement that cites an article, a paragraph or point, a structural unit, a node path or a CELEX number. |
+
+## 9. One need, one primary retrieval problem
+
+A need asks one primary question. A second question is allowed only when all three hold:
+
+1. it clearly depends on the same legal rule as the first;
+2. the same main evidence can answer both;
+3. asking it as a separate need would give two artificially redundant cases.
+
+A need never mixes several distinct obligations, several moments of a process, or several
+independent legal decisions. A primary question may still need several provisions (type
+`multi_provision`): what counts is that it is one question, not how many nodes answer it.
+
+Batch 1 showed why. Every statement asked two or three things; when they pointed to different
+rules the relevant set grew (21 nodes in 6 chunks of 500 tokens for N005), and with more relevant
+chunks than k, Recall@k cannot reach 1 even for a perfect ranking. The size of the relevant set is
+a symptom, not the criterion: a need is narrowed so that it asks one thing, never to improve a
+metric.
+
+## 10. The coverage grid
+
+A batch is planned as a grid before any legal text is read. Each cell fixes:
+
+| Dimension | Values |
+|---|---|
+| Type | `direct`, `multi_provision`, `exception_confusion`, `partial_out_of_scope` |
+| Act | DORA, MiCA, PSD2, or two of them |
+| Area of the act | a row of the table below |
+| Answerability | complete, partial, none |
+| Number or date | whether the answer is expected to be a figure, a period or a date |
+| Difficulty | easy, medium, hard |
+
+There are no fixed quotas, only heuristics:
+
+- numeric or date answers stay at about half of a batch or less (batch 1 had 6 of 10);
+- an area is not repeated within a batch while other areas of the same act are uncovered;
+- among the remaining cells, prefer the retrieval challenge the benchmark has least of: a twin,
+  an exception, a cross-reference, another act, a gap.
+
+The model that drafts the needs receives the names of the areas, not the article ranges. After the
+evidence search, the area is read again from the articles of the grade 2 and 3 nodes and recorded
+in the calibration record, next to the drivers.
+
+| Act | Area | Articles |
+|---|---|---|
+| DORA | Scope, definitions, proportionality | 1 to 4 |
+| DORA | ICT risk management, including the simplified framework | 5 to 16 |
+| DORA | ICT-related incidents: management, classification, reporting | 17 to 23 |
+| DORA | Digital operational resilience testing | 24 to 27 |
+| DORA | ICT third-party risk: principles, contracts, exit | 28 to 30 |
+| DORA | Oversight of critical ICT third-party service providers | 31 to 44 |
+| DORA | Information sharing | 45 |
+| DORA | Competent authorities, cooperation, penalties | 46 to 56 |
+| MiCA | Scope and definitions | 1 to 3 |
+| MiCA | Offers and white papers of other crypto-assets | 4 to 15 |
+| MiCA | Asset-referenced tokens | 16 to 47 |
+| MiCA | E-money tokens | 48 to 58 |
+| MiCA | Crypto-asset service providers: authorisation and cross-border services | 59 to 65 |
+| MiCA | Crypto-asset service providers: obligations of all providers | 66 to 74 |
+| MiCA | Crypto-asset services: custody, trading platforms, exchange, orders, placing, advice, portfolio management, transfers | 75 to 82 |
+| MiCA | Acquisitions and significant providers | 83 to 85 |
+| MiCA | Market abuse | 86 to 92 |
+| MiCA | Supervision: competent authorities, EBA, ESMA | 93 to 138 |
+| PSD2 | Scope and definitions | 1 to 4 |
+| PSD2 | Payment institutions: authorisation, exemptions, access to payment systems | 5 to 37 |
+| PSD2 | Transparency and information requirements | 38 to 60 |
+| PSD2 | Consent, access to accounts, liability and refunds | 61 to 77 |
+| PSD2 | Execution of payment transactions | 78 to 93 |
+| PSD2 | Data protection, operational and security risks, authentication | 94 to 98 |
+| PSD2 | Complaints, out-of-court redress, penalties | 99 to 103 |
+
+## 11. Two kinds of review
+
+| | Legal validation | Methodological review |
+|---|---|---|
+| Who | the judging passes: the first pass and an independent second pass | a person: the owner of the benchmark |
+| Question | does the grade say what the legal text says? | was the protocol applied consistently? |
+| How | source-grounded: each grade quotes the words of the node; a disagreement is settled against the text, never by majority; `ambiguous` when the text cannot settle it | the checklist below, need by need |
+| Not its job | whether the queries sound real | deciding whether a substantive legal interpretation is right |
+
+For each need, the person checks:
+
+1. Does the need ask one primary question, or one plus an allowed second (section 9)?
+2. Do the queries sound like a real person asking, in English and in Spanish?
+3. Are grades 3, 2, 1 and 0 applied as section 2 says, and the same way as in the other needs?
+4. Does each rationale explain its grade with the words of the node?
+5. Is there duplication with another need, or something artificial in the statement or queries?
+6. Is the need useful as a retrieval case: would a good retriever and a weak one score differently
+   on it?
+
+For the batch, the person also checks that the queries were committed before the evidence search
+and that every `POSSIBLE COPY` has a reason. A finding goes into the calibration record. A doubt
+about the law is never settled by the person: it goes back to the text, or the qrel becomes
+`ambiguous`.
