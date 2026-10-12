@@ -6,9 +6,10 @@
     PYTHONPATH=. .venv/bin/python scripts/benchmark.py prompt data/benchmark/dev N004
 
 validate runs the three boundaries (the seal, the dataset rules, the corpus) and
-reports the lexical overlap of every query with its evidence. It reads the
-processed layer, so it is a local command; CI checks the first two boundaries in
-the test suite.
+reports the lexical overlap of every query with its evidence, how the labels were
+adjudicated (judges A, B and C), and the definitions graded 2 or 3, each of which
+must pass the necessity test of the protocol. It reads the processed layer, so it
+is a local command; CI checks the first two boundaries in the test suite.
 
 seal writes data/benchmark/<dir>/manifest.json only if every check passes. It
 never fixes anything in passing: a stale qrel is reported with its need and path.
@@ -62,6 +63,41 @@ def overlaps(benchmark: bm.Benchmark, docs: dict[str, pr.ProcessedDocument]) -> 
     return "\n".join(lines)
 
 
+def _c_outcome(record: bm.Adjudication) -> str:
+    """What judge C decided, seen from outside: C itself never knew which was A."""
+    assert record.c is not None
+    if record.c.ambiguous:
+        return "ambiguous"
+    if record.c.label == record.a.label:
+        return "judge A's label"
+    if record.c.label == record.b.label:
+        return "judge B's label"
+    return "another label"
+
+
+def adjudication(benchmark: bm.Benchmark) -> str:
+    records = benchmark.adjudications
+    if not records:
+        return "  adjudication record: none"
+    disagreements = [a for a in records if not a.agree]
+    outcome = Counter(_c_outcome(a) for a in records if a.c is not None)
+    lines = [
+        f"  adjudication: {len(records)} labels judged by A and B, "
+        f"{len(records) - len(disagreements)} agreed, {len(disagreements)} went to judge C "
+        f"({sum(a.crosses_threshold for a in disagreements)} across the relevance line), "
+        f"{sum(a.escalated is not None for a in records)} agreements escalated",
+        f"    judge C chose: {dict(sorted(outcome.items()))}",
+    ]
+    return "\n".join(lines)
+
+
+def definitions(benchmark: bm.Benchmark) -> str:
+    graded = bm.definition_qrels(benchmark.qrels)
+    lines = [f"  definitions graded 2 or 3 (necessity test, PROTOCOL.md section 2): {len(graded)}"]
+    lines += [f"    {r.need_id} {r.act}:{r.path} grade {r.grade}" for r in graded]
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -93,6 +129,8 @@ def main(argv: list[str] | None = None) -> int:
     benchmark = bm.load_benchmark(args.directory)
     bm.check_corpus(benchmark, docs)
     print(summary(benchmark))
+    print(adjudication(benchmark))
+    print(definitions(benchmark))
     print(overlaps(benchmark, docs))
     return 0
 

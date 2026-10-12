@@ -1,7 +1,7 @@
-# Retrieval benchmark protocol, v1.1
+# Retrieval benchmark protocol, v1.2
 
 How one information need goes from an idea to the DEV benchmark (`data/benchmark/dev/`).
-Decisions D-019 to D-022 govern it; `ingest/benchmark.py` enforces what can be checked by code.
+Decisions D-019 to D-023 govern it; `ingest/benchmark.py` enforces what can be checked by code.
 The three needs in `data/benchmark/fixtures/` are test data for the pipeline, not DEV: their
 queries were written knowing the evidence.
 
@@ -13,6 +13,7 @@ ambiguous, never turned silently into ground truth.
 |---|---|---|
 | v1 | 2026-10-12 | First version. Batch 1 (N004 to N013) was built with it. |
 | v1.1 | 2026-10-12 | From the calibration of batch 1: one primary retrieval problem per need (section 9); grades 3 and 2 decided by the question, with a worked example (section 2); a hard negative must be wrong whatever the need leaves open (section 2); the area of the act and numeric or date answers in the coverage grid (section 10); the person's review checks the method, not the law (section 11). No data schema changed. |
+| v1.2 | 2026-10-12 | From the review of batch 1 against v1.1: a definition is graded by necessity, not by mapping; a reference to whole articles marks where to look, not what is relevant; a grade 0 needs a scope check and must be definitely wrong on the stated facts (all three in section 2); every disagreement between judges A and B goes to an independent judge C, recorded in `adjudications.jsonl` (section 12); a replacement keeps its id only when it narrows the same need (section 5). No data schema changed: the adjudication record is a new file, outside the seal. |
 
 The data files do not record the protocol version: each batch states it in `dev/CALIBRATION.md`.
 
@@ -24,10 +25,10 @@ The data files do not record the protocol version: each batch states it in `dev/
 | 1. Need | Write `statement` in English: the actor, the situation, and one primary question (section 9). Set type, drivers, difficulty, acts and answerability provisionally. No article numbers or legal wording the user would not know. | need, `status: draft` |
 | 2. Queries, locked | At least one English query (formal or natural) and one natural Spanish query, from the statement alone. LLM variants come from `scripts/benchmark.py prompt <dir> <need_id>`, run in a fresh context that has not read the corpus; record `origin: llm_from_need` and the template. Commit the need and its queries before any evidence search: the history is the record of the lock. After that only typos are fixed; a new wording is a new query. | queries |
 | 3. Evidence search | Structural (article titles, the definitions article, the articles a candidate refers to, parent and sibling nodes), lexical over the own text with the official terms, and twins (identical own text, the same article title, the parallel regime). | candidates |
-| 4. Qrels | Grade every candidate examined with the rules of section 2, grade 0 included. The rationale cites the node's words. `text_sha256` is `ingest.benchmark.sha256_text(own_text)` from the processed layer, never typed. A `span` only for a long node with several ideas. | qrels |
-| 5. Hard negatives | One to three per need when a twin or a plausible distractor exists, graded 0 only if they pass the test of section 2. The rationale says why the node tempts and why it is wrong whatever the need leaves open. | grade-0 qrels |
+| 4. Qrels, judge A | Judge A grades every candidate examined, and the answerability, with the rules of section 2, and writes them down before judge B starts. The rationale cites the node's words. `text_sha256` is `ingest.benchmark.sha256_text(own_text)` from the processed layer, never typed. A `span` only for a long node with several ideas. | qrels |
+| 5. Hard negatives | One to three per need when a twin or a plausible distractor exists, graded 0 only after the scope check of section 2. The rationale says why the node tempts and why it is wrong on the facts the need states. | grade-0 qrels |
 | 6. Answerability | List the elements the need asks for (section 3). Set `gap_note` when something is missing. | answerability |
-| 7. Second pass and review | A fresh pass grades the same candidates without seeing the first grades. A disagreement is settled against the text or marked `ambiguous`, never by majority. Then a person reviews the method, not the law (section 11). | `status: reviewed` |
+| 7. Judges B and C, then review | Judge B, a fresh context, grades the same candidates and the answerability without seeing judge A or any earlier label. Every disagreement goes to judge C (section 12): the first judge never settles its own disagreement. Then a person reviews the method, not the law (section 11). | `status: reviewed`, `adjudications.jsonl` |
 | 8. Validation | `scripts/benchmark.py validate data/benchmark/dev`: the seal, the dataset rules, the corpus, and the lexical overlap of each query. | report |
 | 9. Ready | `status: ready`, then `scripts/benchmark.py seal data/benchmark/dev --role dev --version <next>`. Log the time spent on the need. | DEV |
 
@@ -38,9 +39,9 @@ A grade says what the node does for the answer to the need.
 | Grade | Test |
 |---|---|
 | 3 | It answers a primary question of the need directly and completely: read with its article heading and the lead-in that governs it, it states the rule, figure or deadline asked for, or one element of the list asked for. |
-| 2 | It is not the answer, but without it the answer would not be legally correct or complete: a definition that maps the need's words to a legal term; an exception, condition or derogation that can change the answer; the lead-in that turns a point into a rule; a provision that the main rule refers to directly. |
+| 2 | It is not the answer, but without it the answer would not be legally correct or complete: a definition needed to read the need or to decide whether a rule applies; an exception, condition or derogation that can change the answer; the lead-in that turns a point into a rule; a specific provision that the main rule refers to and that the answer needs. |
 | 1 | Useful context that a correct and complete answer can leave out. |
-| 0 | Examined explicitly and wrong for this need, under the hard-negative test below. Not the same as unjudged: only examined nodes are graded. |
+| 0 | Examined explicitly and definitely not relevant on the facts the need states, after the scope check below; never "probably not relevant". Not the same as unjudged: only examined nodes are graded. |
 
 When the answer is a list, each point that states one element of it is a 3: "completely" means
 that the node holds its part of the answer, not the whole list. A need with an allowed second
@@ -72,30 +73,47 @@ notification.
 
 ### Frequent cases
 
-- **Definitions.** 2 when the need's own words must be mapped to a defined term; 1 when the need
-  already uses the term in its legal sense.
+- **Definitions.** 2 only when the definition is necessary to read the need correctly or to
+  decide whether a rule applies. The test: without this definition, could the need reasonably be
+  answered wrongly or incompletely? If yes, 2; if no, usually 1. An obvious mapping from everyday
+  words to the legal term is not a 2 by default; a term that is ambiguous, narrows the scope or
+  separates plausible legal categories can be. For a need about the company that runs a bank's
+  core banking platform, DORA 3(19) ("'ICT third-party service provider' means an undertaking
+  providing ICT services") is a 1 when no other category is plausible. For a need about exit
+  strategies, DORA 3(22) ("critical or important function") is a 2, because the duty of
+  Article 28(8) applies only "for ICT services supporting critical or important functions".
+- **References to whole articles.** A reference such as MiCA 68(7)'s plans "set up pursuant to
+  Articles 11 and 12 of Regulation (EU) 2022/2554" marks where to look, not what is relevant.
+  The nodes of the referred articles are judged one by one: 2 for the specific nodes without
+  which the answer would be wrong or incomplete, 1 for useful context, unjudged for the rest, and
+  ambiguous when it cannot be told which part is needed. A cross-reference never adds qrels by
+  itself.
 - **Exceptions, conditions and derogations.** 2 when they can apply to the need and would change
   the answer; 1 when the facts of the need rule them out.
 - **Mandates for technical standards.** 2 when they say where the element asked for is fixed;
   otherwise 1 or left unjudged.
 - **Twins and repeated wording.** Only the right article is relevant. The parallel regime and
-  the same wording elsewhere are graded 0 when examined, if they pass the hard-negative test.
+  the same wording elsewhere are graded 0 when examined, if they pass the scope check below.
 
-### Hard negatives
+### Hard negatives and the scope check
 
-A grade 0 must stay wrong under every reasonable reading of the facts the need states, and must
-not depend on a fact that the need does not give. Before grading a node 0, try to make it right:
-add a fact that the statement leaves open and that a reader could plausibly assume. If, with that
-fact, the node would answer the need or its relevance would change, it is not a hard negative.
-Instead:
+A grade 0 means definitely not relevant on the facts the need states, not probably not relevant.
+Before grading a node 0, check its scope: read the node and every provision needed to know whether
+it applies (its actor, conditions, exceptions, field and eligibility, and the facts it needs).
+The adjudication record names those provisions (`scope_basis`). If the node could be relevant
+under a reasonable reading of facts that the need does not specify, it is not a 0:
 
-- grade it 1 when it is useful context under that fact;
-- leave it unjudged (no qrel) when even grade 1 would be a guess;
-- clarify the need before the lock when the fact is essential to it. After the lock the
-  statement cannot change: the need is replaced (section 5).
+- grade it 1 when it is potentially useful context;
+- leave it unjudged when it does not deserve a judgment;
+- mark it ambiguous when its applicability cannot be settled;
+- clarify the need, only if it is not locked yet and the fact is essential to it.
 
-Batch 1 had the case: DORA 42(6) lets the authority require the termination of arrangements with
-critical ICT third-party service providers, and the need did not say whether the vendor was one.
+A locked need is never rewritten to manufacture a hard negative.
+
+| Node | Need | Scope read | Result |
+|---|---|---|---|
+| DORA 23: the incident chapter "shall also apply to operational or security payment-related incidents" of credit institutions, payment institutions, account information service providers and electronic money institutions | How must an insurance company report a major ICT-related incident? | The node itself names the entities it reaches | An insurer is none of them: the 0 holds. |
+| DORA 42(6): authorities may require the termination of arrangements with critical ICT third-party service providers | When must a bank be able to end its contract with an ICT provider? The need does not say whether the provider is critical | The node itself: it reaches only "critical ICT third-party service providers" | Relevant if the provider is critical: not a 0. |
 
 ## 3. Answerability
 
@@ -120,7 +138,10 @@ helps calibration.
 - it is vague, or depends on facts it does not state;
 - it asks more than one primary question (section 9). Before the lock it is split. After the
   lock its statement can no longer change, so it is replaced, and each replacement goes through
-  the workflow again with its own lock;
+  the workflow again with its own lock and new queries. A replacement keeps the `need_id` only
+  when it narrows or clarifies the same information need; a different retrieval problem gets a
+  new id. Retired ids are never reused. The data files hold only the current needs, so the
+  calibration record says what replaced what;
 - it is navigation only ("show me Article 28");
 - it duplicates another need: the same intent and the same grade-3 evidence;
 - it can only be phrased by copying the node;
@@ -148,9 +169,11 @@ Since v1.1, also: the areas of the act covered and the share of numeric or date 
 | evidence rules for reviewed and ready needs | every grade and its rationale |
 | a complete need has a non-ambiguous grade 3 | one primary question per need |
 | node exists, has text, still has the judged text | partial or none, and its gap |
-| the seal: files, templates, parser, corpus snapshot | ambiguity, and hard negatives that hold whatever the need leaves open |
+| the seal: files, templates, parser, corpus snapshot | ambiguity |
 | PSD2 exclusions | a flagged possible copy |
 | lexical overlap, reported per query | duplicate needs with different words |
+| the adjudication record: final labels are the qrels; no A/B disagreement without judge C; every grade 0 names its scope provisions, and they exist | the scope check itself, and whether each 0 holds |
+| definitions graded 2 or 3, listed by `validate` | whether each one is necessary; which nodes of a referred article the answer needs |
 
 ## 8. Parameters
 
@@ -236,9 +259,9 @@ in the calibration record, next to the drivers.
 
 | | Legal validation | Methodological review |
 |---|---|---|
-| Who | the judging passes: the first pass and an independent second pass | a person: the owner of the benchmark |
+| Who | judges A and B, and judge C for every disagreement (section 12) | a person: the owner of the benchmark |
 | Question | does the grade say what the legal text says? | was the protocol applied consistently? |
-| How | source-grounded: each grade quotes the words of the node; a disagreement is settled against the text, never by majority; `ambiguous` when the text cannot settle it | the checklist below, need by need |
+| How | source-grounded: each grade quotes the words of the node; a disagreement is decided by judge C against the text and this protocol, never by majority; `ambiguous` when the text cannot settle it | the checklist below, need by need |
 | Not its job | whether the queries sound real | deciding whether a substantive legal interpretation is right |
 
 For each need, the person checks:
@@ -251,7 +274,39 @@ For each need, the person checks:
 6. Is the need useful as a retrieval case: would a good retriever and a weak one score differently
    on it?
 
-For the batch, the person also checks that the queries were committed before the evidence search
-and that every `POSSIBLE COPY` has a reason. A finding goes into the calibration record. A doubt
-about the law is never settled by the person: it goes back to the text, or the qrel becomes
-`ambiguous`.
+For the batch, the person also checks that it is coherent as a whole, that the queries were
+committed before the evidence search, and that every `POSSIBLE COPY` has a reason. A finding goes
+into the calibration record. A doubt about the law is never settled by the person, who is never
+asked to choose between two legal interpretations: it goes to judges A, B and C and the text, or
+the qrel becomes `ambiguous`.
+
+## 12. Adjudication: judges A, B and C
+
+The first judge never settles its own disagreement, and nobody counts votes.
+
+| Judge | Who | Receives | Never receives |
+|---|---|---|---|
+| A | whoever searched the evidence | the need, the candidates, the rules | (writes before B starts) |
+| B | a fresh context | the need, each candidate with its legal context and the provisions that fix its scope, the rules | A's judgments, any earlier label |
+| C | a fresh context | the need (and a query when needed), the candidate node, the strictly necessary legal context, the rules, and the two positions as "Rationale A" and "Rationale B" in random order | which judge was first, any earlier label |
+
+- **A and B agree** (the same grade and ambiguous flag, both unjudged, or the same answerability):
+  the label is final, unless it breaks an automatic check such as a dataset rule; then it goes to
+  C with the reason (`escalated`).
+- **A and B disagree:** C decides. It may take A's label, B's, another, or mark the node
+  ambiguous, and it justifies the label against the text and this protocol. "Two judges said so"
+  is never a reason.
+- **Every disagreement goes to C:** 0 against 1, 1 against 2, 2 against 3, a hard negative,
+  ambiguous against judged, judged against unjudged, and answerability (complete, partial, none).
+
+`adjudications.jsonl` holds one line per candidate of every reviewed or ready need, and one for
+its answerability: judgment A, judgment B, judgment C when there was one, each with its rationale,
+and the reason for an escalation. A disagreement across the relevance line (grade >= 2 on one
+side only) shows in the record. The file sits next to the data but outside the seal, because
+sealing it would change the manifest contract; instead, the validator requires its final labels
+to be exactly the qrels and the needs' answerability, and refuses an A/B disagreement without C.
+
+A typical flow: A grades a node 1, B grades it 2, so the record shows a disagreement across the
+relevance line. C reads the node, its context and both rationales, presented as A and B in random
+order, and returns 2 with a rationale that quotes the text. The qrel takes grade 2, and the record
+keeps the three judgments.

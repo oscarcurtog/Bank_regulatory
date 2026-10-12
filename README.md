@@ -62,7 +62,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 568 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 599 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -100,7 +100,7 @@ uv pip install --require-hashes --no-deps -r requirements-dev.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest reports `530 passed, 38 skipped`. The 38 skipped tests are marked
+Without the corpus, pytest reports `561 passed, 38 skipped`. The 38 skipped tests are marked
 `corpus`: they need `data/raw/`, which is not in the repository (see
 [Data and reproducibility](#data-and-reproducibility)).
 
@@ -163,7 +163,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 
-Without the corpus you can run the test suite (530 tests pass, 38 are skipped), the linters and
+Without the corpus you can run the test suite (561 tests pass, 38 are skipped), the linters and
 type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files
@@ -228,8 +228,10 @@ is derived by comparing the parsed version with the consolidated version of 2025
 `data/benchmark/PROTOCOL.md`: the needs and their queries were committed before any evidence was
 searched, and every qrel was graded twice, by two passes that did not see each other's grades.
 `data/benchmark/dev/CALIBRATION.md` records what the batch measured. Its proposals became protocol
-v1.1, which applies to the next needs; the first batch, built with v1, is reviewed against it
-before it changes.
+v1.1, and the review of the batch against v1.1 led to v1.2: a definition counts only when it is
+necessary, a hard negative needs a scope check, and every disagreement between two judges goes to
+an independent third one, recorded in `adjudications.jsonl` next to the data. The first batch is
+being revised under v1.2.
 
 ## Known limitations
 

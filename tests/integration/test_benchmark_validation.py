@@ -349,6 +349,81 @@ def test_an_ambiguous_need_cannot_enter_test(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# the adjudication record (PROTOCOL.md, section 12): outside the seal, but it must
+# agree with the sealed qrels label by label
+# ---------------------------------------------------------------------------
+
+
+def _judged(grade: int, scope: list[str] | None = None) -> dict:
+    return {"grade": grade, "rationale": f"Grade {grade}."} | (
+        {"scope_basis": scope} if scope else {}
+    )
+
+
+def _adjudication(target: str, a: dict, b: dict, c: dict | None = None) -> bm.Adjudication:
+    data = {"need_id": "N001", "target": target, "a": a, "b": b}
+    return bm.Adjudication.model_validate(data | ({"c": c} if c else {}))
+
+
+def _adjudications() -> list[bm.Adjudication]:
+    """How the labels of _records() were decided: MiCA 149.2 went to judge C."""
+    answerability = {"answerability": "complete", "rationale": "149.2 states the date."}
+    return [
+        _adjudication("MiCA:149.2", _judged(2), _judged(3), c=_judged(3)),
+        _adjudication("MiCA:149.1", _judged(1), _judged(1)),
+        _adjudication("DORA:64", _judged(0, ["DORA:64"]), _judged(0, ["DORA:64"])),
+        _adjudication("answerability", answerability, answerability),
+    ]
+
+
+def _with_adjudications(tmp_path, adjudications):
+    directory = tmp_path / "dev"
+    _write(directory, *_records())
+    bm.write_jsonl(directory / bm.ADJUDICATIONS_FILE, adjudications)
+    return directory
+
+
+def test_the_adjudication_record_is_read_with_the_benchmark(tmp_path):
+    directory = _with_adjudications(tmp_path, _adjudications())
+    bm.seal(directory, "0.1.0", "dev", _docs())
+    benchmark = bm.load_benchmark(directory)
+    assert [a.target for a in benchmark.adjudications if a.c is not None] == ["MiCA:149.2"]
+    bm.check_corpus(benchmark, _docs())
+
+
+def test_seal_refuses_a_record_that_disagrees_with_the_qrels(tmp_path):
+    adjudications = _adjudications()
+    adjudications[0] = _adjudication("MiCA:149.2", _judged(2), _judged(2))  # the qrel says 3
+    with pytest.raises(bm.BenchmarkError, match="the qrel has 3"):
+        bm.seal(_with_adjudications(tmp_path, adjudications), "0.1.0", "dev", _docs())
+
+
+def test_with_a_record_no_ready_need_skips_adjudication(tmp_path):
+    directory = _with_adjudications(tmp_path, _adjudications()[:-1])
+    with pytest.raises(bm.BenchmarkError, match="no adjudication of its answerability"):
+        bm.seal(directory, "0.1.0", "dev", _docs())
+
+
+def test_a_record_edited_after_the_seal_is_refused_on_load(tmp_path):
+    directory = _with_adjudications(tmp_path, _adjudications())
+    bm.seal(directory, "0.1.0", "dev", _docs())
+    adjudications = _adjudications()
+    adjudications[1] = _adjudication("MiCA:149.1", _judged(1), _judged(2), c=_judged(2))
+    bm.write_jsonl(directory / bm.ADJUDICATIONS_FILE, adjudications)
+    with pytest.raises(bm.BenchmarkError, match="the adjudication record does not match"):
+        bm.load_benchmark(directory)
+
+
+def test_a_scope_check_names_nodes_that_exist(tmp_path):
+    adjudications = _adjudications()
+    adjudications[2] = _adjudication(
+        "DORA:64", _judged(0, ["DORA:64", "DORA:65"]), _judged(0, ["DORA:64"])
+    )
+    with pytest.raises(bm.BenchmarkError, match="no node DORA:65"):
+        bm.seal(_with_adjudications(tmp_path, adjudications), "0.1.0", "dev", _docs())
+
+
+# ---------------------------------------------------------------------------
 # the manifest boundary
 # ---------------------------------------------------------------------------
 

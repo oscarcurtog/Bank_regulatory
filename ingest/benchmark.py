@@ -38,7 +38,7 @@ import json
 import re
 from collections import Counter
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Literal, Self, get_args
 
@@ -319,6 +319,8 @@ class Benchmark:
     needs: list[Need]
     queries: list[Query]
     qrels: list[Qrel]
+    # how each label was decided (section 12); empty where no record exists
+    adjudications: list[Adjudication] = field(default_factory=list)
 
     def need(self, need_id: str) -> Need:
         return next(n for n in self.needs if n.need_id == need_id)
@@ -434,6 +436,174 @@ def dataset_problems(
 
 
 # ---------------------------------------------------------------------------
+# adjudication records (PROTOCOL.md, section 12): how each label was decided
+# ---------------------------------------------------------------------------
+
+# Judge A annotates, judge B annotates without seeing A, and any disagreement goes to
+# judge C, a fresh context that sees both rationales without knowing which judge was
+# first or what the label used to be. The record lives next to the data files but
+# outside the seal: sealing it would change the manifest contract, so instead it must
+# agree with the sealed qrels, label by label.
+ADJUDICATIONS_FILE = "adjudications.jsonl"
+ANSWERABILITY_TARGET = "answerability"
+NODE_REF_PATTERN = rf"^(?:{'|'.join(ACTS)}):{h.LTREE_PATH_PATTERN.removeprefix('^')}"
+NodeRef = Annotated[str, Field(pattern=NODE_REF_PATTERN)]
+# Articles whose nodes are definitions. A definition is grade 2 only when it is
+# necessary to read the need or to decide whether a rule applies (section 2), so
+# validate lists every definition graded 2 or 3 for the reviewer to check.
+DEFINITIONS_ARTICLES: Mapping[str, str] = {"DORA": "3", "MiCA": "3", "PSD2": "4"}
+
+
+class Judgment(BaseModel):
+    """One judge's decision: on a candidate node (grade, or None to leave it
+    unjudged, i.e. without a qrel) or on a need (answerability). A grade 0 names
+    the provisions read to fix the node's scope: who it applies to, its conditions,
+    exceptions and field, the node itself when it sets them."""
+
+    model_config = STRICT
+
+    grade: Grade | None = None
+    ambiguous: bool = Field(default=False, strict=True)
+    answerability: Answerability | None = None
+    rationale: Text
+    scope_basis: list[NodeRef] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
+        if self.answerability is not None and (
+            self.grade is not None or self.ambiguous or self.scope_basis
+        ):
+            raise ValueError("an answerability judgment carries no grade, flag or scope")
+        if self.ambiguous and self.grade is None:
+            raise ValueError("an ambiguous judgment still gives its best grade")
+        if self.grade == 0 and not self.scope_basis:
+            raise ValueError(
+                "a grade 0 names the provisions read to fix the node's scope (scope_basis)"
+            )
+        return self
+
+    @property
+    def label(self) -> tuple[int | None, bool, str | None]:
+        return (self.grade, self.ambiguous, self.answerability)
+
+    @property
+    def relevant(self) -> bool:
+        return self.grade is not None and self.grade >= RELEVANT_GRADE and not self.ambiguous
+
+
+class Adjudication(BaseModel):
+    """How one label of one need was decided. There is no majority: when A and B
+    disagree, C decides against the text, and may pick A's label, B's, another or
+    ambiguous. An agreement goes to C only when it breaks an automatic check, and
+    then 'escalated' says which."""
+
+    model_config = STRICT
+
+    need_id: str = Field(pattern=NEED_ID_PATTERN)
+    target: str = Field(pattern=rf"{NODE_REF_PATTERN}|^{ANSWERABILITY_TARGET}$")
+    a: Judgment
+    b: Judgment
+    c: Judgment | None = None
+    escalated: Text | None = None
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
+        where = f"{self.need_id} {self.target}"
+        judges = [j for j in (self.a, self.b, self.c) if j is not None]
+        on_need = self.target == ANSWERABILITY_TARGET
+        if any((j.answerability is not None) != on_need for j in judges):
+            raise ValueError(
+                f"{where}: an answerability target takes answerability judgments, and a "
+                f"node target takes grades"
+            )
+        if not self.agree and self.c is None:
+            raise ValueError(
+                f"{where}: judges A and B disagree, and a disagreement is never final "
+                f"without judge C"
+            )
+        if self.c is not None and self.agree and self.escalated is None:
+            raise ValueError(f"{where}: judge C on an agreement needs the reason ('escalated')")
+        if self.escalated is not None and self.c is None:
+            raise ValueError(f"{where}: an escalated agreement needs judge C")
+        return self
+
+    @property
+    def agree(self) -> bool:
+        return self.a.label == self.b.label
+
+    @property
+    def final(self) -> Judgment:
+        return self.c if self.c is not None else self.a
+
+    @property
+    def crosses_threshold(self) -> bool:
+        """A and B fall on different sides of the relevance line (grade >= 2)."""
+        return self.a.relevant != self.b.relevant
+
+
+def adjudication_problems(
+    adjudications: Sequence[Adjudication],
+    needs: Sequence[Need],
+    qrels: Sequence[Qrel],
+    require_all: bool,
+) -> list[str]:
+    """The record must say how every label came about, and agree with it: the final
+    label of each target is the qrel (or no qrel when it is unjudged) and the need's
+    answerability. With require_all, every reviewed or ready need is fully covered."""
+    problems: list[str] = []
+    keys = Counter((a.need_id, a.target) for a in adjudications)
+    problems += [f"adjudication {k} appears {c} times" for k, c in keys.items() if c > 1]
+    by_need = {n.need_id: n for n in needs}
+    by_key = {(r.need_id, f"{r.act}:{r.path}"): r for r in qrels}
+    for adj in adjudications:
+        where = f"adjudication {adj.need_id} {adj.target}"
+        final = adj.final
+        if adj.need_id not in by_need:
+            problems.append(f"{where}: unknown need")
+        elif adj.target == ANSWERABILITY_TARGET:
+            if final.answerability != by_need[adj.need_id].answerability:
+                problems.append(
+                    f"{where}: final {final.answerability!r}, the need says "
+                    f"{by_need[adj.need_id].answerability!r}"
+                )
+        else:
+            qrel = by_key.get((adj.need_id, adj.target))
+            if final.grade is None and qrel is not None:
+                problems.append(f"{where}: left unjudged, but a qrel exists")
+            elif final.grade is not None and qrel is None:
+                problems.append(f"{where}: final grade {final.grade}, but there is no qrel")
+            elif qrel is not None and (qrel.grade, qrel.ambiguous) != (
+                final.grade,
+                final.ambiguous,
+            ):
+                problems.append(
+                    f"{where}: final grade {final.grade} (ambiguous {final.ambiguous}), the "
+                    f"qrel has {qrel.grade} (ambiguous {qrel.ambiguous})"
+                )
+    if require_all:
+        for need in needs:
+            if need.status == "draft":
+                continue  # judged later: the record comes with the qrels
+            if (need.need_id, ANSWERABILITY_TARGET) not in keys:
+                problems.append(f"need {need.need_id}: no adjudication of its answerability")
+            problems += [
+                f"qrel {r.need_id} {r.act}:{r.path}: no adjudication record"
+                for r in qrels
+                if r.need_id == need.need_id and (r.need_id, f"{r.act}:{r.path}") not in keys
+            ]
+    return problems
+
+
+def definition_qrels(qrels: Sequence[Qrel]) -> list[Qrel]:
+    """Qrels of grade 2 or 3 on a definition: each must pass the necessity test."""
+    return [
+        r
+        for r in qrels
+        if r.grade >= RELEVANT_GRADE and r.path.split(".")[0] == DEFINITIONS_ARTICLES[r.act]
+    ]
+
+
+# ---------------------------------------------------------------------------
 # the corpus boundary
 # ---------------------------------------------------------------------------
 
@@ -506,6 +676,21 @@ def _fail(error: type[BenchmarkError], heading: str, problems: Sequence[str]) ->
         raise error(heading + "\n" + "\n".join(f"- {p}" for p in problems))
 
 
+def adjudication_node_problems(
+    adjudications: Sequence[Adjudication], texts: Mapping[NodeKey, str]
+) -> list[str]:
+    """Every node an adjudication names, as its target or in a scope check, exists."""
+    problems: list[str] = []
+    for adj in adjudications:
+        refs = [adj.target] if adj.target != ANSWERABILITY_TARGET else []
+        refs += [ref for j in (adj.a, adj.b, adj.c) if j is not None for ref in j.scope_basis]
+        for ref in dict.fromkeys(refs):
+            act, _, path = ref.partition(":")
+            if (act, path) not in texts:
+                problems.append(f"adjudication {adj.need_id} {adj.target}: no node {ref}")
+    return problems
+
+
 def check_corpus(benchmark: Benchmark, docs: Mapping[str, pr.ProcessedDocument]) -> None:
     """The third boundary, for a loaded benchmark. Needs the real corpus, so it runs
     locally (D-020); CI checks the first two boundaries only.
@@ -513,7 +698,9 @@ def check_corpus(benchmark: Benchmark, docs: Mapping[str, pr.ProcessedDocument])
     A changed snapshot is reported with the qrels that the change actually broke, so
     that a reseal knows exactly what to review."""
     snapshot = snapshot_problems(benchmark.manifest, docs)
-    broken = qrel_problems(benchmark.qrels, node_texts(docs))
+    texts = node_texts(docs)
+    broken = qrel_problems(benchmark.qrels, texts)
+    broken += adjudication_node_problems(benchmark.adjudications, texts)
     if snapshot:
         detail = broken or ["every qrel still matches: seal again with a new benchmark_version"]
         _fail(
@@ -559,6 +746,11 @@ def _read_records(directory: Path) -> tuple[list[Need], list[Query], list[Qrel]]
         read_jsonl(directory / QUERIES_FILE, Query),
         read_jsonl(directory / QRELS_FILE, Qrel),
     )
+
+
+def _read_adjudications(directory: Path) -> list[Adjudication]:
+    path = directory / ADJUDICATIONS_FILE
+    return read_jsonl(path, Adjudication) if path.exists() else []
 
 
 def _template_hashes(
@@ -611,7 +803,15 @@ def load_benchmark(
         f"{directory} breaks the dataset rules:",
         dataset_problems(needs, queries, qrels, manifest.role, excluded),
     )
-    return Benchmark(directory, manifest, needs, queries, qrels)
+    adjudications = _read_adjudications(directory)
+    _fail(
+        BenchmarkError,
+        f"{directory}: the adjudication record does not match the data:",
+        adjudication_problems(
+            adjudications, needs, qrels, require_all=(directory / ADJUDICATIONS_FILE).exists()
+        ),
+    )
+    return Benchmark(directory, manifest, needs, queries, qrels, adjudications)
 
 
 def _psd2_exclusions(path: Path | None, psd2: CorpusSource) -> frozenset[str]:
@@ -656,10 +856,15 @@ def seal(
     needs, queries, qrels = _read_records(directory)
     hashes, missing = _template_hashes(queries, templates_dir)
     problems = dataset_problems(needs, queries, qrels, role, excluded) + missing
+    adjudications = _read_adjudications(directory)
+    problems += adjudication_problems(
+        adjudications, needs, qrels, require_all=(directory / ADJUDICATIONS_FILE).exists()
+    )
     parsers = {doc.parser_version for doc in docs.values()}
     if len(parsers) > 1:
         problems.append(f"the processed layer mixes parser versions {sorted(parsers)}")
-    problems += qrel_problems(qrels, node_texts(docs))
+    texts = node_texts(docs)
+    problems += qrel_problems(qrels, texts) + adjudication_node_problems(adjudications, texts)
     _fail(BenchmarkError, f"cannot seal {directory}:", problems)
 
     manifest = BenchmarkManifest(
