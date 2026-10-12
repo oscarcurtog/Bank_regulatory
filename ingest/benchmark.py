@@ -47,6 +47,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationErr
 from ingest import download as dl
 from ingest import hierarchy as h
 from ingest import processed as pr
+from ingest import psd2_exclusions as px
 
 SCHEMA_VERSION: Literal["1"] = "1"
 BENCHMARK_DIR = Path("data/benchmark")
@@ -339,7 +340,11 @@ def _normalized(text: str) -> str:
 
 
 def dataset_problems(
-    needs: Sequence[Need], queries: Sequence[Query], qrels: Sequence[Qrel], role: Role
+    needs: Sequence[Need],
+    queries: Sequence[Query],
+    qrels: Sequence[Qrel],
+    role: Role,
+    excluded_psd2: frozenset[str] = frozenset(),
 ) -> list[str]:
     """Every rule that looks at more than one record. Returns all the problems at
     once, so that one run lists everything to fix."""
@@ -363,6 +368,13 @@ def dataset_problems(
     ]
     problems += [
         f"qrel {r.need_id} {r.act}:{r.path}: unknown need" for r in qrels if r.need_id not in known
+    ]
+
+    problems += [
+        f"qrel {r.need_id} PSD2:{r.path}: Article {r.path.split('.')[0]} was amended after the "
+        f"corpus snapshot ({px.PSD2_EXCLUSIONS_PATH.name}); no need may use it"
+        for r in qrels
+        if r.act == "PSD2" and r.path.split(".")[0] in excluded_psd2
     ]
 
     split = "dev" if role in ("dev", "fixture") else "test"
@@ -556,7 +568,9 @@ def _template_hashes(
     return hashes, problems
 
 
-def load_benchmark(directory: Path, templates_dir: Path = TEMPLATES_DIR) -> Benchmark:
+def load_benchmark(
+    directory: Path, templates_dir: Path = TEMPLATES_DIR, exclusions_path: Path | None = None
+) -> Benchmark:
     """READ boundary for the files alone (no corpus needed): the seal, the hash of
     every file it covers, every record, and the rules across records. Use
     check_corpus() for the third boundary."""
@@ -584,12 +598,26 @@ def load_benchmark(directory: Path, templates_dir: Path = TEMPLATES_DIR) -> Benc
             if hashes.get(t) != manifest.templates.get(t)
         ],
     )
+    excluded = _psd2_exclusions(exclusions_path, manifest.corpus["PSD2"])
     _fail(
         BenchmarkError,
         f"{directory} breaks the dataset rules:",
-        dataset_problems(needs, queries, qrels, manifest.role),
+        dataset_problems(needs, queries, qrels, manifest.role, excluded),
     )
     return Benchmark(directory, manifest, needs, queries, qrels)
+
+
+def _psd2_exclusions(path: Path | None, psd2: CorpusSource) -> frozenset[str]:
+    """The excluded PSD2 articles, from a list built on the same PSD2 snapshot:
+    a list derived from another version could miss the articles that matter."""
+    exclusions = px.load_psd2_exclusions(path or px.PSD2_EXCLUSIONS_PATH)
+    if (exclusions.base.celex, exclusions.base.sha256) != (psd2.source_celex, psd2.source_sha256):
+        raise StaleBenchmarkError(
+            f"the PSD2 exclusion list was built on {exclusions.base.celex} "
+            f"{exclusions.base.sha256[:12]}, the benchmark uses {psd2.source_celex} "
+            f"{psd2.source_sha256[:12]}: rebuild it with scripts/build_psd2_exclusions.py"
+        )
+    return exclusions.excluded()
 
 
 def _version_tuple(version: str) -> tuple[int, ...]:
@@ -602,6 +630,7 @@ def seal(
     role: Role,
     docs: Mapping[str, pr.ProcessedDocument],
     templates_dir: Path = TEMPLATES_DIR,
+    exclusions_path: Path | None = None,
 ) -> BenchmarkManifest:
     """The only writer of manifest.json. It reads the files on disk, runs all three
     boundaries against the current processed layer, and writes nothing if any check
@@ -611,10 +640,15 @@ def seal(
     nothing is written. If something changed, benchmark_version must grow."""
     if not re.fullmatch(pr.VERSION_PATTERN, benchmark_version):
         raise BenchmarkError(f"benchmark_version {benchmark_version!r} is not x.y.z")
+    problems = [f"{act}: no processed layer" for act in ACTS if act not in docs]
+    _fail(BenchmarkError, f"cannot seal {directory}:", problems)
+    psd2 = CorpusSource(
+        source_celex=docs["PSD2"].source_celex, source_sha256=docs["PSD2"].source_sha256
+    )
+    excluded = _psd2_exclusions(exclusions_path, psd2)
     needs, queries, qrels = _read_records(directory)
     hashes, missing = _template_hashes(queries, templates_dir)
-    problems = dataset_problems(needs, queries, qrels, role) + missing
-    problems += [f"{act}: no processed layer" for act in ACTS if act not in docs]
+    problems = dataset_problems(needs, queries, qrels, role, excluded) + missing
     parsers = {doc.parser_version for doc in docs.values()}
     if len(parsers) > 1:
         problems.append(f"the processed layer mixes parser versions {sorted(parsers)}")

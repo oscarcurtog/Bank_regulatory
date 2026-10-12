@@ -1,0 +1,77 @@
+{
+  "schema_version": "1",
+  "base": {
+    "celex": "02015L2366-20151223",
+    "sha256": "e9063e8919bf93bd2b92ae0c6f816ad83bcf6ca42a5b97cdc277214e5080e1c3"
+  },
+  "reference": {
+    "celex": "02015L2366-20250117",
+    "sha256": "cd9882351bdedca5267cc18cd2619c1529f8d5cdd6a567438b46675593dc9de6"
+  },
+  "parser_version": "1.4.0",
+  "articles": [
+    {
+      "article": "3",
+      "change": "modified",
+      "amended_by": [
+        "32022L2556"
+      ]
+    },
+    {
+      "article": "5",
+      "change": "modified",
+      "amended_by": [
+        "32022L2556"
+      ]
+    },
+    {
+      "article": "10",
+      "change": "modified",
+      "amended_by": [
+        "32024R0886"
+      ]
+    },
+    {
+      "article": "19",
+      "change": "modified",
+      "amended_by": [
+        "32022L2556"
+      ]
+    },
+    {
+      "article": "35",
+      "change": "modified",
+      "amended_by": [
+        "32024R0886"
+      ]
+    },
+    {
+      "article": "35a",
+      "change": "inserted",
+      "amended_by": [
+        "32024R0886"
+      ]
+    },
+    {
+      "article": "95",
+      "change": "modified",
+      "amended_by": [
+        "32022L2556"
+      ]
+    },
+    {
+      "article": "96",
+      "change": "modified",
+      "amended_by": [
+        "32022L2556"
+      ]
+    },
+    {
+      "article": "98",
+      "change": "modified",
+      "amended_by": [
+        "32022L2556"
+      ]
+    }
+  ]
+}

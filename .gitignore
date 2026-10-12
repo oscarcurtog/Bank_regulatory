@@ -26,6 +26,10 @@ data/t2_nodes.json
 # scripts/run_t2.py, with corpus text inside. Its profile, data/t2_chunk_profile.json,
 # IS versioned.
 data/chunks/
+# Later versions of the acts, downloaded only to compare against the parsed snapshot
+# (scripts/build_psd2_exclusions.py). Never parsed or indexed, and never in the
+# ingestion manifest; their SHA-256 is recorded in the derived list.
+data/reference/
 
 # Local Claude Code config: it belongs to this machine, not to the project.
 # .claude/settings.json (without "local") IS shared and can be versioned.

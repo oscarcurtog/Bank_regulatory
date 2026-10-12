@@ -15,6 +15,7 @@ import pytest
 from ingest import benchmark as bm
 from ingest import hierarchy as h
 from ingest import processed as pr
+from ingest import psd2_exclusions as px
 
 SHAS = {"DORA": "1" * 64, "MiCA": "2" * 64, "PSD2": "3" * 64}
 CELEX = {"DORA": "32022R2554", "MiCA": "02023R1114-20240109", "PSD2": "02015L2366-20151223"}
@@ -125,6 +126,25 @@ def _write(directory, needs, queries, qrels) -> None:
     bm.write_jsonl(directory / bm.NEEDS_FILE, needs)
     bm.write_jsonl(directory / bm.QUERIES_FILE, queries)
     bm.write_jsonl(directory / bm.QRELS_FILE, qrels)
+
+
+def _exclusions(base_sha: str = SHAS["PSD2"]) -> px.Psd2Exclusions:
+    return px.Psd2Exclusions(
+        schema_version="1",
+        base=px.Document(celex=CELEX["PSD2"], sha256=base_sha),
+        reference=px.Document(celex="02015L2366-20250117", sha256="4" * 64),
+        parser_version=h.PARSER_VERSION,
+        articles=[px.ExcludedArticle(article="96", change="modified", amended_by=["32022L2556"])],
+    )
+
+
+@pytest.fixture(autouse=True)
+def synthetic_exclusions(tmp_path, monkeypatch):
+    """A PSD2 exclusion list built on the synthetic PSD2 snapshot of this module."""
+    path = tmp_path / "psd2_excluded_articles.json"
+    px.write_psd2_exclusions(_exclusions(), path)
+    monkeypatch.setattr(px, "PSD2_EXCLUSIONS_PATH", path)
+    return path
 
 
 @pytest.fixture
@@ -396,3 +416,27 @@ def test_a_reseal_never_changes_the_role(sealed):
 def test_a_reseal_refuses_a_malformed_version(sealed):
     with pytest.raises(bm.BenchmarkError, match="is not x.y.z"):
         bm.seal(sealed, "v2", "dev", _docs())
+
+
+# ---------------------------------------------------------------------------
+# the PSD2 exclusion list
+# ---------------------------------------------------------------------------
+
+
+def test_a_qrel_on_an_amended_psd2_article_is_refused(tmp_path):
+    needs, queries, qrels = _records()
+    _write(tmp_path / "dev", needs, queries, qrels + [_qrel("PSD2", "96.1", 0)])
+    with pytest.raises(
+        bm.BenchmarkError, match="PSD2:96.1: Article 96 was amended after the corpus snapshot"
+    ):
+        bm.seal(tmp_path / "dev", "0.1.0", "dev", _docs())
+
+
+def test_an_exclusion_list_built_on_another_psd2_snapshot_is_stale(sealed, synthetic_exclusions):
+    px.write_psd2_exclusions(_exclusions(base_sha="5" * 64), synthetic_exclusions)
+    with pytest.raises(
+        bm.StaleBenchmarkError, match="rebuild it with scripts/build_psd2_exclusions.py"
+    ):
+        bm.load_benchmark(sealed)
+    with pytest.raises(bm.StaleBenchmarkError, match="the PSD2 exclusion list was built on"):
+        bm.seal(sealed, "0.2.0", "dev", _docs())
