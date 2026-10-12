@@ -228,8 +228,8 @@ is derived by comparing the parsed version with the consolidated version of 2025
 
 - The corpus is not in the repository and there is no download command yet.
 - CI skips the 38 `corpus` tests, so the full corpus is only validated where it is present.
-- The DEV benchmark has no questions yet and there is no retriever, so no retrieval metric has
-  been measured. The benchmark evaluator is not in the Docker images (no Linux ARM64 wheel for
+- The DEV benchmark holds its first 10 questions, locked before their evidence was searched and
+  not judged yet, and there is no retriever, so no retrieval metric has been measured. The benchmark evaluator is not in the Docker images (no Linux ARM64 wheel for
   its backend).
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text

@@ -1,5 +1,5 @@
 """The real benchmark directories (D-019): the three fixtures from the design study
-(N001-N003) and the DEV skeleton.
+(N001-N003) and DEV.
 
 The fixtures are TEST DATA for the pipeline, not DEV: their queries were written
 knowing the evidence (origin 'evidence_aware'), so they never count among the DEV
@@ -41,10 +41,15 @@ def test_the_fixtures_cover_what_the_design_asked_them_to_show():
     assert all(len(fixtures.queries_of(n.need_id)) == 2 for n in fixtures.needs)
 
 
-def test_the_dev_skeleton_is_sealed_and_empty():
+def test_the_dev_benchmark_is_sealed_and_its_queries_were_written_blind():
+    """DEV needs never reuse the fixture ids, and no DEV query was written knowing the
+    evidence: they come from a person or from the sealed query template."""
     dev = bm.load_benchmark(bm.DEV_DIR)
     assert dev.manifest.role == "dev"
-    assert (dev.needs, dev.queries, dev.qrels) == ([], [], [])
+    assert {n.need_id for n in dev.needs}.isdisjoint({"N001", "N002", "N003"})
+    assert {q.origin for q in dev.queries} <= {"human", "llm_from_need"}
+    templates = {q.template for q in dev.queries if q.origin == "llm_from_need"}
+    assert templates <= set(dev.manifest.templates)
 
 
 @pytest.mark.corpus
