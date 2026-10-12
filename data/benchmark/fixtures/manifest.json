@@ -1,0 +1,26 @@
+{
+  "schema_version": "1",
+  "benchmark_version": "1.0.0",
+  "role": "fixture",
+  "parser_version": "1.4.0",
+  "corpus": {
+    "DORA": {
+      "source_celex": "32022R2554",
+      "source_sha256": "cf50d8f023d23b2a56f535aaee0760eba7f1925ef08a9858c5c31d43d414f46b"
+    },
+    "MiCA": {
+      "source_celex": "02023R1114-20240109",
+      "source_sha256": "078da6ed766fe117be60ff63536f25101ec21f2dec175394eef7bf82c02ffe19"
+    },
+    "PSD2": {
+      "source_celex": "02015L2366-20151223",
+      "source_sha256": "e9063e8919bf93bd2b92ae0c6f816ad83bcf6ca42a5b97cdc277214e5080e1c3"
+    }
+  },
+  "files": {
+    "needs.jsonl": "ad04a1a70d7f5be43daf325cb8e79031ead02a978ca37f14d133fb3fdb6cfeeb",
+    "queries.jsonl": "27d7509a792f83ae6586c43b9ecb6541d15990075fe5c4c845319aa7f8d8196b",
+    "qrels.jsonl": "f2e485adbf8ca2f76c33de4b7ceec5dea7a237a5a72302a9434bcbd516728941"
+  },
+  "templates": {}
+}

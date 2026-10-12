@@ -1,0 +1,26 @@
+{
+  "schema_version": "1",
+  "benchmark_version": "0.1.0",
+  "role": "dev",
+  "parser_version": "1.4.0",
+  "corpus": {
+    "DORA": {
+      "source_celex": "32022R2554",
+      "source_sha256": "cf50d8f023d23b2a56f535aaee0760eba7f1925ef08a9858c5c31d43d414f46b"
+    },
+    "MiCA": {
+      "source_celex": "02023R1114-20240109",
+      "source_sha256": "078da6ed766fe117be60ff63536f25101ec21f2dec175394eef7bf82c02ffe19"
+    },
+    "PSD2": {
+      "source_celex": "02015L2366-20151223",
+      "source_sha256": "e9063e8919bf93bd2b92ae0c6f816ad83bcf6ca42a5b97cdc277214e5080e1c3"
+    }
+  },
+  "files": {
+    "needs.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "queries.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "qrels.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "templates": {}
+}
