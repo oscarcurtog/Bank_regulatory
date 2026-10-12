@@ -52,6 +52,24 @@ def test_the_dev_benchmark_is_sealed_and_its_queries_were_written_blind():
     assert templates <= set(dev.manifest.templates)
 
 
+# The revision of batch 1 under protocol v1.2 (dev/CALIBRATION.md): N005 and N007 were
+# replaced by N014 and N015; N006, N010, N011 and N013 kept their ids with a narrowed
+# statement and new queries. A retired need id is never reused, and a new wording is a
+# new query, so none of the queries written for the old statements may come back.
+RETIRED_NEEDS = {"N005", "N007"}
+RETIRED_QUERIES = {
+    f"{need}-{variant}"
+    for need in ("N005", "N006", "N007", "N010", "N011", "N013")
+    for variant in ("en-1", "en-2", "es-1")
+}
+
+
+def test_replaced_needs_and_queries_are_never_reused():
+    dev = bm.load_benchmark(bm.DEV_DIR)
+    assert {n.need_id for n in dev.needs}.isdisjoint(RETIRED_NEEDS)
+    assert {q.query_id for q in dev.queries}.isdisjoint(RETIRED_QUERIES)
+
+
 @pytest.mark.corpus
 def test_the_fixtures_and_dev_still_match_the_corpus():
     docs = bm.load_corpus()

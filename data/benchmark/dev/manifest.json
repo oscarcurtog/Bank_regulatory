@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "benchmark_version": "0.3.0",
+  "benchmark_version": "0.4.0",
   "role": "dev",
   "parser_version": "1.4.0",
   "corpus": {
@@ -18,9 +18,9 @@
     }
   },
   "files": {
-    "needs.jsonl": "d1b0d0335ba5e56dd2921c258f0c6949ea6b4d94d42520b64bf31eb9c41aa9d6",
-    "queries.jsonl": "edc76903efb337640ebf2da9aa22d13537363c256ba3d2bef842782f40cb5b81",
-    "qrels.jsonl": "53d4553432c640ce74b54f379739f761adde546eee9c5ff662c249eb8728361c"
+    "needs.jsonl": "835bf060e88e1c671156bfcda0227136f406fe3c8edd19fc2905fd3994d138b2",
+    "queries.jsonl": "af33bfcb98b1379330f43ad76dd3984e0da6fd9ab1fb7814bdddfab1497c6c8c",
+    "qrels.jsonl": "4843da14a2c6ccab43eda1aa4395d3465d5f3c9f62125b9f7feb752558525d73"
   },
   "templates": {
     "query_variants.v1": "466bcfe8b10993f59c8ce16f0495cb145324d9196bfd197935e297ee807a4a4f"
