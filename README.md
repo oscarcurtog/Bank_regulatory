@@ -227,6 +227,8 @@ is derived by comparing the parsed version with the consolidated version of 2025
 `data/benchmark/dev/` holds the first DEV batch, N004 to N013, built and judged with
 `data/benchmark/PROTOCOL.md`: the needs and their queries were committed before any evidence was
 searched, and every qrel was graded twice, by two passes that did not see each other's grades.
+`data/benchmark/dev/CALIBRATION.md` records what the batch measured and the protocol changes it
+suggests, which wait for approval.
 
 ## Known limitations
 
