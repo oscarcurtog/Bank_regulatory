@@ -425,4 +425,42 @@ commit (17:18 UTC). The 26 model contexts used about 1.46 million tokens:
   the subject of the need became 1. That leaves fewer hard negatives in the kept needs and more
   in the new ones.
 - **No definition is graded 2.** Every definition in the batch maps an obvious term.
-- **Still pending:** the person's methodological review (protocol step 7).
+- **Methodological review (protocol step 7):** done; its two observations are in section 10.
+
+### 10. Methodological review of the person (protocol step 7)
+
+The review raised two observations. Neither changed a label, a query or the seal: DEV stays at
+0.5.0 and `adjudications.jsonl` is unchanged.
+
+**N013, PSD2 76(1) fourth subparagraph, grade 3.** The question was whether grade 3 is consistent
+with v1.2 when the node applies only to "direct debits as referred to in Article 1 of Regulation
+(EU) No 260/2012" and the need states neither the currency nor the scheme.
+
+- The facts of the need do not establish that applicability, and the corpus does not contain that
+  regulation. The rationale's wording ("the need does not exclude such a debit") is weaker than
+  the label it supports.
+- v1.2 anchors on the facts the need states for a grade 0, and gives 2 to an exception that
+  "can apply". It has no rule for a positive branch whose applicability is an open fact, and it
+  keeps ambiguity for an interpretation, not for a missing fact. So its letter neither requires
+  nor forbids a 3 here.
+- The item was decided again by a fresh judge C, which saw the rationales of A and B as "Rationale
+  A" and "Rationale B" in an order drawn at random, and the open fact stated neutrally. It kept
+  grade 3, not ambiguous: the node states the right the need asks about, a missing fact is not an
+  interpretation, and for any other debit the first subparagraph and 77(1) carry the answer. The
+  session that judged as A did not overrule it.
+- Impact: none on the chunk metrics. The node shares its chunk with 76(1), also grade 3, at 500
+  tokens (chunk `PSD2:76`) and at 300 (chunk `PSD2:76.1`), so the relevant chunks (2 and 3), the
+  grade of each chunk and Recall@5 are the same whatever grade this node has. At node level there
+  are 8 relevant nodes; with a grade below 2 there would be 7.
+- Gap for a later protocol version, not adopted: how a branch whose applicability depends on a
+  fact the need does not state is graded (a grade 3 only if the branch itself answers; whether an
+  open applicability makes it ambiguous or grade 1).
+
+**N010, `drivers: []`.** PROTOCOL.md has no formal definition of `drivers`. The nearest text is
+the schema comment (properties of the evidence), step 3 and the twins rule of section 2: a twin
+has identical own text, the same article title, or belongs to the parallel regime, and it is a
+twin of a node that answers the need. N010 is `none`, so it has no node of grade 2 or more to be
+the twin of. Its distractors share words or a topic with the need (the terms of a client
+agreement, payment information) but are not twins of an answering node. The field stays empty.
+With the same reading, `lexical_twin` holds in N004, N006, N008 and N011, where a corpus node is a
+twin of the answer; N014 and N015 rest on the parallel-regime clause only.
