@@ -224,13 +224,17 @@ parsed snapshot (by Directive 2022/2556 and Regulation 2024/886); no question ma
 is derived by comparing the parsed version with the consolidated version of 2025-01-17, kept in
 `data/reference/`, without changing which version Fundamento parses.
 
+`data/benchmark/dev/` holds the first DEV batch, N004 to N013, built and judged with
+`data/benchmark/PROTOCOL.md`: the needs and their queries were committed before any evidence was
+searched, and every qrel was graded twice, by two passes that did not see each other's grades.
+
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
 - CI skips the 38 `corpus` tests, so the full corpus is only validated where it is present.
-- The DEV benchmark holds its first 10 questions, locked before their evidence was searched and
-  not judged yet, and there is no retriever, so no retrieval metric has been measured. The benchmark evaluator is not in the Docker images (no Linux ARM64 wheel for
-  its backend).
+- The DEV benchmark holds a first batch of 10 judged questions, of the 30 planned, and there is
+  no retriever yet, so no retrieval metric has been measured. The benchmark evaluator is not in
+  the Docker images (no Linux ARM64 wheel for its backend).
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4
