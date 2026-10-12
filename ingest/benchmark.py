@@ -697,6 +697,18 @@ def seal(
 
 QUERY_TEMPLATE_ID = "query_variants.v1"
 PROMPT_MARKER = "---PROMPT---"
+# What a statement must not carry into the query prompt (PROTOCOL.md, step 1): an
+# article, a paragraph or point, a structural unit, a node path or a CELEX number
+# would tell the query writer where the answer is.
+_LEGAL_REFERENCE = re.compile(
+    r"\barts?\b\.?\s*\d|\barticles?\s*\d"  # Article 28, Art. 5, articles 3
+    r"|\b\d+[a-z]?\s*\(\d+[a-z]?\)"  # 28(3), 35a(1)
+    r"|\b(?:sub)?paragraphs?\s+\d|\bpoints?\s+\([a-z0-9]+\)"  # paragraph 2, point (a)
+    r"|\b(?:title|chapter|section|annex|recital)s?\s+(?:[ivxlc]+|\d+)\b"  # Title III, Annex 1
+    r"|\b(?:DORA|MiCA|PSD2):\S"  # a node path
+    r"|\b[03]\d{4}[a-z]\d{4}\b",  # a CELEX number
+    re.IGNORECASE,
+)
 
 
 def render_query_prompt(
@@ -709,10 +721,17 @@ def render_query_prompt(
 
     It takes the statement as a plain string and the (lang, style) pairs wanted,
     so it cannot leak what it never receives: no Need fields such as the acts or
-    the drivers, no node, no article text, no qrel, no answer. Spanish is natural
-    only, as in the Query contract."""
+    the drivers, no node, no article text, no qrel, no answer. A statement that
+    cites a legal reference is refused, since it would point at the answer.
+    Spanish is natural only, as in the Query contract."""
     if not statement.strip():
         raise BenchmarkError("a query prompt needs a non-empty statement")
+    reference = _LEGAL_REFERENCE.search(statement)
+    if reference:
+        raise BenchmarkError(
+            f"the statement cites {reference.group(0)!r}: a need is written without legal "
+            "references, so its query prompt cannot point at the answer"
+        )
     for lang, style in variants:
         try:
             Query.model_validate(
@@ -742,8 +761,10 @@ def render_query_prompt(
 # lexical overlap: a leakage diagnostic, never a filter
 # ---------------------------------------------------------------------------
 
-# How many consecutive query words shared with the evidence count as a likely copy.
-# Terms of art such as "major ICT-related incident" are shorter.
+# How many consecutive query words shared with the evidence raise POSSIBLE COPY: a
+# v1 heuristic (D-021), not a definition of leakage. The flag never rejects a query;
+# a reviewer approves or rejects it with a reason. Terms of art such as "major
+# ICT-related incident" are shorter.
 COPY_RUN = 6
 _WORD = re.compile(r"[^\W_]+(?:-[^\W_]+)*")
 # English function words. Code stays in English (D-019), so Spanish queries keep

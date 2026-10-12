@@ -31,8 +31,9 @@ from ingest import ir_metrics
 
 # Recall@T budgets for v1, in cl100k tokens of the chunk text (D-020).
 TOKEN_BUDGETS = (1000, 2000)
-# Results a run must request per query. Recall@20 and Judged@10 need far less; the
-# margin is for the token budgets, and the exact guard is in recall_at_tokens().
+# Results a run must request per query: a v1 parameter (D-021), not a fixed law.
+# Recall@20 and Judged@10 need far less; the margin is for the token budgets, and a
+# run too short to fill one is refused in recall_at_tokens(), never truncated.
 MIN_RUN_DEPTH = 100
 
 

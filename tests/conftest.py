@@ -10,7 +10,9 @@ clean checkout or in CI. They are skipped automatically when it is missing.
 
 from __future__ import annotations
 
+import importlib.metadata
 import os
+import platform
 from collections import Counter
 from pathlib import Path
 
@@ -80,6 +82,60 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "corpus" in item.keywords:
             item.add_marker(skip)
+
+
+# ---------------------------------------------------------------------------
+# CI evidence. The job log of a public repository needs a signed-in reader, but
+# check-run annotations can be read by anyone through the public API. In GitHub
+# Actions the summary of the run is also printed as workflow commands, which
+# GitHub turns into annotations: the counts, the skip reasons and the backend
+# that computed the metrics, with no credential needed to check them.
+# ---------------------------------------------------------------------------
+
+
+def _command_text(text: str, title: bool = False) -> str:
+    """Escaped for a workflow command: a newline would end it early."""
+    text = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    return text.replace(":", "%3A").replace(",", "%2C") if title else text
+
+
+def evaluator_backend() -> str:
+    try:
+        found = ", ".join(
+            f"{d} {importlib.metadata.version(d)}" for d in ("ir-measures", "pytrec-eval-terrier")
+        )
+    except importlib.metadata.PackageNotFoundError as e:
+        found = f"not installed ({e})"
+    return f"{found}; {platform.system()} {platform.machine()}, Python {platform.python_version()}"
+
+
+def ci_annotations(stats: dict[str, list], backend: str) -> list[str]:
+    labels = {  # pytest's keys in terminalreporter.stats, and how they are printed
+        "passed": "passed",
+        "skipped": "skipped",
+        "failed": "failed",
+        "error": "errors",
+        "warnings": "warnings",
+    }
+    counts = ", ".join(f"{len(stats.get(k, []))} {label}" for k, label in labels.items())
+    lines = [f"::notice title=pytest::{counts}"]
+    reasons = Counter(
+        str(r.longrepr[2]).removeprefix("Skipped: ") for r in stats.get("skipped", [])
+    )
+    for reason, n in sorted(reasons.items()):
+        title = _command_text(f"skipped ({n})", title=True)
+        lines.append(f"::notice title={title}::{_command_text(reason)}")
+    lines.append(f"::notice title=evaluator backend::{_command_text(backend)}")
+    for w in stats.get("warnings", []):
+        lines.append(f"::warning title=pytest warning::{_command_text(str(w.message))}")
+    return lines
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return
+    for line in ci_annotations(terminalreporter.stats, evaluator_backend()):
+        terminalreporter.write_line(line)
 
 
 # ---------------------------------------------------------------------------

@@ -95,3 +95,13 @@ Adjust this protocol first; a change of rules is a new protocol version.
 | the seal: files, templates, parser, corpus snapshot | ambiguity |
 | PSD2 exclusions | a flagged possible copy |
 | lexical overlap, reported per query | duplicate needs with different words |
+
+## 8. Parameters of v1
+
+Fixed for v1, not for ever. Changing one is recorded and versioned like any other rule.
+
+| Parameter | Value | Meaning |
+|---|---|---|
+| `MIN_RUN_DEPTH` (`ingest/evaluation.py`) | 100 | Results a run must return per query. A run too short to fill a token budget is refused, never truncated. |
+| `COPY_RUN` (`ingest/benchmark.py`) | 6 | Consecutive query words found verbatim in the evidence that raise `POSSIBLE COPY`. A diagnostic heuristic, not a definition of leakage: it never rejects a query by itself. A legitimate match of legal terminology is approved after a reasoned review, and the reason is written in the calibration record of the batch. |
+| Query template | `query_variants.v1` | Frozen for the first batch; the manifest seals its SHA-256. It receives the statement and the formulations requested, nothing else. The renderer refuses a statement that cites an article, a paragraph or point, a structural unit, a node path or a CELEX number. |

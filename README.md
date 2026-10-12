@@ -62,7 +62,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 550 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 565 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -100,7 +100,7 @@ uv pip install --require-hashes --no-deps -r requirements-dev.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest reports `512 passed, 38 skipped`. The 38 skipped tests are marked
+Without the corpus, pytest reports `527 passed, 38 skipped`. The 38 skipped tests are marked
 `corpus`: they need `data/raw/`, which is not in the repository (see
 [Data and reproducibility](#data-and-reproducibility)).
 
@@ -145,6 +145,10 @@ The runner does not have the corpus, so the 38 `corpus` tests are skipped there.
 not validate the full 331-article corpus. The `evaluator` tests do run there: CI checks the
 benchmark machinery on synthetic data, while evaluation against the real corpus runs locally.
 
+Reading a job log needs a signed-in GitHub account, so the test run also prints its summary as
+workflow commands: the counts, each skip reason and the versions of the evaluator backend appear
+as annotations on the check run, which the public API serves to anyone.
+
 ## Data and reproducibility
 
 | Path | Versioned | What it is |
@@ -159,7 +163,7 @@ benchmark machinery on synthetic data, while evaluation against the real corpus 
 | `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 
-Without the corpus you can run the test suite (512 tests pass, 38 are skipped), the linters and
+Without the corpus you can run the test suite (527 tests pass, 38 are skipped), the linters and
 type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files

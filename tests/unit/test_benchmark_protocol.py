@@ -47,6 +47,38 @@ def test_the_prompt_refuses(variants, message):
         bm.render_query_prompt("A need.", variants)
 
 
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "Under Article 28, what must a bank do?",
+        "What does Art. 5 require?",
+        "Which duties do articles 3 and 4 set?",
+        "Is the deadline in 19(4) binding?",
+        "What does paragraph 2 add?",
+        "Does point (a) cover this firm?",
+        "What does Title III say about it?",
+        "Is this in Annex I?",
+        "What does MiCA:149.1 say?",
+        "How does 32022R2554 apply?",
+    ],
+)
+def test_the_prompt_refuses_a_statement_with_a_legal_reference(statement):
+    with pytest.raises(bm.BenchmarkError, match="without legal references"):
+        bm.render_query_prompt(statement, VARIANTS)
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "A customer lost EUR 50 on 3 May 2025 after a card theft. Who bears the loss?",
+        "Under DORA, how fast must a bank report a major outage? It has 2 data centres.",
+        "At this point in time, can an exchange pay interest on a stablecoin?",
+    ],
+)
+def test_the_prompt_accepts_numbers_that_are_not_legal_references(statement):
+    assert statement in bm.render_query_prompt(statement, VARIANTS)
+
+
 def test_the_prompt_of_a_fixture_reveals_none_of_its_evidence():
     fixtures = bm.load_benchmark(bm.FIXTURES_DIR)
     for need in fixtures.needs:
