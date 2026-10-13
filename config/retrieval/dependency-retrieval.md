@@ -57,3 +57,58 @@ runs, the top 50 of the candidate list into a new order. A candidate from E5's t
 with the original query; any other candidate with the maximum of its score with the original
 query and its scores with the bridges that produced it (by retrieval, or as the definition of
 the bridge's term). The rest of the list stays below, in its order.
+
+## After R1: research, and the experiments it chose
+
+R1's Candidate Recall@50 was 0.893 (k = 3), under the gate: the reranker of R1 was not run and
+the iteration went to research (2026-10-13). Three training-free approaches fit the failure
+("the anchor is retrieved, the evidence it depends on is not") and this corpus:
+
+- **Dense-seeded Personalized PageRank over a graph of passages**, as in HippoRAG 2 (Gutierrez
+  et al., arXiv 2502.14802; code at github.com/OSU-NLP-Group/HippoRAG): passage nodes seeded with
+  reset probabilities proportional to their embedding similarity, damping 0.5, passages ranked by
+  their PageRank score; +5.0 and +13.9 recall@5 over NV-Embed-v2 on MuSiQue and 2Wiki. Its graph
+  comes from an LLM; here the graph is the law's own: references and defined terms, read
+  deterministically. Legal work argues for the same typed structural traversal (de Martim, arXiv
+  2505.00039 and 2606.09724).
+- **Bridge-conditioned scoring**, as in BridgeRAG (arXiv 2604.03384): a second-hop candidate is
+  scored given the question and the bridge it came from, not the question alone. Its judge is a
+  70B language model; here a multilingual cross-encoder.
+- **Vector pseudo-relevance feedback** (Li et al., TOIS 2023, arXiv 2108.11044): the query vector
+  moved towards its top passages, with the original query keeping most of the weight.
+
+The most promising is the first: R1 showed that the structure reaches the dependent evidence
+(Candidate Recall@100 0.947, dependent evidence @50 0.774 against E5's 0.582), and what fails is
+its order; a PageRank ranks each dependency by how much dense-ranked mass reaches it, and dilutes
+a reference to a whole article by its out-degree.
+
+## E2: dense-seeded Personalized PageRank over the legal structure
+
+**Hypothesis.** Ranked by Personalized PageRank from E5's top chunks over the graph of
+references and defined terms, the dependent evidence enters the top 10 while the anchors stay.
+
+- Graph: one node per chunk; a directed, unweighted edge from a chunk to each target of its R1
+  relations (reference, definition, definition_reference), self-loops removed. The same graph for
+  every query; no label.
+- Seeds: E5's top N; reset probability proportional to the E5 cosine, summing to 1.
+- PageRank: p = (1 - d) s + d W^T p, W the out-edges normalized per node, the mass of a node
+  without out-edges returned to the seeds; iterated until no value moves by more than 1e-12.
+- Ranking: by PageRank score, ties by E5 rank; chunks never reached follow, in E5's order.
+- Grid: N in {10, 20} and d in {0.3, 0.5}: 4 configurations. Selection: global Recall@10, then
+  nDCG@10, then grid order. Kept if material against E5.
+
+## E3: bridge-conditioned cross-encoder reranking
+
+**Hypothesis.** A multilingual cross-encoder that scores each dependency candidate against the
+question and against the bridge that produced it puts the dependent evidence into the top 10.
+
+- Candidate list: R1's selected list (k = 3), unless E2's selected ranking has a higher global
+  Recall@50; its top 50 are reranked and the rest stays below in order.
+- Reranker: `BAAI/bge-reranker-v2-m3`, contract (revision, license, languages, input limit,
+  score) verified and pinned before it runs; a pair over the limit is cut at the passage's tail
+  and recorded, never silently.
+- Score of a candidate in E5's top 20: the reranker with the original query. Of any other: the
+  maximum of that score and the reranker with each bridge that produced it in R1 (by retrieval,
+  or as the definition of the bridge's term).
+- Grid, 2 configurations: the original query only, and the maximum rule above. Selection and
+  keep rule as E2.
