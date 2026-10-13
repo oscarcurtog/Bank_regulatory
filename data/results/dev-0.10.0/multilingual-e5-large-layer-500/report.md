@@ -360,7 +360,7 @@ Relevant chunks: MiCA:48 (rank 8, grade 3), MiCA:3.1.7 (rank 229, grade 2)
 ## Performance
 
 - 1354 documents and 90 queries, 1024 dimensions.
-- Times (seconds): model load 2.9, document embeddings 198.5, query embeddings 5.7, exact retrieval 0.0, query embeddings, second pass 5.6.
+- Times (seconds): model load 3.1, document embeddings 191.0, query embeddings 5.4, exact retrieval 0.0, query embeddings, second pass 5.4.
 - Stored: documents 5.55 MB (+ meta 0.26 MB), queries 0.37 MB.
-- Peak resident memory of the process: 2.21 GB.
+- Peak resident memory of the process: 2.82 GB.
 - Model files in the Hugging Face cache: 2.26 GB.

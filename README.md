@@ -12,9 +12,9 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
 - **Goal:** a RAG system that answers with verifiable citations to the exact article.
 - **Implemented today:** ingestion and source handling, legal hierarchy parsing, structural
   chunking, a retrieval benchmark (contracts, validation, node-to-chunk projection, metrics and
-  a DEV set of 30 judged questions), a dense retrieval baseline with exact search (one embedding
-  model, explicit truncation, stale-embedding detection), Pydantic data contracts, stale-layer
-  detection, measurement tooling, tests, Docker and CI.
+  a DEV set of 30 judged questions), dense retrieval baselines with exact search for two
+  embedding models and their paired comparison (explicit truncation, stale-embedding detection),
+  Pydantic data contracts, stale-layer detection, measurement tooling, tests, Docker and CI.
 - **Not implemented yet:** a vector index, hybrid search and reranking, generation, citation
   verification, API and deployment.
 
@@ -24,8 +24,9 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
 - **Chunking:** implemented (structural, v1)
 - **Retrieval benchmark:** implemented; DEV holds 30 judged questions, reviewed and sealed under
   protocol v1.4
-- **Indexing and retrieval:** dense baseline with exact search implemented
-  (`multilingual-e5-large`); the comparison of embedding models is next
+- **Indexing and retrieval:** dense baselines with exact search implemented for
+  `multilingual-e5-large` and BGE-M3 (dense output), compared on DEV; lexical, hybrid and
+  reranked retrieval not measured yet
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -65,7 +66,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 666 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 667 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -115,7 +116,7 @@ not in the repository (see [Data and reproducibility](#data-and-reproducibility)
 marked `embedding_model` need the `embed` extra and the weights of the two embedding models (about
 2.3 GB each, downloaded once into `.cache/huggingface`); without them they fail, unless the
 environment declares `FUNDAMENTO_EMBEDDING_MODEL=unsupported`, as CI does. With that declaration
-and without the corpus, pytest reports `617 passed, 49 skipped`.
+and without the corpus, pytest reports `618 passed, 49 skipped`.
 
 ## Docker
 
@@ -178,7 +179,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 
-Without the corpus you can run the test suite (617 tests pass and 49 are skipped with
+Without the corpus you can run the test suite (618 tests pass and 49 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported`), the linters and type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files
@@ -259,9 +260,14 @@ definition graded 2 again, and DEV was sealed at 0.10.0.
 ### Dense retrieval baseline
 
 ```bash
-PYTHONPATH=. .venv/bin/python scripts/embed_baseline.py --expect-version 0.10.0
-PYTHONPATH=. .venv/bin/python scripts/report_embedding_run.py \
-    data/results/dev-0.10.0/multilingual-e5-large-layer-500/summary.json
+for model in multilingual-e5-large bge-m3; do
+  PYTHONPATH=. .venv/bin/python scripts/embed_baseline.py \
+      --config config/embeddings/$model.json --expect-version 0.10.0
+  PYTHONPATH=. .venv/bin/python scripts/report_embedding_run.py \
+      data/results/dev-0.10.0/$model-layer-500/summary.json
+done
+PYTHONPATH=. .venv/bin/python scripts/compare_embedding_runs.py \
+    multilingual-e5-large bge-m3 --expect-version 0.10.0
 ```
 
 The contract of each embedding model is a versioned file in
@@ -275,17 +281,27 @@ ranks exactly (one dot product per query and chunk; with L2-normalized vectors t
 The embeddings (`data/embeddings/`) and the full run (`data/runs/`) are derived and not versioned.
 Their `meta.json` records the full identity they were computed with: the model contract, the
 tokenizer file, the runtime versions and the chunk layer or queries they came from. A set whose
-identity differs in any field is refused as stale, naming the fields that changed. The summary and the report of
-each run are versioned in `data/results/`.
+identity differs in any field is refused as stale, naming the fields that changed. The summary and
+the report of each run, and the paired comparison, are versioned in `data/results/`.
+
+The comparison changes only the model: same DEV 0.10.0, chunk layer, queries, qrels, projection
+and evaluator ([report](data/results/dev-0.10.0/comparisons/multilingual-e5-large-vs-bge-m3-layer-500/comparison.md)).
+On DEV's 27 evaluable needs, no difference between BGE-M3 (dense output) and
+`multilingual-e5-large` can be told apart from noise: in English nDCG@10 is 0.536 against 0.552 and Recall@10 0.761 against 0.777; in Spanish 0.498 against
+0.479 and 0.723 against 0.735. Every paired 95% interval contains zero, and 14 queries improve
+while 14 get worse. The main failure, where the chunk that answers ranks first and the evidence it
+depends on (definitions, conditions, the other act) ranks far below, is the same for both models.
+Both are reproduced bit for bit by a new process.
 
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
 - CI skips the 38 `corpus` tests, so the full corpus is only validated where it is present.
-- The DEV benchmark holds 30 judged questions in two batches, and one retriever has been measured
-  on it: a dense baseline with one embedding model and exact search. No other model, index,
-  hybrid search or reranker has been measured yet. The benchmark evaluator is not in
-  the Docker images (no Linux ARM64 wheel for its backend).
+- The DEV benchmark holds 30 judged questions in two batches (27 evaluable), so a difference
+  between two retrievers needs to be large to be told apart from noise. Two dense retrievers
+  (two embedding models, exact search) have been measured on it; no index, lexical or hybrid
+  search or reranker has been measured yet. The benchmark evaluator is not in the Docker images
+  (no Linux ARM64 wheel for its backend).
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4

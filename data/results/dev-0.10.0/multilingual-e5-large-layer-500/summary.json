@@ -3627,18 +3627,18 @@
   "queries": 90,
   "dimension": 1024,
   "timings_seconds": {
-   "model load": 2.8646567500254605,
-   "document embeddings": 198.51534987500054,
-   "query embeddings": 5.683507417008514,
-   "exact retrieval": 0.03241854198859073,
-   "query embeddings, second pass": 5.609735625010217
+   "model load": 3.0892332090006676,
+   "document embeddings": 190.9876901670068,
+   "query embeddings": 5.443825082998956,
+   "exact retrieval": 0.0299777920008637,
+   "query embeddings, second pass": 5.418435666011646
   },
   "embedding_bytes": {
    "documents": 5546112,
    "documents_meta": 257836,
    "queries": 368768
   },
-  "peak_rss_bytes": 2211282944,
+  "peak_rss_bytes": 2822258688,
   "model_cache_bytes": 2261764467,
   "environment": {
    "platform": "macOS-27.0.1-arm64-arm-64bit",

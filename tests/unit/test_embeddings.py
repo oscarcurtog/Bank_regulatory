@@ -79,6 +79,25 @@ def test_the_versioned_config_is_the_contract_of_multilingual_e5_large():
     assert (c.document_truncation, c.query_truncation) == ("explicit_tail", "refuse")
 
 
+def test_the_versioned_config_is_the_contract_of_bge_m3_dense():
+    c = em.load_config(CONFIG_PATH.with_name("bge-m3.json"))
+    assert (c.model_id, c.revision, c.tokenizer_commit) == (
+        "BAAI/bge-m3",
+        "5617a9f61b028005a4858fdac845db406aefb181",
+        "5617a9f61b028005a4858fdac845db406aefb181",
+    )
+    assert (c.dimension, c.max_input_tokens, c.pooling, c.normalize, c.similarity) == (
+        1024,
+        8192,
+        "cls",
+        True,
+        "dot",
+    )
+    assert (c.query_prefix, c.document_prefix) == ("", "")
+    assert (c.document_truncation, c.query_truncation) == ("explicit_tail", "refuse")
+    assert (c.device, c.dtype) == ("cpu", "float32")
+
+
 @pytest.mark.parametrize(
     "overrides,message",
     [
