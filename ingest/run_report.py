@@ -338,3 +338,46 @@ def diagnostics(
         "dependent_evidence": dependent,
         "per_query": {m: values[m] for m in ("Recall@10", "nDCG@10", "Recall@50", "Recall@100")},
     }
+
+
+def candidate_recall(
+    dev: bm.Benchmark,
+    layer: ev.ChunkLayer,
+    ranked: Sequence[rt.Ranked],
+    cutoffs: Sequence[int] = (20, 50, 100),
+) -> dict[str, Any]:
+    """Recall of the first k chunks of a candidate list (binary relevance, grade >= 2): global
+    (macro by need), per language, per group, and for the dependent evidence. The same
+    quantity as the evaluator's Recall@k, read on a list that is not a final ranking."""
+    targets = ev.targets(dev, layer)
+    queries = [q for t in targets for q in t.queries]
+    relevant = {q.query_id: rt.relevant_chunks(t) for t in targets for q in t.queries}
+    needs = {t.need.need_id: t.need for t in targets}
+    dep = rt.dependent_evidence(targets)
+    lists = {r.query_id: r.chunk_ids for r in ranked}
+    out: dict[str, Any] = {}
+    for k in cutoffs:
+        values = {
+            q.query_id: rt.recall_of(lists[q.query_id][:k], relevant[q.query_id]) for q in queries
+        }
+        groups = {}
+        for name, (kind, label) in GROUPS.items():
+            ids = {
+                n
+                for n, need in needs.items()
+                if (need.type == label if kind == "type" else label in need.drivers)
+            }
+            groups[name] = rt.macro_by_need(values, [q for q in queries if q.need_id in ids])
+        dep_queries = [q for q in queries if q.need_id in dep]
+        dep_values = {
+            q.query_id: rt.recall_of(lists[q.query_id][:k], dep[q.need_id].dependents)
+            for q in dep_queries
+        }
+        out[f"@{k}"] = {
+            "global": rt.macro_by_need(values, queries),
+            "by_language": rt.per_language(values, queries),
+            "groups": groups,
+            "dependent_evidence": rt.macro_by_need(dep_values, dep_queries),
+            "per_query": values,
+        }
+    return out
