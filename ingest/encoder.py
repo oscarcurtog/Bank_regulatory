@@ -4,8 +4,11 @@ vectors, as the model card of the configured model does it.
 It receives token ids already counted and, where the contract allows it, already
 truncated by ingest/embeddings.py, never text: so it cannot cut anything by itself.
 It checks every input against its record before running the model, pads each batch
-with the model's pad token and masks the padding, takes the mean of the token vectors
-over the mask, normalizes, and checks the vectors before returning them.
+with the model's pad token and masks the padding, pools as the contract says (the mean
+of the token vectors over the mask, or the vector of the first token), normalizes, and
+checks the vectors before returning them. Only the transformer is loaded: a model that
+ships other heads (BGE-M3's sparse and multi-vector layers) is used through its dense
+output alone.
 
 torch and transformers are the optional "embed" extra (requirements-embed.lock.txt):
 not in CI and not in the Docker images. Importing this module never fails; building
@@ -16,7 +19,6 @@ downloaded once into the Hugging Face cache of ingest/embeddings.py (HF_HOME,
 
 from __future__ import annotations
 
-import importlib.metadata
 from collections.abc import Sequence
 from typing import Any
 
@@ -72,16 +74,10 @@ class Encoder:
         self.pad_id = int(model.config.pad_token_id)
         self.model = model.to(config.device).eval()
 
-    def backend(self) -> dict[str, str]:
-        """What computed the vectors, for the record of every set."""
-        return {
-            "torch": self._torch.__version__,
-            "transformers": importlib.metadata.version("transformers"),
-            "numpy": np.__version__,
-            "device": self.config.device,
-            "dtype": self.config.dtype,
-            "torch_threads": str(self._torch.get_num_threads()),
-        }
+    def environment(self) -> dict[str, str]:
+        """Where and how this run computed the vectors. Descriptive only: it is
+        recorded with every set and never decides whether a set is stale."""
+        return em.environment_description() | {"torch_threads": str(self._torch.get_num_threads())}
 
     def encode(self, inputs: Sequence[em.ModelInput]) -> np.ndarray:
         """One vector per input, in input order. Batches go longest first, so that
@@ -105,8 +101,11 @@ class Encoder:
                     mask[row, :n] = 1
                 ids, mask = ids.to(self.config.device), mask.to(self.config.device)
                 hidden = self.model(input_ids=ids, attention_mask=mask).last_hidden_state
-                weights = mask.unsqueeze(-1).to(hidden.dtype)
-                pooled = (hidden * weights).sum(dim=1) / weights.sum(dim=1)
+                if self.config.pooling == "cls":
+                    pooled = hidden[:, 0]
+                else:
+                    weights = mask.unsqueeze(-1).to(hidden.dtype)
+                    pooled = (hidden * weights).sum(dim=1) / weights.sum(dim=1)
                 if self.config.normalize:
                     pooled = torch.nn.functional.normalize(pooled, p=2, dim=1)
                 out[batch] = pooled.to("cpu", torch.float32).numpy()

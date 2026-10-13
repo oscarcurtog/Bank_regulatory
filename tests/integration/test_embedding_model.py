@@ -35,7 +35,7 @@ TEXTS = [
 
 @pytest.fixture(scope="module")
 def tokenizer():
-    return em.load_tokenizer(CONFIG)
+    return em.load_tokenizer(CONFIG).tokenizer
 
 
 @pytest.fixture(scope="module")
@@ -81,7 +81,10 @@ def test_vectors_follow_the_contract_and_match_the_model_card(encoder, official_
     import torch
 
     inputs = em.prepare_inputs(
-        [(str(i), t) for i, t in enumerate(TEXTS)], "document", em.load_tokenizer(CONFIG), CONFIG
+        [(str(i), t) for i, t in enumerate(TEXTS)],
+        "document",
+        em.load_tokenizer(CONFIG).tokenizer,
+        CONFIG,
     )
     ours = encoder.encode(inputs)
     assert ours.shape == (3, 1024) and ours.dtype == np.float32

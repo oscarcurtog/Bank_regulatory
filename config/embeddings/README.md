@@ -45,6 +45,33 @@ its own tokenizer, so a chunk that fits the layer's budget can exceed the model'
 Libraries such as `sentence-transformers`, or a Hugging Face tokenizer called with
 `truncation=True`, cut at the limit without saying so. That is the behaviour this design rules out.
 
+## What makes stored embeddings stale
+
+A stored set (`data/embeddings/<model>/<input set>/`, not versioned) carries in its `meta.json`
+the identity it was computed with, and is reused only if the identity of the current run is
+equal, field by field. Otherwise the set is reported stale, naming what changed, and computed again.
+
+| Part of the identity | Fields |
+|---|---|
+| model contract | the SHA-256 of this JSON file's validated content: model id, revision, tokenizer revision, tokenizer file, pooling, prefixes, normalization, similarity, input limit, truncation policies, dimension, batch size, device, dtype |
+| tokenizer | the SHA-256 of the tokenizer file actually loaded |
+| runtime | Python, torch, transformers, tokenizers, numpy and sentence-transformers versions (`null` when not installed), dtype, device |
+| data | for documents: the chunk layer (budget, chunker and parser versions, source hashes, structure and content SHA-256); for queries: benchmark version, `queries.jsonl` SHA-256 and content SHA-256 |
+| output | the SHA-256 of the vector matrix, checked on every load |
+
+Recorded but not part of the identity: the creation time, the hardware (platform, CPU, core
+count), the Hugging Face cache path and the torch thread count. They describe a run; they do not
+change what a vector is, so a new machine or a new day never makes a set stale. A set written with
+an older meta schema is stale by definition: its identity cannot be compared field by field.
+
+## What changes between models
+
+The contract is the same shape for every model; the values are the model's own. Pooling (mean of
+the token vectors, or the first token), the prefixes, the input limit, normalization and the
+similarity come from each model's files at its pinned revision. A model prefixes both queries and
+documents, or neither; two equal prefixes are refused, because they would erase the asymmetry the
+model was trained with.
+
 ## Model comparison policy
 
 1. The main comparison of embedding models uses one fixed chunk layer: the official one

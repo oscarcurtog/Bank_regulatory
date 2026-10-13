@@ -47,9 +47,12 @@ def metric_rows(groups: Mapping[str, Mapping[str, Any]], label: str = "") -> lis
 def main(path: Path) -> int:
     s = json.loads(path.read_text(encoding="utf-8"))
     m, ex, model, lay = s["metrics"], s["exposure"], s["model"], s["layer"]
-    dt, name, backend = ex["dropped_tokens"], model["name"], s["performance"]["backend"]
+    dt, name = ex["dropped_tokens"], model["name"]
+    backend = s["identity"]["runtime"] | s["performance"]["environment"]
     config_link = f"[`config/embeddings/{name}.json`](../../../../config/embeddings/{name}.json)"
     exposed_needs = ex["needs_with_a_truncated_relevant_chunk"]
+    tok = s["tokenization"]
+    td, tq = tok["documents"], tok["queries"]
     lines = [
         f"# Dense baseline: {model['model_id']} on DEV {s['benchmark_version']}, "
         f"layer {lay['max_tokens']}",
@@ -70,7 +73,13 @@ def main(path: Path) -> int:
         "- Search: exact, one dot product per query and chunk. With L2-normalized vectors the dot "
         "product is the cosine similarity.",
         "",
-        "## Truncation exposure",
+        "## Tokenization and truncation exposure",
+        "",
+        f"Model tokens per chunk, counted with the model's own tokenizer on the exact input "
+        f"(prefix and special tokens included): min {td['min']}, median {td['median']}, p95 "
+        f"{td['p95']}, p99 {td['p99']}, max {td['max']}; {td['over_limit']} over the limit of "
+        f"{tok['limit']}. Queries: min {tq['min']}, median {tq['median']}, max {tq['max']}; "
+        f"{tq['over_limit']} over the limit (a query over it is refused, never cut).",
         "",
         f"{ex['truncated_chunks']} of {ex['total_chunks']} chunks "
         f"({100 * ex['truncated_share']:.1f}%) exceed the model's {model['max_input_tokens']} "
@@ -264,6 +273,7 @@ def main(path: Path) -> int:
         f"- Stored: documents {size['documents'] / 1e6:.2f} MB (+ meta "
         f"{size['documents_meta'] / 1e6:.2f} MB), queries {size['queries'] / 1e6:.2f} MB.",
         f"- Peak resident memory of the process: {p['peak_rss_bytes'] / 1e9:.2f} GB.",
+        f"- Model files in the Hugging Face cache: {p['model_cache_bytes'] / 1e9:.2f} GB.",
         "",
     ]
     out = path.with_name("report.md")

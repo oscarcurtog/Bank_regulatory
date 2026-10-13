@@ -28,9 +28,20 @@ search is one matrix product. Ties are broken by chunk id, so a ranking never de
 on the order in which the vectors happen to be stored.
 
 Embeddings are derived data (D-002): they live in data/embeddings/, outside git, next
-to a meta.json that records what produced them. load_embedding_set() refuses a set
-made with another contract (model, revision or any other field), another chunk layer
-(corpus snapshot, parser, chunker, budget, text) or other queries: StaleEmbeddingsError.
+to a meta.json that records what produced them. A set is identified by everything that
+can change its numbers (ArtifactIdentity):
+
+- the model: the contract (model, revision, tokenizer revision, pooling, prefixes,
+  normalization, similarity, input limit, truncation, dimension, dtype, device) and the
+  SHA-256 of the tokenizer file that counted the tokens;
+- the runtime: Python, torch, transformers, tokenizers and numpy versions, and whether
+  sentence-transformers took part (it does not);
+- the data: the chunk layer (corpus snapshot, parser, chunker, budget, the structure and
+  the text of every chunk) or the queries (benchmark version, sealed file, text).
+
+load_embedding_set() refuses a set whose identity differs in any of these, naming the
+fields: StaleEmbeddingsError. The time of the run, the cache path and the hardware are
+recorded for the report and never compared: they describe a run, they do not define it.
 """
 
 from __future__ import annotations
@@ -38,8 +49,10 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import platform
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal, Protocol, Self
 
@@ -50,7 +63,7 @@ from ingest import benchmark as bm
 from ingest import chunks as ch
 from ingest import evaluation as ev
 
-SCHEMA_VERSION: Literal["1"] = "1"
+SCHEMA_VERSION: Literal["2"] = "2"
 CONFIG_DIR = Path("config/embeddings")
 EMBEDDINGS_DIR = Path("data/embeddings")
 # Where Hugging Face keeps what it downloads (tokenizer and weights), unless HF_HOME
@@ -98,17 +111,23 @@ class EmbeddingConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True, protected_namespaces=())
 
-    schema_version: Literal["1"]
+    schema_version: Literal["2"]
     name: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
     model_id: str = Field(pattern=r"^[\w.-]+/[\w.-]+$")
     revision: str = Field(pattern=REVISION_PATTERN)
+    # None: the tokenizer comes from the model's own revision.
+    tokenizer_revision: str | None = Field(default=None, pattern=REVISION_PATTERN)
     tokenizer_file: str = Field(min_length=1)
     dimension: int = Field(ge=1)
     # The whole input: prefix, text and special tokens.
     max_input_tokens: int = Field(ge=3)
+    # What goes before the text of a query and of a document. Empty for a model that
+    # takes both as they are.
     query_prefix: str
     document_prefix: str
-    pooling: Literal["mean"]
+    # mean: the mean of the token vectors over the attention mask; cls: the vector of the
+    # first token.
+    pooling: Literal["mean", "cls"]
     normalize: bool
     similarity: Literal["dot"]
     document_truncation: Literal["explicit_tail"]
@@ -119,9 +138,9 @@ class EmbeddingConfig(BaseModel):
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
-        if not self.query_prefix or not self.document_prefix:
-            raise ValueError("an asymmetric model needs a query prefix and a document prefix")
-        if self.query_prefix == self.document_prefix:
+        if bool(self.query_prefix) != bool(self.document_prefix):
+            raise ValueError("a model prefixes both queries and documents, or neither")
+        if self.query_prefix and self.query_prefix == self.document_prefix:
             raise ValueError("the query and document prefixes must differ")
         if self.similarity == "dot" and not self.normalize:
             raise ValueError("dot product is the cosine only on normalized vectors")
@@ -133,6 +152,10 @@ class EmbeddingConfig(BaseModel):
 
     def prefix(self, kind: Kind) -> str:
         return self.query_prefix if kind == "query" else self.document_prefix
+
+    @property
+    def tokenizer_commit(self) -> str:
+        return self.tokenizer_revision or self.revision
 
 
 def load_config(path: Path) -> EmbeddingConfig:
@@ -150,32 +173,70 @@ def model_input(config: EmbeddingConfig, kind: Kind, text: str) -> str:
     return config.prefix(kind) + text
 
 
+def environment_description() -> dict[str, str]:
+    """The machine, for the report: never part of an identity."""
+    cpu = platform.processor()
+    if platform.system() == "Darwin":
+        import subprocess
+
+        brand = subprocess.run(
+            ["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True
+        )
+        cpu = brand.stdout.strip() or cpu
+    return {
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "cpu": cpu,
+        "cpu_count": str(os.cpu_count()),
+        "hf_home": cache_location(),
+    }
+
+
+def cache_location() -> str:
+    """Where the Hugging Face cache is, said without an absolute path: a report is
+    versioned and must not carry the local user or folder names."""
+    home = hf_home().resolve()
+    try:
+        return str(home.relative_to(Path.cwd().resolve()))
+    except ValueError:
+        return "outside the working directory (HF_HOME)"
+
+
 def hf_home() -> Path:
     """The Hugging Face cache, set once for every library that reads HF_HOME."""
     return Path(os.environ.setdefault("HF_HOME", str(HF_CACHE_DIR.absolute())))
 
 
-def load_tokenizer(config: EmbeddingConfig) -> TokenizerLike:
-    """The model's own tokenizer, from tokenizer.json at the pinned revision, with
+@dataclass(frozen=True)
+class LoadedTokenizer:
+    """The tokenizer that counts, and the SHA-256 of the file it was read from."""
+
+    tokenizer: TokenizerLike
+    sha256: str
+
+
+def load_tokenizer(config: EmbeddingConfig) -> LoadedTokenizer:
+    """The model's own tokenizer, from its file at the pinned revision, with
     truncation and padding switched off: it must count, never cut."""
     from huggingface_hub import hf_hub_download
     from tokenizers import Tokenizer
 
     cache = hf_home() / "hub"
+    revision = config.tokenizer_commit
     try:
         path = hf_hub_download(
-            config.model_id, config.tokenizer_file, revision=config.revision, cache_dir=cache
+            config.model_id, config.tokenizer_file, revision=revision, cache_dir=cache
         )
     except Exception as e:
         raise ModelUnavailableError(
-            f"{config.model_id}@{config.revision[:12]}: cannot load {config.tokenizer_file} "
+            f"{config.model_id}@{revision[:12]}: cannot load {config.tokenizer_file} "
             f"from the cache {cache} or the network. Connect once to download it, or point "
             f"HF_HOME at a cache that holds it."
         ) from e
     tokenizer = Tokenizer.from_file(path)
     tokenizer.no_truncation()
     tokenizer.no_padding()
-    return tokenizer  # type: ignore[no-any-return]
+    return LoadedTokenizer(tokenizer, hashlib.sha256(Path(path).read_bytes()).hexdigest())
 
 
 # ---------------------------------------------------------------------------
@@ -390,6 +451,7 @@ class LayerSource(BaseModel):
     parser_version: str
     chunk_tokenizer: str
     sources: dict[str, str]  # act -> source_sha256
+    structure_sha256: str  # chunk ids and the nodes each one owns, in layer order
     content_sha256: str  # chunk ids and texts, in layer order
 
 
@@ -414,6 +476,9 @@ def layer_source(docs: Sequence[ch.ChunkedDocument]) -> LayerSource:
         parser_version=parser,
         chunk_tokenizer=tokenizer,
         sources={d.act: d.source_sha256 for d in docs},
+        structure_sha256=_sha256_lines(
+            (c.chunk_id, " ".join(c.source_paths)) for d in docs for c in d.chunks
+        ),
         content_sha256=_sha256_lines((c.chunk_id, c.text) for d in docs for c in d.chunks),
     )
 
@@ -426,21 +491,58 @@ def query_source(benchmark: bm.Benchmark) -> QuerySource:
     )
 
 
-class EmbeddingSetMeta(BaseModel):
-    """meta.json next to vectors.npy: row i of the matrix is item_ids[i]."""
+class RuntimeIdentity(BaseModel):
+    """The software that turns token ids into vectors. A new version of any of these
+    can move the last bits of a vector, so it makes a cached set stale."""
 
     model_config = STRICT
 
-    schema_version: Literal["1"]
-    kind: Kind
+    python: str
+    torch: str
+    transformers: str
+    tokenizers: str
+    numpy: str
+    sentence_transformers: str | None  # None: not used by this pipeline
+    dtype: str
+    device: str
+
+
+def runtime_identity(config: EmbeddingConfig) -> RuntimeIdentity:
+    """The runtime installed here. Without torch or transformers no set can be
+    computed or checked, so their absence is an error, never a guess."""
+    import importlib.metadata as md
+
+    try:
+        torch, transformers = md.version("torch"), md.version("transformers")
+    except md.PackageNotFoundError as e:
+        raise ModelUnavailableError(
+            "torch and transformers are not installed: install requirements-embed.lock.txt "
+            "to compute or check embeddings"
+        ) from e
+    return RuntimeIdentity(
+        python=platform.python_version(),
+        torch=torch,
+        transformers=transformers,
+        tokenizers=md.version("tokenizers"),
+        numpy=md.version("numpy"),
+        sentence_transformers=None,
+        dtype=config.dtype,
+        device=config.device,
+    )
+
+
+class ArtifactIdentity(BaseModel):
+    """Everything that defines a set of embeddings. Two sets with the same identity
+    are the same computation; any difference makes the stored one stale."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, protected_namespaces=())
+
     config: EmbeddingConfig
     config_hash: str
+    tokenizer_sha256: str
+    runtime: RuntimeIdentity
     layer: LayerSource | None = None
     queries: QuerySource | None = None
-    item_ids: list[str]
-    token_records: list[TokenRecord]
-    vectors_sha256: str
-    backend: dict[str, str]
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -448,8 +550,77 @@ class EmbeddingSetMeta(BaseModel):
             raise ValueError("config_hash is not the hash of config")
         if (self.layer is None) == (self.queries is None):
             raise ValueError("a set comes from a chunk layer or from queries, and only one")
-        if (self.kind == "document") != (self.layer is not None):
-            raise ValueError("documents come from a chunk layer, queries from the benchmark")
+        return self
+
+    @property
+    def kind(self) -> Kind:
+        return "document" if self.layer is not None else "query"
+
+
+def artifact_identity(
+    config: EmbeddingConfig,
+    tokenizer: LoadedTokenizer,
+    runtime: RuntimeIdentity,
+    source: LayerSource | QuerySource,
+) -> ArtifactIdentity:
+    return ArtifactIdentity(
+        config=config,
+        config_hash=config.config_hash(),
+        tokenizer_sha256=tokenizer.sha256,
+        runtime=runtime,
+        layer=source if isinstance(source, LayerSource) else None,
+        queries=source if isinstance(source, QuerySource) else None,
+    )
+
+
+def identity_changes(recorded: ArtifactIdentity, current: ArtifactIdentity) -> list[str]:
+    """What differs between two identities, field by field, in words."""
+
+    def fields(a: BaseModel | None, b: BaseModel | None) -> list[str]:
+        if a is None or b is None:
+            return [] if a is b else ["the kind of input"]
+        da, db = a.model_dump(), b.model_dump()
+        return [k for k in db if da.get(k) != db[k]]
+
+    changed = []
+    if recorded.config_hash != current.config_hash:
+        changed.append(
+            f"the embedding contract ({', '.join(fields(recorded.config, current.config))})"
+        )
+    if recorded.tokenizer_sha256 != current.tokenizer_sha256:
+        changed.append("the tokenizer file (tokenizer_sha256)")
+    if recorded.runtime != current.runtime:
+        changed.append(f"the runtime ({', '.join(fields(recorded.runtime, current.runtime))})")
+    if recorded.kind != current.kind:
+        changed.append("the kind of input (documents against queries)")
+    else:
+        a, b = (
+            (recorded.layer, current.layer)
+            if current.layer
+            else (recorded.queries, current.queries)
+        )
+        if a != b:
+            what = "chunk layer" if current.layer else "queries"
+            changed.append(f"the embedded {what} ({', '.join(fields(a, b))})")
+    return changed
+
+
+class EmbeddingSetMeta(BaseModel):
+    """meta.json next to vectors.npy: row i of the matrix is item_ids[i]. Only
+    identity decides staleness; created_at and environment describe the run."""
+
+    model_config = STRICT
+
+    schema_version: Literal["2"]
+    identity: ArtifactIdentity
+    item_ids: list[str]
+    token_records: list[TokenRecord]
+    vectors_sha256: str
+    created_at: str  # informational
+    environment: dict[str, str]  # informational: hardware, threads, cache path
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
         if len(set(self.item_ids)) != len(self.item_ids):
             raise ValueError("an item id appears twice")
         if [r.item_id for r in self.token_records] != self.item_ids:
@@ -457,30 +628,27 @@ class EmbeddingSetMeta(BaseModel):
         return self
 
 
-def _vectors_sha256(vectors: np.ndarray) -> str:
+def matrix_sha256(vectors: np.ndarray) -> str:
+    """The SHA-256 of a matrix's bytes: equal hashes, bit-identical vectors."""
     return hashlib.sha256(np.ascontiguousarray(vectors).tobytes()).hexdigest()
 
 
 def write_embedding_set(
     directory: Path,
-    config: EmbeddingConfig,
+    identity: ArtifactIdentity,
     inputs: Sequence[ModelInput],
     vectors: np.ndarray,
-    source: LayerSource | QuerySource,
-    backend: Mapping[str, str],
+    environment: Mapping[str, str],
 ) -> EmbeddingSetMeta:
-    check_vectors(vectors, len(inputs), config)
+    check_vectors(vectors, len(inputs), identity.config)
     meta = EmbeddingSetMeta(
         schema_version=SCHEMA_VERSION,
-        kind="document" if isinstance(source, LayerSource) else "query",
-        config=config,
-        config_hash=config.config_hash(),
-        layer=source if isinstance(source, LayerSource) else None,
-        queries=source if isinstance(source, QuerySource) else None,
+        identity=identity,
         item_ids=[i.item_id for i in inputs],
         token_records=[i.record for i in inputs],
-        vectors_sha256=_vectors_sha256(vectors),
-        backend=dict(backend),
+        vectors_sha256=matrix_sha256(vectors),
+        created_at=datetime.now(UTC).isoformat(timespec="seconds"),
+        environment=dict(environment),
     )
     directory.mkdir(parents=True, exist_ok=True)
     np.save(directory / VECTORS_FILE, vectors, allow_pickle=False)
@@ -492,35 +660,31 @@ def write_embedding_set(
 
 
 def load_embedding_set(
-    directory: Path, config: EmbeddingConfig, source: LayerSource | QuerySource
+    directory: Path, identity: ArtifactIdentity
 ) -> tuple[EmbeddingSetMeta, np.ndarray]:
-    """A set made with this exact contract from this exact source, or an error that
-    names what changed."""
+    """A set made with exactly this identity, or an error that names what changed. A
+    set written by another schema version is stale: its identity cannot be compared."""
     meta_path, vectors_path = directory / META_FILE, directory / VECTORS_FILE
     if not meta_path.exists() or not vectors_path.exists():
         raise EmbeddingsNotFoundError(f"{directory}: no embedding set")
+    raw = json.loads(meta_path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or raw.get("schema_version") != SCHEMA_VERSION:
+        version = raw.get("schema_version") if isinstance(raw, dict) else None
+        raise StaleEmbeddingsError(
+            f"{directory} is stale: written with meta schema {version}, the current one is "
+            f"{SCHEMA_VERSION}"
+        )
     try:
-        meta = EmbeddingSetMeta.model_validate_json(meta_path.read_text(encoding="utf-8"))
+        meta = EmbeddingSetMeta.model_validate(raw)
     except ValidationError as e:
         raise EmbeddingError(f"{meta_path} does not meet the contract.\n{e}") from e
-    changed = []
-    if meta.config_hash != config.config_hash():
-        fields = [k for k, v in config.model_dump().items() if meta.config.model_dump().get(k) != v]
-        changed.append(f"the embedding contract ({', '.join(fields)})")
-    recorded = meta.layer if isinstance(source, LayerSource) else meta.queries
-    if recorded is None:
-        changed.append("the kind of input (documents against queries)")
-    elif recorded != source:
-        fields = [k for k, v in source.model_dump().items() if recorded.model_dump().get(k) != v]
-        changed.append(
-            f"the embedded {'chunk layer' if meta.layer else 'queries'} ({', '.join(fields)})"
-        )
+    changed = identity_changes(meta.identity, identity)
     if changed:
         raise StaleEmbeddingsError(f"{directory} is stale: changed since: {'; '.join(changed)}")
     vectors = np.load(vectors_path, allow_pickle=False)
-    if _vectors_sha256(vectors) != meta.vectors_sha256:
+    if matrix_sha256(vectors) != meta.vectors_sha256:
         raise EmbeddingError(f"{vectors_path} is not the matrix its meta.json records")
-    check_vectors(vectors, len(meta.item_ids), config)
+    check_vectors(vectors, len(meta.item_ids), identity.config)
     return meta, vectors
 
 

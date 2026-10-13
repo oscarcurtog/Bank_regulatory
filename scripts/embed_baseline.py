@@ -22,6 +22,7 @@ read for anything but scoring, and none is written.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 import resource
@@ -196,6 +197,14 @@ def paired(diffs: Sequence[float]) -> dict[str, float]:
 # ---------------------------------------------------------------------------
 
 
+def model_cache_bytes(config: em.EmbeddingConfig) -> int:
+    """Size on disk of the model's files in the Hugging Face cache. The model's folder
+    holds links to blobs that may live elsewhere in the cache; each blob counts once."""
+    folder = em.hf_home() / "hub" / f"models--{config.model_id.replace('/', '--')}"
+    blobs = {f.resolve() for f in folder.rglob("*") if f.is_file()}
+    return sum(b.stat().st_size for b in blobs)
+
+
 def timed(label: str, timings: dict[str, float], fn: Callable[[], Any]) -> Any:
     start = time.perf_counter()
     value = fn()
@@ -206,9 +215,8 @@ def timed(label: str, timings: dict[str, float], fn: Callable[[], Any]) -> Any:
 
 def embeddings_for(
     directory: Path,
-    config: em.EmbeddingConfig,
+    identity: em.ArtifactIdentity,
     inputs: Sequence[em.ModelInput],
-    source: em.LayerSource | em.QuerySource,
     encoder_factory: Callable[[], Any],
     timings: dict[str, float],
     label: str,
@@ -217,21 +225,21 @@ def embeddings_for(
     try:
         if recompute:
             raise em.EmbeddingsNotFoundError("--recompute")
-        meta, vectors = em.load_embedding_set(directory, config, source)
+        meta, vectors = em.load_embedding_set(directory, identity)
         if meta.item_ids != [i.item_id for i in inputs] or meta.token_records != [
             i.record for i in inputs
         ]:
             raise em.StaleEmbeddingsError(f"{directory}: other items or token records")
         print(f"  {label}: read from {directory} (not stale)")
-        return vectors, meta.backend, False
+        return vectors, meta.environment, False
     except em.EmbeddingsNotFoundError as e:
         print(f"  {label}: {'recomputing' if recompute else 'none cached'} ({e}), computing")
     except em.StaleEmbeddingsError as e:
         print(f"  {label}: {e}; computing again")
     encoder = encoder_factory()
     vectors = timed(label, timings, lambda: encoder.encode(inputs))
-    em.write_embedding_set(directory, config, inputs, vectors, source, encoder.backend())
-    return vectors, encoder.backend(), True
+    em.write_embedding_set(directory, identity, inputs, vectors, encoder.environment())
+    return vectors, encoder.environment(), True
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -271,27 +279,42 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     print("2. tokenizer compatibility and truncation exposure")
-    tokenizer = em.load_tokenizer(config)
+    loaded = em.load_tokenizer(config)
+    tokenizer = loaded.tokenizer
     doc_inputs = em.prepare_inputs(chunks, "document", tokenizer, config)
     query_inputs = em.prepare_inputs(
         [(q.query_id, q.text) for q in dev.queries], "query", tokenizer, config
     )
     records = {i.item_id: i.record for i in doc_inputs}
     counts = [r.original_model_tokens for r in records.values()]
+    query_counts = [i.record.original_model_tokens for i in query_inputs]
     tokenization: dict[str, Any] = {
+        "limit": config.max_input_tokens,
         "documents": {
             "min": min(counts),
             "median": statistics.median(counts),
             "p95": pct(counts, 95),
+            "p99": pct(counts, 99),
             "max": max(counts),
+            "over_limit": sum(c > config.max_input_tokens for c in counts),
         },
-        "queries_max": max(i.record.original_model_tokens for i in query_inputs),
+        "queries": {
+            "min": min(query_counts),
+            "median": statistics.median(query_counts),
+            "max": max(query_counts),
+            "over_limit": sum(c > config.max_input_tokens for c in query_counts),
+        },
     }
     exposed = exposure(docs, records, nodes, dev)
-    d = tokenization["documents"]
+    d, q = tokenization["documents"], tokenization["queries"]
     print(
-        f"  model tokens min {d['min']}, median {d['median']}, p95 {d['p95']}, max {d['max']}; "
-        f"truncated {exposed['truncated_chunks']} of {exposed['total_chunks']}"
+        f"  documents: model tokens min {d['min']}, median {d['median']}, p95 {d['p95']}, "
+        f"p99 {d['p99']}, max {d['max']}; over the {config.max_input_tokens} limit "
+        f"{d['over_limit']}, truncated {exposed['truncated_chunks']} of {exposed['total_chunks']}"
+    )
+    print(
+        f"  queries: model tokens min {q['min']}, median {q['median']}, max {q['max']}; "
+        f"over the limit {q['over_limit']}"
     )
 
     print("3. embeddings")
@@ -305,13 +328,15 @@ def main(argv: list[str] | None = None) -> int:
         return encoder_cache[0]
 
     layer_src, query_src = em.layer_source(docs), em.query_source(dev)
+    runtime = em.runtime_identity(config)
+    doc_identity = em.artifact_identity(config, loaded, runtime, layer_src)
+    query_identity = em.artifact_identity(config, loaded, runtime, query_src)
     doc_dir = em.embedding_dir(config, f"layer-{args.max_tokens}")
     query_dir = em.embedding_dir(config, f"queries-{dev.manifest.benchmark_version}")
-    doc_vectors, backend, fresh_docs = embeddings_for(
+    doc_vectors, environment, fresh_docs = embeddings_for(
         doc_dir,
-        config,
+        doc_identity,
         doc_inputs,
-        layer_src,
         encoder,
         timings,
         "document embeddings",
@@ -319,9 +344,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     query_vectors, _, _ = embeddings_for(
         query_dir,
-        config,
+        query_identity,
         query_inputs,
-        query_src,
         encoder,
         timings,
         "query embeddings",
@@ -590,11 +614,19 @@ def main(argv: list[str] | None = None) -> int:
             "queries": (query_dir / em.VECTORS_FILE).stat().st_size,
         },
         "peak_rss_bytes": peak if sys.platform == "darwin" else peak * 1024,
-        "backend": backend,
+        "model_cache_bytes": model_cache_bytes(config),
+        "environment": environment,
     }
     summary = {
         "model": config.model_dump(mode="json"),
         "config_hash": config.config_hash(),
+        "identity": {
+            "tokenizer_sha256": loaded.sha256,
+            "runtime": runtime.model_dump(mode="json"),
+            "document_vectors_sha256": em.matrix_sha256(doc_vectors),
+            "query_vectors_sha256": em.matrix_sha256(query_vectors),
+            "run_sha256": hashlib.sha256((run_dir / "run.jsonl").read_bytes()).hexdigest(),
+        },
         "benchmark_version": dev.manifest.benchmark_version,
         "parser_version": dev.manifest.parser_version,
         "layer": layer_src.model_dump(mode="json"),

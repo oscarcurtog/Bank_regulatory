@@ -1,8 +1,9 @@
 {
-  "schema_version": "1",
+  "schema_version": "2",
   "name": "multilingual-e5-large",
   "model_id": "intfloat/multilingual-e5-large",
   "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+  "tokenizer_revision": null,
   "tokenizer_file": "tokenizer.json",
   "dimension": 1024,
   "max_input_tokens": 512,

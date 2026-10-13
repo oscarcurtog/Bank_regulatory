@@ -83,11 +83,11 @@ def test_the_versioned_config_is_the_contract_of_multilingual_e5_large():
     "overrides,message",
     [
         ({"query_prefix": "passage: "}, "must differ"),
-        ({"query_prefix": ""}, "query prefix and a document prefix"),
+        ({"query_prefix": ""}, "both queries and documents, or neither"),
         ({"normalize": False}, "cosine only on normalized"),
         ({"revision": "main"}, "revision"),
         ({"similarity": "cosine"}, "similarity"),
-        ({"pooling": "cls"}, "pooling"),
+        ({"pooling": "max"}, "pooling"),
         ({"device": "mps"}, "device"),
         ({"surprise": 1}, "surprise"),
     ],
@@ -107,6 +107,51 @@ def test_the_prefix_is_the_only_thing_added_to_the_text():
     c = config()
     assert em.model_input(c, "query", "Can ESMA ban it?") == "query: Can ESMA ban it?"
     assert em.model_input(c, "document", "MiCA Article 103") == "passage: MiCA Article 103"
+
+
+def bge_like(**overrides) -> em.EmbeddingConfig:
+    """A model with the shape of BGE-M3 dense: no prefixes, CLS pooling, 8192 tokens."""
+    return config(
+        name="no-prefix-cls",
+        query_prefix="",
+        document_prefix="",
+        pooling="cls",
+        max_input_tokens=8192,
+        **overrides,
+    )
+
+
+def test_the_contract_holds_mean_pooling_with_prefixes_and_cls_pooling_without():
+    assert (config().pooling, config().query_prefix) == ("mean", "query: ")
+    c = bge_like()
+    assert (c.pooling, c.query_prefix, c.document_prefix, c.max_input_tokens) == (
+        "cls",
+        "",
+        "",
+        8192,
+    )
+    assert c.config_hash() != config().config_hash()
+
+
+def test_without_prefixes_the_text_is_embedded_as_it_is():
+    c = bge_like()
+    assert em.model_input(c, "query", "Can ESMA ban it?") == "Can ESMA ban it?"
+    [q, d] = [
+        em.prepare_inputs([("x", "three words here")], kind, WordTokenizer(), c)[0]
+        for kind in ("query", "document")
+    ]
+    # <s> + three words + </s>: nothing else is counted or added
+    assert q.input_ids == d.input_ids and q.record.original_model_tokens == 5
+
+
+def test_a_long_input_is_measured_against_its_own_models_limit():
+    c, tok = bge_like(), WordTokenizer()
+    fits, over = em.prepare_inputs([("a", words(8190)), ("b", words(8191))], "document", tok, c)
+    assert (fits.record.original_model_tokens, fits.record.truncated) == (8192, False)
+    assert over.record.truncated and over.record.encoded_model_tokens == 8192
+    assert over.input_ids[-1] == EOS
+    with pytest.raises(em.TruncationRefusedError):
+        em.prepare_inputs([("q", words(8191))], "query", tok, c)
 
 
 # ---------------------------------------------------------------------------
@@ -322,53 +367,167 @@ def _chunked(text: str = "Competent authorities shall supervise.") -> ch.Chunked
     )
 
 
-def _written(tmp_path: Path) -> tuple[em.EmbeddingConfig, em.LayerSource, Path]:
+RUNTIME = em.RuntimeIdentity(
+    python="3.12.14",
+    torch="2.14.1",
+    transformers="5.15.1",
+    tokenizers="0.22.2",
+    numpy="2.5.4",
+    sentence_transformers=None,
+    dtype="float32",
+    device="cpu",
+)
+
+
+def _identity(c: em.EmbeddingConfig, source, runtime=RUNTIME, tokenizer_sha="a" * 64):
+    return em.artifact_identity(
+        c, em.LoadedTokenizer(WordTokenizer(), tokenizer_sha), runtime, source
+    )
+
+
+def _written(tmp_path: Path) -> tuple[em.ArtifactIdentity, Path]:
     c = config(dimension=2)
     doc = _chunked()
     inputs = em.prepare_inputs(
         [(x.chunk_id, x.text) for x in doc.chunks], "document", WordTokenizer(), c
     )
-    source = em.layer_source([doc])
+    identity = _identity(c, em.layer_source([doc]))
     directory = tmp_path / "set"
-    em.write_embedding_set(directory, c, inputs, unit([[1, 0]]), source, {"torch": "x"})
-    return c, source, directory
+    em.write_embedding_set(directory, identity, inputs, unit([[1, 0]]), {"cpu": "M1"})
+    return identity, directory
 
 
-def test_a_set_reads_back_with_the_same_contract_and_source(tmp_path):
-    c, source, directory = _written(tmp_path)
-    meta, vectors = em.load_embedding_set(directory, c, source)
+def test_a_set_reads_back_with_the_same_identity(tmp_path):
+    identity, directory = _written(tmp_path)
+    meta, vectors = em.load_embedding_set(directory, identity)
     assert meta.item_ids == ["DORA:7"] and vectors.shape == (1, 2)
     assert meta.token_records[0].item_id == "DORA:7"
+    assert meta.identity.runtime == RUNTIME
 
 
-def test_a_new_model_revision_makes_the_cached_embeddings_stale(tmp_path):
-    c, source, directory = _written(tmp_path)
-    with pytest.raises(em.StaleEmbeddingsError, match="revision"):
-        em.load_embedding_set(directory, c.model_copy(update={"revision": "f" * 40}), source)
+def _contract(identity: em.ArtifactIdentity, **changes) -> em.ArtifactIdentity:
+    c = identity.config.model_copy(update=changes)
+    return identity.model_copy(update={"config": c, "config_hash": c.config_hash()})
 
 
-def test_any_other_change_of_contract_or_layer_makes_them_stale(tmp_path):
-    c, source, directory = _written(tmp_path)
-    with pytest.raises(em.StaleEmbeddingsError, match="batch_size"):
-        em.load_embedding_set(directory, c.model_copy(update={"batch_size": 1}), source)
-    changed_text = em.layer_source([_chunked("Competent authorities shall not supervise.")])
+def _runtime(identity: em.ArtifactIdentity, **changes) -> em.ArtifactIdentity:
+    return identity.model_copy(update={"runtime": identity.runtime.model_copy(update=changes)})
+
+
+@pytest.mark.parametrize(
+    "change,named",
+    [
+        (lambda i: _contract(i, revision="f" * 40), "revision"),
+        (lambda i: _contract(i, tokenizer_revision="e" * 40), "tokenizer_revision"),
+        (lambda i: _contract(i, pooling="cls"), "pooling"),
+        (lambda i: _contract(i, normalize=False), "normalize"),
+        (lambda i: _contract(i, query_prefix="search_query: "), "query_prefix"),
+        (lambda i: _contract(i, document_prefix=""), "document_prefix"),
+        (lambda i: _contract(i, max_input_tokens=8192), "max_input_tokens"),
+        (lambda i: _contract(i, batch_size=1), "batch_size"),
+        (lambda i: _runtime(i, transformers="5.16.0"), "transformers"),
+        (lambda i: _runtime(i, torch="2.15.0"), "torch"),
+        (lambda i: _runtime(i, tokenizers="0.23.0"), "tokenizers"),
+        (lambda i: _runtime(i, numpy="2.6.0"), "numpy"),
+        (lambda i: _runtime(i, python="3.13.1"), "python"),
+        (lambda i: _runtime(i, dtype="float16"), "dtype"),
+        (lambda i: _runtime(i, device="mps"), "device"),
+        (lambda i: _runtime(i, sentence_transformers="5.0.0"), "sentence_transformers"),
+        (lambda i: i.model_copy(update={"tokenizer_sha256": "b" * 64}), "tokenizer_sha256"),
+    ],
+)
+def test_any_change_of_model_contract_or_runtime_makes_the_set_stale(tmp_path, change, named):
+    identity, directory = _written(tmp_path)
+    with pytest.raises(em.StaleEmbeddingsError, match=named):
+        em.load_embedding_set(directory, change(identity))
+
+
+def test_a_change_of_the_embedded_data_makes_the_set_stale(tmp_path):
+    identity, directory = _written(tmp_path)
+    assert identity.layer is not None
+    text = em.layer_source([_chunked("Competent authorities shall not supervise.")])
     with pytest.raises(em.StaleEmbeddingsError, match="content_sha256"):
-        em.load_embedding_set(directory, c, changed_text)
-    other_parser = source.model_copy(update={"parser_version": "9.9.9"})
+        em.load_embedding_set(directory, identity.model_copy(update={"layer": text}))
+    parser = identity.layer.model_copy(update={"parser_version": "9.9.9"})
     with pytest.raises(em.StaleEmbeddingsError, match="parser_version"):
-        em.load_embedding_set(directory, c, other_parser)
+        em.load_embedding_set(directory, identity.model_copy(update={"layer": parser}))
+    structure = identity.layer.model_copy(update={"structure_sha256": "c" * 64})
+    with pytest.raises(em.StaleEmbeddingsError, match="structure_sha256"):
+        em.load_embedding_set(directory, identity.model_copy(update={"layer": structure}))
+
+
+def test_time_cache_path_and_hardware_never_make_a_set_stale(tmp_path, monkeypatch):
+    identity, directory = _written(tmp_path)
+    meta_path = directory / em.META_FILE
+    raw = json.loads(meta_path.read_text(encoding="utf-8"))
+    raw["created_at"] = "1999-01-01T00:00:00+00:00"
+    raw["environment"] = {"cpu": "another machine", "hf_home": "/elsewhere", "torch_threads": "64"}
+    meta_path.write_text(json.dumps(raw), encoding="utf-8")
+    monkeypatch.setenv("HF_HOME", str(tmp_path / "another-cache"))
+    meta, _ = em.load_embedding_set(directory, identity)
+    assert meta.environment["cpu"] == "another machine"
+
+
+def test_the_recorded_cache_location_is_never_an_absolute_path(tmp_path, monkeypatch):
+    """Reports are versioned: they must not carry the local user or folder names."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HF_HOME", str(tmp_path / ".cache" / "huggingface"))
+    assert em.environment_description()["hf_home"] == ".cache/huggingface"
+    monkeypatch.setenv("HF_HOME", str(tmp_path.parent / "shared-cache"))
+    assert em.cache_location() == "outside the working directory (HF_HOME)"
+
+
+def test_a_set_written_by_an_older_meta_schema_is_stale(tmp_path):
+    identity, directory = _written(tmp_path)
+    meta_path = directory / em.META_FILE
+    raw = json.loads(meta_path.read_text(encoding="utf-8"))
+    raw["schema_version"] = "1"
+    meta_path.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(em.StaleEmbeddingsError, match="meta schema 1"):
+        em.load_embedding_set(directory, identity)
 
 
 def test_vectors_that_do_not_match_their_record_are_refused(tmp_path):
-    c, source, directory = _written(tmp_path)
+    identity, directory = _written(tmp_path)
     np.save(directory / em.VECTORS_FILE, unit([[0, 1]]), allow_pickle=False)
     with pytest.raises(em.EmbeddingError, match="not the matrix"):
-        em.load_embedding_set(directory, c, source)
+        em.load_embedding_set(directory, identity)
+
+
+def test_the_runtime_identity_reads_the_installed_versions(monkeypatch):
+    import importlib.metadata as md
+
+    versions = {
+        "torch": "2.14.1",
+        "transformers": "5.15.1",
+        "tokenizers": "0.22.2",
+        "numpy": "2.5.4",
+    }
+    monkeypatch.setattr(md, "version", lambda name: versions[name])
+    r = em.runtime_identity(config())
+    assert (r.torch, r.transformers, r.tokenizers, r.numpy) == (
+        "2.14.1",
+        "5.15.1",
+        "0.22.2",
+        "2.5.4",
+    )
+    assert (r.dtype, r.device, r.sentence_transformers) == ("float32", "cpu", None)
+
+
+def test_without_torch_the_runtime_cannot_be_identified(monkeypatch):
+    import importlib.metadata as md
+
+    def version(name):
+        raise md.PackageNotFoundError(name)
+
+    monkeypatch.setattr(md, "version", version)
+    with pytest.raises(em.ModelUnavailableError, match="requirements-embed"):
+        em.runtime_identity(config())
 
 
 def test_a_missing_set_is_not_found_rather_than_stale(tmp_path):
     with pytest.raises(em.EmbeddingsNotFoundError):
-        em.load_embedding_set(tmp_path / "nothing", config(), _written(tmp_path)[1])
+        em.load_embedding_set(tmp_path / "nothing", _written(tmp_path)[0])
 
 
 def test_query_sets_record_the_benchmark_they_came_from():

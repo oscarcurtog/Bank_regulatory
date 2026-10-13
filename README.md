@@ -65,7 +65,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 637 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 661 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -115,7 +115,7 @@ not in the repository (see [Data and reproducibility](#data-and-reproducibility)
 marked `embedding_model` need the `embed` extra and the model weights (2.2 GB, downloaded once into
 `.cache/huggingface`); without them they fail, unless the environment declares
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported`, as CI does. With that declaration and without the
-corpus, pytest reports `593 passed, 44 skipped`.
+corpus, pytest reports `617 passed, 44 skipped`.
 
 ## Docker
 
@@ -178,8 +178,8 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 
-Without the corpus you can run the test suite (562 tests pass, 38 are skipped), the linters and
-type checks, and both Docker images.
+Without the corpus you can run the test suite (617 tests pass and 44 are skipped with
+`FUNDAMENTO_EMBEDDING_MODEL=unsupported`), the linters and type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files
 can be rebuilt from the repository root:
