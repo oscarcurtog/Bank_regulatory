@@ -381,3 +381,27 @@ def candidate_recall(
             "per_query": values,
         }
     return out
+
+
+def paired_bootstrap(
+    deltas: Mapping[str, float], queries: Sequence[bm.Query], reps: int = 10_000
+) -> dict[str, float]:
+    """Mean per-query delta and a 95% interval from resampling needs (a need's queries are
+    not independent), with how many queries got better, stayed equal or got worse."""
+    by_need: dict[str, list[float]] = {}
+    for q in queries:
+        by_need.setdefault(q.need_id, []).append(deltas[q.query_id])
+    needs = sorted(by_need)
+    rng = random.Random(SEED)
+    means = sorted(
+        statistics.fmean(v for n in rng.choices(needs, k=len(needs)) for v in by_need[n])
+        for _ in range(reps)
+    )
+    return {
+        "mean": statistics.fmean(v for n in needs for v in by_need[n]),
+        "ci95_low": means[int(0.025 * reps)],
+        "ci95_high": means[int(0.975 * reps) - 1],
+        "better": sum(d > 1e-9 for d in deltas.values()),
+        "equal": sum(abs(d) <= 1e-9 for d in deltas.values()),
+        "worse": sum(d < -1e-9 for d in deltas.values()),
+    }

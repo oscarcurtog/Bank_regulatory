@@ -1,0 +1,667 @@
+{
+ "experiment": "R1",
+ "benchmark_version": "0.10.0",
+ "e5_run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+ "structure": {
+  "definitions": 166,
+  "definitions_by_act": {
+   "DORA": 65,
+   "MiCA": 53,
+   "PSD2": 48
+  },
+  "graph": {
+   "references_followed": 2031,
+   "by_form": {
+    "article": 812,
+    "articles": 424,
+    "paragraphs": 731,
+    "points_of_article": 53,
+    "points_of_paragraph": 11
+   },
+   "cross_act": 11,
+   "resolved_to_an_ancestor": 32,
+   "unresolved": 8,
+   "skipped_anaphora": 19,
+   "skipped_outside_the_corpus": 241,
+   "chunks_with_a_target": 683,
+   "targets_per_chunk": {
+    "min": 0,
+    "median": 1,
+    "p90": 10,
+    "max": 341
+   },
+   "targets_per_reference": {
+    "min": 1,
+    "median": 1,
+    "p90": 8,
+    "max": 52
+   }
+  },
+  "relations_per_chunk_median": 5.0
+ },
+ "bridges": {
+  "N004-en-1": [
+   "What is ICT risk?",
+   "What is ICT-related incident?",
+   "What is digital operational resilience?"
+  ],
+  "N004-en-2": [
+   "What is digital operational resilience?",
+   "What is ICT-related incident?",
+   "What is ICT risk?"
+  ],
+  "N004-es-1": [
+   "What is ICT risk?",
+   "What is ICT third-party risk?",
+   "What is digital operational resilience?"
+  ],
+  "N006-en-3": [
+   "What is payment institution?",
+   "What is payment transaction?",
+   "What is payment service?"
+  ],
+  "N006-en-4": [
+   "What is small and non-interconnected investment firm?",
+   "What is payment institution?",
+   "What is microenterprise?"
+  ],
+  "N006-es-2": [
+   "What is payment institution?",
+   "What is small and non-interconnected investment firm?",
+   "What is electronic money institution?"
+  ],
+  "N008-en-1": [
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?"
+  ],
+  "N008-en-2": [
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?"
+  ],
+  "N008-es-1": [
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?"
+  ],
+  "N009-en-1": [
+   "What is reception and transmission of orders for crypto-assets on behalf of clients?",
+   "What is execution of orders for crypto-assets on behalf of clients?",
+   "What is providing custody and administration of crypto-assets on behalf of clients?"
+  ],
+  "N009-en-2": [
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is crypto-asset service provider?",
+   "What is e-money token?"
+  ],
+  "N009-es-1": [
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?"
+  ],
+  "N010-en-3": [
+   "What is providing transfer services for crypto-assets on behalf of clients?",
+   "What is crypto-asset service provider?",
+   "What is providing custody and administration of crypto-assets on behalf of clients?"
+  ],
+  "N010-en-4": [
+   "What is providing transfer services for crypto-assets on behalf of clients?",
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?"
+  ],
+  "N010-es-2": [
+   "What is providing transfer services for crypto-assets on behalf of clients?",
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is crypto-asset service provider?"
+  ],
+  "N011-en-3": [
+   "What is crypto-asset service provider?",
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is crypto-asset service?"
+  ],
+  "N011-en-4": [
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?"
+  ],
+  "N011-es-2": [
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?",
+   "What is crypto-asset?"
+  ],
+  "N012-en-1": [
+   "What is payment service provider?",
+   "What is account servicing payment service provider?",
+   "What is payment service?"
+  ],
+  "N012-en-2": [
+   "What is payment account?",
+   "What is account servicing payment service provider?",
+   "What is payment transaction?"
+  ],
+  "N012-es-1": [
+   "What is account servicing payment service provider?",
+   "What is payment account?",
+   "What is payment service provider?"
+  ],
+  "N013-en-3": [
+   "What is direct debit?",
+   "What is payment service provider?",
+   "What is payment account?"
+  ],
+  "N013-en-4": [
+   "What is direct debit?",
+   "What is funds?",
+   "What is payment account?"
+  ],
+  "N013-es-2": [
+   "What is direct debit?",
+   "What is payment account?",
+   "What is funds?"
+  ],
+  "N014-en-1": [
+   "What is ICT third-party service provider?",
+   "What is critical ICT third-party service provider?",
+   "What is ICT third-party risk?"
+  ],
+  "N014-en-2": [
+   "What is framework contract?",
+   "What is account servicing payment service provider?",
+   "What is payment initiation service provider?"
+  ],
+  "N014-es-1": [
+   "What is account servicing payment service provider?",
+   "What is payment service provider?",
+   "What is framework contract?"
+  ],
+  "N015-en-1": [
+   "What is medium-sized enterprise?",
+   "What is insurance intermediary?",
+   "What is ancillary insurance intermediary?"
+  ],
+  "N015-en-2": [
+   "What is medium-sized enterprise?",
+   "What is insurance intermediary?",
+   "What is ancillary insurance intermediary?"
+  ],
+  "N015-es-1": [
+   "What is insurance intermediary?",
+   "What is reinsurance intermediary?",
+   "What is ancillary insurance intermediary?"
+  ],
+  "N016-en-1": [
+   "What is significant cyber threat?",
+   "What is major ICT-related incident?",
+   "What is ICT-related incident?"
+  ],
+  "N016-en-2": [
+   "What is significant cyber threat?",
+   "What is major operational or security payment-related incident?",
+   "What is cyber threat?"
+  ],
+  "N016-es-1": [
+   "What is significant cyber threat?",
+   "What is cyber threat?",
+   "What is security of network and information systems?"
+  ],
+  "N017-en-1": [
+   "What is threat intelligence?",
+   "What is cyber threat?",
+   "What is critical or important function?"
+  ],
+  "N017-en-2": [
+   "What is cyber-attack?",
+   "What is data reporting service provider?",
+   "What is critical ICT third-party service provider?"
+  ],
+  "N017-es-1": [
+   "What is ICT third-party service provider?",
+   "What is ICT risk?",
+   "What is ICT services?"
+  ],
+  "N018-en-1": [
+   "What is critical ICT third-party service provider?",
+   "What is ICT third-party service provider established in a third country?",
+   "What is ICT third-party service provider?"
+  ],
+  "N018-en-2": [
+   "What is critical ICT third-party service provider?",
+   "What is critical or important function?",
+   "What is ICT risk?"
+  ],
+  "N018-es-1": [
+   "What is critical ICT third-party service provider?",
+   "What is critical or important function?",
+   "What is ICT third-party service provider established in a third country?"
+  ],
+  "N019-en-1": [
+   "What is cyber threat?",
+   "What is significant cyber threat?",
+   "What is information asset?"
+  ],
+  "N019-en-2": [
+   "What is cyber-attack?",
+   "What is data reporting service provider?",
+   "What is ICT third-party risk?"
+  ],
+  "N019-es-1": [
+   "What is security of network and information systems?",
+   "What is data reporting service provider?",
+   "What is group?"
+  ],
+  "N020-en-1": [
+   "What is critical ICT third-party service provider?",
+   "What is ICT third-party service provider?",
+   "What is Lead Overseer?"
+  ],
+  "N020-en-2": [
+   "What is critical ICT third-party service provider?",
+   "What is critical or important function?",
+   "What is ICT third-party service provider?"
+  ],
+  "N020-es-1": [
+   "What is critical ICT third-party service provider?",
+   "What is ICT third-party service provider?",
+   "What is ICT services?"
+  ],
+  "N021-en-1": [
+   "What is crypto-asset?",
+   "What is competent authority?",
+   "What is asset-referenced token?"
+  ],
+  "N021-en-2": [
+   "What is e-money token?",
+   "What is qualified investors?",
+   "What is asset-referenced token?"
+  ],
+  "N021-es-1": [
+   "What is e-money token?",
+   "What is qualified investors?",
+   "What is issuer?"
+  ],
+  "N022-en-1": [
+   "What is retail holder?",
+   "What is asset-referenced token?",
+   "What is e-money token?"
+  ],
+  "N022-en-2": [
+   "What is asset-referenced token?",
+   "What is e-money token?",
+   "What is crypto-asset service provider?"
+  ],
+  "N022-es-1": [
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is e-money token?",
+   "What is asset-referenced token?"
+  ],
+  "N023-en-1": [
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is operation of a trading platform for crypto-assets?",
+   "What is execution of orders for crypto-assets on behalf of clients?"
+  ],
+  "N023-en-2": [
+   "What is e-money token?",
+   "What is electronic money?",
+   "What is official currency?"
+  ],
+  "N023-es-1": [
+   "What is e-money token?",
+   "What is crypto-asset service provider?",
+   "What is electronic money?"
+  ],
+  "N024-en-1": [
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?",
+   "What is crypto-asset?"
+  ],
+  "N024-en-2": [
+   "What is e-money token?",
+   "What is crypto-asset service?",
+   "What is crypto-asset?"
+  ],
+  "N024-es-1": [
+   "What is e-money token?",
+   "What is crypto-asset service?",
+   "What is crypto-asset?"
+  ],
+  "N025-en-1": [
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?",
+   "What is crypto-asset?"
+  ],
+  "N025-en-2": [
+   "What is e-money token?",
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?"
+  ],
+  "N025-es-1": [
+   "What is crypto-asset service provider?",
+   "What is e-money token?",
+   "What is crypto-asset service?"
+  ],
+  "N026-en-1": [
+   "What is qualified investors?",
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?"
+  ],
+  "N026-en-2": [
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is crypto-asset service provider?",
+   "What is placing of crypto-assets?"
+  ],
+  "N026-es-1": [
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?"
+  ],
+  "N027-en-1": [
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?",
+   "What is providing custody and administration of crypto-assets on behalf of clients?"
+  ],
+  "N027-en-2": [
+   "What is providing custody and administration of crypto-assets on behalf of clients?",
+   "What is crypto-asset service provider?",
+   "What is crypto-asset service?"
+  ],
+  "N027-es-1": [
+   "What is reception and transmission of orders for crypto-assets on behalf of clients?",
+   "What is execution of orders for crypto-assets on behalf of clients?",
+   "What is providing custody and administration of crypto-assets on behalf of clients?"
+  ],
+  "N028-en-1": [
+   "What is payment institution?",
+   "What is payment account?",
+   "What is payment service provider?"
+  ],
+  "N028-en-2": [
+   "What is payment institution?",
+   "What is payment transaction?",
+   "What is payment service?"
+  ],
+  "N028-es-1": [
+   "What is payment institution?",
+   "What is payment account?",
+   "What is payment service provider?"
+  ],
+  "N029-en-1": [
+   "What is framework contract?",
+   "What is account servicing payment service provider?",
+   "What is payment initiation service provider?"
+  ],
+  "N029-en-2": [
+   "What is account information service provider?",
+   "What is account information service?",
+   "What is account servicing payment service provider?"
+  ],
+  "N029-es-1": [
+   "What is account information service provider?",
+   "What is account servicing payment service provider?",
+   "What is account information service?"
+  ],
+  "N030-en-1": [
+   "What is payment service provider?",
+   "What is account servicing payment service provider?",
+   "What is payment service user?"
+  ],
+  "N030-en-2": [
+   "What is payment account?",
+   "What is account servicing payment service provider?",
+   "What is direct debit?"
+  ],
+  "N030-es-1": [
+   "What is payment account?",
+   "What is payment transaction?",
+   "What is account servicing payment service provider?"
+  ],
+  "N031-en-1": [
+   "What is strong customer authentication?",
+   "What is payment service user?",
+   "What is payer?"
+  ],
+  "N031-en-2": [
+   "What is payment account?",
+   "What is payment order?",
+   "What is payment initiation service provider?"
+  ],
+  "N031-es-1": [
+   "What is payment initiation service provider?",
+   "What is payment service user?",
+   "What is account servicing payment service provider?"
+  ],
+  "N032-en-1": [
+   "What is payment transaction?",
+   "What is reference exchange rate?",
+   "What is direct debit?"
+  ],
+  "N032-en-2": [
+   "What is direct debit?",
+   "What is payment transaction?",
+   "What is payment account?"
+  ],
+  "N032-es-1": [
+   "What is reference exchange rate?",
+   "What is direct debit?",
+   "What is payment transaction?"
+  ],
+  "N033-en-1": [
+   "What is credit institution?",
+   "What is payment account?",
+   "What is payment institution?"
+  ],
+  "N033-en-2": [
+   "What is payment account?",
+   "What is account servicing payment service provider?",
+   "What is account information service provider?"
+  ],
+  "N033-es-1": [
+   "What is account servicing payment service provider?",
+   "What is payment account?",
+   "What is payment initiation service provider?"
+  ],
+  "N034-en-1": [
+   "What is payment institution?",
+   "What is ICT-related incident?",
+   "What is operational or security payment-related incident?"
+  ],
+  "N034-en-2": [
+   "What is operational or security payment-related incident?",
+   "What is major operational or security payment-related incident?",
+   "What is ICT-related incident?"
+  ],
+  "N034-es-1": [
+   "What is ICT-related incident?",
+   "What is operational or security payment-related incident?",
+   "What is major operational or security payment-related incident?"
+  ],
+  "N035-en-1": [
+   "What is payment institution?",
+   "What is credit institution?",
+   "What is account information service provider?"
+  ],
+  "N035-en-2": [
+   "What is crowdfunding service provider?",
+   "What is crypto-asset service provider?",
+   "What is account information service provider?"
+  ],
+  "N035-es-1": [
+   "What is crowdfunding service provider?",
+   "What is account information service provider?",
+   "What is crypto-asset service provider?"
+  ]
+ },
+ "e5_candidate_recall": {
+  "@20": {
+   "global": 0.8160493827160494,
+   "by_language": {
+    "en": 0.8197530864197531,
+    "es": 0.8086419753086419
+   },
+   "groups": {
+    "multi_provision": 0.5333333333333333,
+    "cross_reference": 0.7000000000000001,
+    "cross_act": 0.33333333333333337,
+    "lexical_twin": 0.7647058823529411
+   },
+   "dependent_evidence": 0.47474747474747475
+  },
+  "@50": {
+   "global": 0.862962962962963,
+   "by_language": {
+    "en": 0.8657407407407407,
+    "es": 0.8574074074074074
+   },
+   "groups": {
+    "multi_provision": 0.6333333333333334,
+    "cross_reference": 0.7545454545454546,
+    "cross_act": 0.4166666666666667,
+    "lexical_twin": 0.8137254901960784
+   },
+   "dependent_evidence": 0.5818181818181819
+  },
+  "@100": {
+   "global": 0.8833333333333334,
+   "by_language": {
+    "en": 0.8932098765432099,
+    "es": 0.8635802469135803
+   },
+   "groups": {
+    "multi_provision": 0.725,
+    "cross_reference": 0.8045454545454546,
+    "cross_act": 0.5416666666666666,
+    "lexical_twin": 0.8382352941176471
+   },
+   "dependent_evidence": 0.6404040404040404
+  }
+ },
+ "configurations": {
+  "acdr-e5-bridge3": {
+   "run_sha256": "90bfd215590463243f92b75537670e7b0725bb6f6df3ba71dcc81877d1d47501",
+   "candidate_recall": {
+    "@20": {
+     "global": 0.8160493827160494,
+     "by_language": {
+      "en": 0.8197530864197531,
+      "es": 0.8086419753086419
+     },
+     "groups": {
+      "multi_provision": 0.5333333333333333,
+      "cross_reference": 0.7000000000000001,
+      "cross_act": 0.33333333333333337,
+      "lexical_twin": 0.7647058823529411
+     },
+     "dependent_evidence": 0.47474747474747475
+    },
+    "@50": {
+     "global": 0.8932098765432099,
+     "by_language": {
+      "en": 0.9015432098765431,
+      "es": 0.8765432098765432
+     },
+     "groups": {
+      "multi_provision": 0.7416666666666667,
+      "cross_reference": 0.8439393939393939,
+      "cross_act": 0.7916666666666666,
+      "lexical_twin": 0.8774509803921569
+     },
+     "dependent_evidence": 0.7737373737373737
+    },
+    "@100": {
+     "global": 0.9469135802469135,
+     "by_language": {
+      "en": 0.9546296296296296,
+      "es": 0.9314814814814815
+     },
+     "groups": {
+      "multi_provision": 0.8722222222222222,
+      "cross_reference": 0.9151515151515152,
+      "cross_act": 0.9166666666666667,
+      "lexical_twin": 0.9509803921568628
+     },
+     "dependent_evidence": 0.9090909090909091
+    }
+   },
+   "pool_size": {
+    "median": 86,
+    "max": 243
+   },
+   "relevant_beyond_e5_top20_in_first_50_by_relation": {
+    "bridge": 15,
+    "definition": 13,
+    "definition_reference": 2,
+    "reference": 4
+   }
+  },
+  "acdr-e5-bridge5": {
+   "run_sha256": "f4f741f6a95699951827722e96cf6fb3ceaa9a91d81349c1e321e54da8c62d3b",
+   "candidate_recall": {
+    "@20": {
+     "global": 0.8160493827160494,
+     "by_language": {
+      "en": 0.8197530864197531,
+      "es": 0.8086419753086419
+     },
+     "groups": {
+      "multi_provision": 0.5333333333333333,
+      "cross_reference": 0.7000000000000001,
+      "cross_act": 0.33333333333333337,
+      "lexical_twin": 0.7647058823529411
+     },
+     "dependent_evidence": 0.47474747474747475
+    },
+    "@50": {
+     "global": 0.8839506172839506,
+     "by_language": {
+      "en": 0.8876543209876543,
+      "es": 0.8765432098765432
+     },
+     "groups": {
+      "multi_provision": 0.7277777777777777,
+      "cross_reference": 0.8363636363636363,
+      "cross_act": 0.75,
+      "lexical_twin": 0.8627450980392156
+     },
+     "dependent_evidence": 0.7333333333333333
+    },
+    "@100": {
+     "global": 0.9407407407407407,
+     "by_language": {
+      "en": 0.9546296296296296,
+      "es": 0.9129629629629629
+     },
+     "groups": {
+      "multi_provision": 0.8722222222222222,
+      "cross_reference": 0.9151515151515152,
+      "cross_act": 0.9166666666666667,
+      "lexical_twin": 0.9411764705882353
+     },
+     "dependent_evidence": 0.8787878787878788
+    }
+   },
+   "pool_size": {
+    "median": 89,
+    "max": 248
+   },
+   "relevant_beyond_e5_top20_in_first_50_by_relation": {
+    "bridge": 15,
+    "definition": 12,
+    "definition_reference": 1,
+    "reference": 4
+   }
+  }
+ },
+ "decision": {
+  "rule": "the k with the higher global Candidate Recall@50 (then the smaller k); >= 0.95 goes to reranking, under 0.95 to research",
+  "selected_k": 3,
+  "candidate_recall50": 0.893,
+  "e5_recall50": 0.863,
+  "next": "research"
+ },
+ "timings_seconds": {
+  "structure (graph, glossary, relations)": 0.6299946669896599,
+  "bridge candidates encoded": 7.551607416011393,
+  "candidate lists, k=3": 0.05471204101922922,
+  "candidate lists, k=5": 0.05479558400111273
+ }
+}

@@ -202,3 +202,64 @@ def candidate_list(
     n = len(order)
     ranked = rt.Ranked(base.query_id, tuple(order), tuple(float(n - i) for i in range(n)))
     return QueryCandidates(ranked, list(bridge_hits), provenance, len(head) + len(pool))
+
+
+# ---------------------------------------------------------------------------
+# E2: dense-seeded Personalized PageRank over the legal structure
+# ---------------------------------------------------------------------------
+
+
+def structure_matrix(index: DependencyIndex, chunk_ids: Sequence[str]) -> np.ndarray:
+    """Row-stochastic transition matrix over chunks: from a chunk, one step to each distinct
+    target of its relations, equally likely; a row of zeros for a chunk without targets."""
+    position = {c: i for i, c in enumerate(chunk_ids)}
+    w = np.zeros((len(chunk_ids), len(chunk_ids)), dtype=np.float64)
+    for chunk, relations in index.relations.items():
+        targets = {t for _, _, _, t in relations if t != chunk}
+        for t in targets:
+            w[position[chunk], position[t]] = 1.0 / len(targets)
+    return w
+
+
+def personalized_pagerank(
+    seeds: np.ndarray, transition: np.ndarray, follow: float, tolerance: float = 1e-12
+) -> np.ndarray:
+    """p = (1 - follow) s + follow (W^T p + dangling mass s), iterated to a fixed point.
+    `follow` is the probability of taking an edge (HippoRAG 2's damping of 0.5)."""
+    if not 0 < follow < 1 or abs(seeds.sum() - 1) > 1e-9 or (seeds < 0).any():
+        raise rt.RetrievalError("PageRank needs 0 < follow < 1 and a seed distribution")
+    dangling = transition.sum(axis=1) == 0
+    p = seeds.copy()
+    for _ in range(10_000):
+        nxt: np.ndarray = (1 - follow) * seeds + follow * (
+            transition.T @ p + p[dangling].sum() * seeds
+        )
+        if np.abs(nxt - p).max() < tolerance:
+            return nxt
+        p = nxt
+    raise rt.RetrievalError("PageRank did not converge")
+
+
+def ppr_ranking(
+    base: rt.Ranked,
+    dense_scores: Mapping[str, float],
+    transition: np.ndarray,
+    chunk_ids: Sequence[str],
+    seeds: int,
+    follow: float,
+) -> rt.Ranked:
+    """E5's top `seeds` as the reset distribution (proportional to their cosine); chunks by
+    PageRank score, ties by the base rank; never-reached chunks after, in the base order."""
+    position = {c: i for i, c in enumerate(chunk_ids)}
+    s = np.zeros(len(chunk_ids), dtype=np.float64)
+    for c in base.chunk_ids[:seeds]:
+        s[position[c]] = max(dense_scores[c], 0.0)
+    if s.sum() <= 0:
+        raise rt.RetrievalError(f"{base.query_id}: no positive seed")
+    p = personalized_pagerank(s / s.sum(), transition, follow)
+    base_rank = {c: i for i, c in enumerate(base.chunk_ids)}
+    reached = [c for c in base.chunk_ids if p[position[c]] > 0]
+    reached.sort(key=lambda c: (-p[position[c]], base_rank[c]))
+    rest = [c for c in base.chunk_ids if p[position[c]] == 0]
+    order = reached + rest
+    return rt.Ranked(base.query_id, tuple(order), tuple(float(p[position[c]]) for c in order))

@@ -1,0 +1,182 @@
+{
+ "experiment": "E2",
+ "benchmark_version": "0.10.0",
+ "e5_run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+ "graph_edges": 10582,
+ "configurations": {
+  "ppr-e5-n10-f3": {
+   "seeds": 10,
+   "follow": 0.3,
+   "columns": {
+    "Recall@10": 0.7631687242798354,
+    "nDCG@10": 0.477304643058369,
+    "multi_provision": 0.48055555555555557,
+    "dependent": 0.3
+   },
+   "recall20": 0.8176954732510289,
+   "candidate_recall50": 0.8681069958847737,
+   "cross_reference": 0.6611111111111111,
+   "cross_act": 0.29166666666666663,
+   "by_language_recall10": {
+    "en": 0.7774691358024691,
+    "es": 0.7345679012345678
+   },
+   "paired_against_e5": {
+    "Recall@10": {
+     "mean": 0.0,
+     "ci95_low": 0.0,
+     "ci95_high": 0.0,
+     "better": 0,
+     "equal": 81,
+     "worse": 0
+    },
+    "nDCG@10": {
+     "mean": -0.05019739168407805,
+     "ci95_low": -0.08108495705275134,
+     "ci95_high": -0.021162394596452527,
+     "better": 21,
+     "equal": 20,
+     "worse": 40
+    }
+   },
+   "material": {
+    "A: Recall@10 +0.05": false,
+    "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+    "C: multi_provision Recall@10 +0.10": false,
+    "D: dependent evidence Recall@10 +0.10": false
+   }
+  },
+  "ppr-e5-n10-f5": {
+   "seeds": 10,
+   "follow": 0.5,
+   "columns": {
+    "Recall@10": 0.7631687242798354,
+    "nDCG@10": 0.4460100837022639,
+    "multi_provision": 0.48055555555555557,
+    "dependent": 0.3
+   },
+   "recall20": 0.8053497942386831,
+   "candidate_recall50": 0.8681069958847737,
+   "cross_reference": 0.6611111111111111,
+   "cross_act": 0.29166666666666663,
+   "by_language_recall10": {
+    "en": 0.7774691358024691,
+    "es": 0.7345679012345678
+   },
+   "paired_against_e5": {
+    "Recall@10": {
+     "mean": 0.0,
+     "ci95_low": 0.0,
+     "ci95_high": 0.0,
+     "better": 0,
+     "equal": 81,
+     "worse": 0
+    },
+    "nDCG@10": {
+     "mean": -0.08149195104018313,
+     "ci95_low": -0.12191409875927445,
+     "ci95_high": -0.044059548042354305,
+     "better": 15,
+     "equal": 12,
+     "worse": 54
+    }
+   },
+   "material": {
+    "A: Recall@10 +0.05": false,
+    "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+    "C: multi_provision Recall@10 +0.10": false,
+    "D: dependent evidence Recall@10 +0.10": false
+   }
+  },
+  "ppr-e5-n20-f3": {
+   "seeds": 20,
+   "follow": 0.3,
+   "columns": {
+    "Recall@10": 0.7374485596707819,
+    "nDCG@10": 0.42138331521246325,
+    "multi_provision": 0.512962962962963,
+    "dependent": 0.34949494949494947
+   },
+   "recall20": 0.8119341563786008,
+   "candidate_recall50": 0.8890946502057614,
+   "cross_reference": 0.6737373737373737,
+   "cross_act": 0.33333333333333337,
+   "by_language_recall10": {
+    "en": 0.7296296296296296,
+    "es": 0.7530864197530863
+   },
+   "paired_against_e5": {
+    "Recall@10": {
+     "mean": -0.0257201646090535,
+     "ci95_low": -0.12037037037037036,
+     "ci95_high": 0.04526748971193415,
+     "better": 7,
+     "equal": 68,
+     "worse": 6
+    },
+    "nDCG@10": {
+     "mean": -0.10611871952998377,
+     "ci95_low": -0.15588947771711137,
+     "ci95_high": -0.05800121775235675,
+     "better": 19,
+     "equal": 6,
+     "worse": 56
+    }
+   },
+   "material": {
+    "A: Recall@10 +0.05": false,
+    "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+    "C: multi_provision Recall@10 +0.10": false,
+    "D: dependent evidence Recall@10 +0.10": false
+   }
+  },
+  "ppr-e5-n20-f5": {
+   "seeds": 20,
+   "follow": 0.5,
+   "columns": {
+    "Recall@10": 0.6506172839506172,
+    "nDCG@10": 0.337884569618156,
+    "multi_provision": 0.4648148148148148,
+    "dependent": 0.2909090909090909
+   },
+   "recall20": 0.8074074074074075,
+   "candidate_recall50": 0.8860082304526748,
+   "cross_reference": 0.5666666666666667,
+   "cross_act": 0.33333333333333337,
+   "by_language_recall10": {
+    "en": 0.6487654320987654,
+    "es": 0.654320987654321
+   },
+   "paired_against_e5": {
+    "Recall@10": {
+     "mean": -0.11255144032921811,
+     "ci95_low": -0.22921810699588477,
+     "ci95_high": -0.010699588477366255,
+     "better": 7,
+     "equal": 55,
+     "worse": 19
+    },
+    "nDCG@10": {
+     "mean": -0.18961746512429106,
+     "ci95_low": -0.26222979779186806,
+     "ci95_high": -0.11978605907850193,
+     "better": 14,
+     "equal": 4,
+     "worse": 63
+    }
+   },
+   "material": {
+    "A: Recall@10 +0.05": false,
+    "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+    "C: multi_provision Recall@10 +0.10": false,
+    "D: dependent evidence Recall@10 +0.10": false
+   }
+  }
+ },
+ "decision": {
+  "rule": "selected by global Recall@10, then nDCG@10, then grid order; kept if one of iteration 1's four tests of an interesting configuration passes against E5",
+  "selected": "ppr-e5-n10-f3",
+  "passed": [],
+  "kept": false
+ }
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": "1",
+  "name": "bge-reranker-v2-m3",
+  "model_id": "BAAI/bge-reranker-v2-m3",
+  "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+  "tokenizer_file": "tokenizer.json",
+  "max_input_tokens": 8192,
+  "pair_truncation": "explicit_passage_tail",
+  "score": "logit",
+  "batch_size": 8,
+  "device": "cpu",
+  "dtype": "float32"
+}
