@@ -23,6 +23,7 @@ import statistics
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -39,6 +40,8 @@ __all__ = [
     "RetrievalError",
     "dependent_evidence",
     "load_frozen_inputs",
+    "load_system_run",
+    "oracle_union_recall",
     "macro_by_need",
     "per_language",
     "rank_by_scores",
@@ -241,3 +244,30 @@ def load_frozen_inputs(benchmark_dir: Path, expect_version: str, max_tokens: int
     ev.check_layer(dev.manifest, layer)
     chunks = {c.chunk_id: c for d in docs for c in d.chunks}
     return FrozenInputs(dev, docs, layer, chunks)
+
+
+def oracle_union_recall(
+    first: Sequence[str], second: Sequence[str], relevant: frozenset[str], k: int = 10
+) -> float:
+    """Share of the relevant chunks in the union of two top-k lists: a diagnostic of how
+    much two retrievers complement each other, never a system (it sees up to 2k chunks)."""
+    return recall_of(set(first[:k]) | set(second[:k]), relevant)
+
+
+def load_system_run(
+    system: str,
+    max_tokens: int,
+    benchmark_version: str,
+    results: Path = Path("data/results"),
+    runs: Path = RUNS_DIR,
+) -> tuple[list[Ranked], dict[str, Any]]:
+    """A system's run and summary; the run must be the one its summary recorded."""
+    summary_path = (
+        results / f"dev-{benchmark_version}" / f"{system}-layer-{max_tokens}" / "summary.json"
+    )
+    if not summary_path.exists():
+        raise RetrievalError(f"{summary_path}: no summary; run the system first")
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    sha = summary["identity"]["run_sha256"]
+    ranked, _ = read_run(run_dir(system, max_tokens, benchmark_version, runs) / RUN_FILE, sha)
+    return ranked, summary

@@ -119,6 +119,9 @@ Fixed here, before any result:
 - A hybrid between E5 + 0.03 and E5 + 0.05 is not kept, and the iteration goes to 3 on E5.
 - "Still low" means `multi_provision` Recall@10 under 0.65 or dependent evidence Recall@10 under
   E5's plus 0.10.
+- Experiment 3 picks its K with the selection rule of experiment 2 (highest global Recall@10,
+  then nDCG@10, then the smaller K), and rule 3 is applied to that one. (Added after experiment 1
+  and before experiment 3 ran: the rules named no way to choose between the two values of K.)
 - A transition the rules do not cover stops the iteration and is reported as such.
 
 ## Not in this iteration

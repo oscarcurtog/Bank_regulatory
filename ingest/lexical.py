@@ -10,7 +10,10 @@ The choices, each fixed in the contract before the first run:
 - Analyzer, an imitation of Lucene's EnglishAnalyzer: lowercase; the English possessive
   ("'s") removed; split on every character that is not a letter or a digit (hyphens,
   slashes and parentheses included); Lucene's 33 English stop words; the Porter stemmer
-  (PyStemmer's "porter", the original algorithm, as Lucene's PorterStemFilter).
+  (PyStemmer's "porter", the original algorithm, as Lucene's PorterStemFilter), applied
+  only to words of three letters or more, as Lucene and Porter's reference implementation
+  do. Without that rule the single letter "s" stemmed to an empty term (fixed after the
+  first run of experiment 1; both runs are in the iteration's record).
 - Documents are chunk.text: exactly the string the dense models embed, without their prefix.
 - The same analyzer runs on the English and the Spanish queries. The corpus is English and
   BM25 has no way across languages: that is measured, not corrected.
@@ -56,6 +59,9 @@ class AnalyzerConfig(BaseModel):
     token_pattern: str = Field(min_length=1)
     stopwords: Literal["lucene_english", "none"]
     stemmer: Literal["porter", "none"]
+    # Porter's reference implementation and Lucene's PorterStemmer leave words of one or
+    # two letters unstemmed (Porter's own "DEPARTURE" from the published algorithm).
+    stem_min_length: int = Field(ge=1)
     stemmer_library: Literal["PyStemmer"]
     stemmer_library_version: str
 
@@ -129,7 +135,8 @@ class Analyzer:
         if self._stop is not None:
             tokens = [t for t in tokens if t not in self._stop]
         if self._stemmer is not None:
-            tokens = list(self._stemmer.stemWords(tokens))
+            short = self.config.stem_min_length
+            tokens = [t if len(t) < short else self._stemmer.stemWord(t) for t in tokens]
         return tokens
 
 

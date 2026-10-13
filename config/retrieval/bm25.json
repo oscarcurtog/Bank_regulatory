@@ -13,6 +13,7 @@
     "token_pattern": "[^\\W_]+",
     "stopwords": "lucene_english",
     "stemmer": "porter",
+    "stem_min_length": 3,
     "stemmer_library": "PyStemmer",
     "stemmer_library_version": "3.1.0"
   }

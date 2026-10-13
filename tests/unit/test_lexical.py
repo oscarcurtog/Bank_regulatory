@@ -32,11 +32,12 @@ def test_the_versioned_config_is_lucene_bm25_with_an_english_analyzer():
     assert (CONFIG.library, CONFIG.library_version, CONFIG.method) == ("bm25s", "0.3.11", "lucene")
     assert (CONFIG.k1, CONFIG.b) == (1.2, 0.75)
     a = CONFIG.analyzer
-    assert (a.lowercase, a.strip_possessive, a.stopwords, a.stemmer) == (
+    assert (a.lowercase, a.strip_possessive, a.stopwords, a.stemmer, a.stem_min_length) == (
         True,
         True,
         "lucene_english",
         "porter",
+        3,
     )
     assert a.stemmer_library_version == "3.1.0"
     assert len(lx.LUCENE_ENGLISH_STOP_WORDS) == 33
@@ -67,6 +68,13 @@ def test_the_analyzer_lowercases_splits_drops_stop_words_and_stems():
         "institut",
         "licenc",
     ]
+
+
+def test_words_shorter_than_three_letters_are_not_stemmed_as_in_lucene():
+    analyze = lx.Analyzer(CONFIG.analyzer)
+    # Porter alone turns "s" into an empty term and "us" into "u"; Lucene keeps both
+    assert analyze("member s us institutions") == ["member", "s", "us", "institut"]
+    assert all(analyze(w) == [w] for w in ("eu", "s", "uk"))
 
 
 def test_spanish_queries_go_through_the_same_english_analyzer():
