@@ -186,6 +186,15 @@ at `50d42775`, greedy decoding, in its own environment (D-040; [qwen3-4b-instruc
   taken one per function in turn, functions in the order above, each function in the
   population's order, up to 10. The ranking is that set, then E5's order. No position is reserved.
 
+**Amended before C ran** (format only, no label and no result read): on the first timing sample
+the 4-bit model copied the template's word "function" or wrote article titles as functions, so
+no judgment could be read. The answer form now lists the nine names to copy exactly and shows the
+form on other numbers (`[4] condition | yes`, `[5] merely related | no`); a member judged
+necessary whose function is not one of the names counts in a last group of the merge, after the
+eight functions. On the same six windows every function then parsed; a window may still give
+seven lines for eight members (the unjudged member is not selected), and one window gave the
+same function to all eight members. Both are the model's behaviour, measured as such.
+
 **Time rule**: a fixed sample of windows (the first window of every tenth query) is timed first.
 The whole population runs if it projects to 8 hours or less; otherwise the first 128 members of
 each query in R1's order, if that projects to 8 hours or less (its oracle: Recall@10 0.948,

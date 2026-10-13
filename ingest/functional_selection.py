@@ -230,14 +230,17 @@ INSTRUCTIONS = (
     "question, or from another provision through a relation, with the number of hops and the "
     "clause that creates the relation.\n\n"
     "For each candidate, ask: if this candidate were removed, what legally necessary part of the "
-    "answer would no longer be supported? Then name its legal function, one of:\n"
-    + "\n".join(f"- {f}" for f in FUNCTIONS)
+    "answer would no longer be supported? Then give its legal function, copying exactly one of "
+    "these names:\n"
+    + "\n".join(FUNCTIONS)
     + "\n\nA candidate is necessary only if removing it would leave a legally necessary part of "
     "the answer unsupported. A related provision that repeats the general subject is not "
     "necessary.\n\n"
-    "Answer with exactly one line per candidate, in order, and nothing else:\n"
-    "[number] function | yes or no\n"
-    "where yes means necessary."
+    "Answer with exactly one line per candidate, in order, and nothing else. Each line is the "
+    "candidate's number in brackets, one function name from the list, a bar, and yes (necessary) "
+    "or no. The form, shown on other numbers:\n"
+    "[4] condition | yes\n"
+    "[5] merely related | no"
 )
 _LINE = re.compile(
     r"^\s*\[(\d+)\]\s*(.+?)\s*\|\s*(?:necessary\s*:\s*)?(yes|no)\b", re.IGNORECASE | re.MULTILINE
@@ -315,16 +318,18 @@ def merge(
     judged: Mapping[str, Judgment], members: Sequence[Member], limit: int = SET_SIZE
 ) -> list[str]:
     """The evidence set: the members judged necessary with a function other than merely related,
-    taken one per function in turn (in the order of FUNCTIONS), each function in the population's
-    order, up to `limit`."""
-    groups: dict[str, list[str]] = {f: [] for f in FUNCTIONS[:-1]}
+    taken one per function in turn (in the order of FUNCTIONS, then a last group for a necessary
+    member whose function is not one of the names), each function in the population's order, up
+    to `limit`."""
+    order = [*FUNCTIONS[:-1], "unparsed"]
+    groups: dict[str, list[str]] = {f: [] for f in order}
     for m in members:
         j = judged.get(m.chunk)
         if j is not None and j.necessary and j.function in groups:
             groups[j.function].append(m.chunk)
     chosen: list[str] = []
     while len(chosen) < limit and any(groups.values()):
-        for function in FUNCTIONS[:-1]:
+        for function in order:
             if groups[function] and len(chosen) < limit:
                 chosen.append(groups[function].pop(0))
     return chosen

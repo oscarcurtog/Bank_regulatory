@@ -140,7 +140,8 @@ def test_the_merge_covers_functions_in_turn_and_stops_at_the_limit():
         "C:6": fs.Judgment("exception", False),
         "C:7": fs.Judgment("unparsed", True),
     }
-    assert fs.merge(judged, members) == ["C:1", "C:4", "C:3", "C:2"]
+    # an unknown function judged necessary counts in a last group; merely related never does
+    assert fs.merge(judged, members) == ["C:1", "C:4", "C:3", "C:7", "C:2"]
     assert fs.merge(judged, members, limit=2) == ["C:1", "C:4"]
     e5 = rt.Ranked("q", ("C:5", "C:1", "C:2"), (3.0, 2.0, 1.0))
     assert fs.evidence_ranking(e5, ["C:2"]).chunk_ids == ("C:2", "C:5", "C:1")
