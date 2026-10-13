@@ -62,6 +62,7 @@ testpaths = ["tests"]
 markers = [
     "corpus: needs the full corpus downloaded into data/raw/",
     "evaluator: needs ir_measures (requirements-dev.lock.txt); skipped only where FUNDAMENTO_EVALUATOR=unsupported",
+    "embedding_model: needs torch, transformers and the embedding model (requirements-embed.lock.txt); skipped only where FUNDAMENTO_EMBEDDING_MODEL=unsupported",
 ]
 
 # ---------------------------------------------------------------------------

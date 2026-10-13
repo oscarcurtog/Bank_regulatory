@@ -101,6 +101,9 @@ USER fundamento
 # thing that skips the tests marked "evaluator", and -rs prints why. Without it, a
 # missing ir_measures fails those tests, as it does in the venv and in CI.
 ENV FUNDAMENTO_EVALUATOR=unsupported
+# Same rule for the tests marked "embedding_model": the images install neither torch nor
+# the embedding model (the optional 'embed' extra), and this line is what skips them.
+ENV FUNDAMENTO_EMBEDDING_MODEL=unsupported
 CMD ["python", "-m", "pytest", "-q", "-rs"]
 
 # ---------------------------------------------------------------------------

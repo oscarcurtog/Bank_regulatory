@@ -65,6 +65,10 @@ def same_words(article: h.Article) -> bool:
 # wheel. They are skipped ONLY where the environment declares it, as the dev image
 # does. Anywhere else a missing ir_measures fails the tests that need it.
 EVALUATOR_ENV = "FUNDAMENTO_EVALUATOR"
+# The "embedding_model" tests need torch, transformers and the weights of the embedding
+# model (requirements-embed.lock.txt and one download). CI and the dev image install
+# neither, and say so with this variable. Anywhere else a missing model fails them.
+EMBEDDING_MODEL_ENV = "FUNDAMENTO_EMBEDDING_MODEL"
 
 
 def pytest_collection_modifyitems(config, items):
@@ -76,6 +80,14 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "evaluator" in item.keywords:
                 item.add_marker(skip_evaluator)
+    if os.environ.get(EMBEDDING_MODEL_ENV) == "unsupported":
+        skip_model = pytest.mark.skip(
+            reason=f"{EMBEDDING_MODEL_ENV}=unsupported: this environment installs neither torch "
+            f"nor the embedding model by design; these tests run where the 'embed' extra is"
+        )
+        for item in items:
+            if "embedding_model" in item.keywords:
+                item.add_marker(skip_model)
     if RAW_DIR.exists() and any(RAW_DIR.iterdir()):
         return
     skip = pytest.mark.skip(reason="data/raw/ is missing in this checkout (D-002: not versioned)")

@@ -79,7 +79,12 @@ jobs:
         timeout-minutes: 5
         run: python -c "from ingest.chunks import TOKENIZER, load_encoding; load_encoding(TOKENIZER)"
 
+      # The tests marked "embedding_model" need torch, transformers and 2.2 GB of weights
+      # (the optional 'embed' extra). CI installs neither, by design, and declares it here:
+      # this is the only thing that skips them, and -rs prints why.
       - name: Tests (corpus-marked tests skip without data/raw/)
+        env:
+          FUNDAMENTO_EMBEDDING_MODEL: unsupported
         run: python -m pytest -rs
 
   runtime-image:
