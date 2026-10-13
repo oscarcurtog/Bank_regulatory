@@ -77,3 +77,30 @@ candidate. Chosen before it ran: `Qwen/Qwen3-Embedding-0.6B` at `97b0c614`, Apac
 trained for embeddings in 2025, instruction-aware, Matryoshka up to 1024, against two XLM-RoBERTa
 encoders ([contract](../../../../config/embeddings/README.md)). Its default query instruction is
 used as published, not one written for this corpus.
+
+Result (data/results/dev-0.10.0/qwen3-embedding-0.6b-layer-500/): no chunk truncated (at most 544
+model tokens against 32,768); global nDCG@10 0.483 and Recall@10 0.730 against E5's 0.528 and
+0.763; English 0.519 and 0.757, Spanish 0.412 and 0.674. Paired against E5: Recall@10 -0.034
+[-0.127, +0.050], nDCG@10 -0.044 [-0.106, +0.019]. It has the highest Recall@50 of the
+iteration (0.894) and dependent evidence 0.347 (E5 0.300). It is slower on this CPU: 566 s for
+the documents in its run of record and 281 s when a new process recomputed it (bit for bit the
+same vectors and run), against 191 s for E5. The cause of that twofold spread was not isolated,
+so the cost is 1.5 to 3 times E5's.
+
+**Decision 5.** Rule: a third dense model must reach E5 + 0.05 global Recall@10. It reaches
+E5 - 0.033. Dense model swapping stops: two more models of different design moved global
+Recall@10 by -0.015 and -0.033.
+
+## Experiment 4: not run
+
+Its gate is a retriever whose Recall@50 reaches 0.95, since a reranker cannot recover a chunk
+missing from its candidates. The best Recall@50 of the iteration is 0.894 (Qwen3; E5 0.863).
+
+## Outcome
+
+No configuration passes any of the protocol's four tests of an interesting configuration
+([leaderboard](leaderboard.md)). E5 stays the best retriever measured on DEV. Of the 63 (query,
+relevant chunk) pairs E5 misses in its top 10 (29 of 81 queries fail), 54 are grade-2 evidence,
+their median rank in E5 is 103, and 40 lie beyond rank 50; 43 belong to four `multi_provision`
+needs (N022, N024, N034, N035). 31 of the 63 are in the top 10 of some other system tried here,
+but every one of those systems loses more elsewhere than it gains there.

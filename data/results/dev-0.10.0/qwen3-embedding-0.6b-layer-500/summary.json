@@ -1,0 +1,3461 @@
+{
+ "model": {
+  "schema_version": "2",
+  "name": "qwen3-embedding-0.6b",
+  "model_id": "Qwen/Qwen3-Embedding-0.6B",
+  "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+  "tokenizer_revision": null,
+  "tokenizer_file": "tokenizer.json",
+  "dimension": 1024,
+  "max_input_tokens": 32768,
+  "query_prefix": "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery:",
+  "document_prefix": "",
+  "pooling": "last",
+  "normalize": true,
+  "similarity": "dot",
+  "document_truncation": "explicit_tail",
+  "query_truncation": "refuse",
+  "batch_size": 16,
+  "device": "cpu",
+  "dtype": "float32"
+ },
+ "config_hash": "ed2b78cd6fe3dbfa9375a663d62e7a2c87f0002d9d1b6a5775c69cda40dff7ac",
+ "identity": {
+  "tokenizer_sha256": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a",
+  "runtime": {
+   "python": "3.12.14",
+   "torch": "2.14.1",
+   "transformers": "5.15.1",
+   "tokenizers": "0.22.2",
+   "numpy": "2.5.4",
+   "sentence_transformers": null,
+   "dtype": "float32",
+   "device": "cpu"
+  },
+  "document_vectors_sha256": "53d063696799627e9ccbba26ae0f7fbe569de67e2da4bc3c2c72c234d1fb7115",
+  "query_vectors_sha256": "b9c2ec206fd7ddcadf606bcf7b8cb35709879b7a3f23a4b8de62652dc38d50ab",
+  "run_sha256": "de9388a555a65d6a000f9210a711cd9a8fac36f2c79c6f13ddca6bfca55ca985"
+ },
+ "benchmark_version": "0.10.0",
+ "parser_version": "1.4.0",
+ "layer": {
+  "max_tokens": 500,
+  "chunker_version": "0.1.0",
+  "parser_version": "1.4.0",
+  "chunk_tokenizer": "cl100k_base",
+  "sources": {
+   "DORA": "cf50d8f023d23b2a56f535aaee0760eba7f1925ef08a9858c5c31d43d414f46b",
+   "MiCA": "078da6ed766fe117be60ff63536f25101ec21f2dec175394eef7bf82c02ffe19",
+   "PSD2": "e9063e8919bf93bd2b92ae0c6f816ad83bcf6ca42a5b97cdc277214e5080e1c3"
+  },
+  "structure_sha256": "76fce5626d300ac23892169682a21cb5c6805adc428248d8c91adee6fa7de372",
+  "content_sha256": "8748ef18fe7b1aaad831055e8de9d910f6b3088c0a9837b3a975065baf9f9c2d"
+ },
+ "queries_sha256": "8c1d859430139f3d40354fe0866c9e11d9c05e6458aba27969f1a9077d55f2c7",
+ "tokenization": {
+  "limit": 32768,
+  "documents": {
+   "min": 15,
+   "median": 104.0,
+   "p95": 389,
+   "p99": 477,
+   "max": 544,
+   "over_limit": 0
+  },
+  "queries": {
+   "min": 41,
+   "median": 70.5,
+   "max": 132,
+   "over_limit": 0
+  }
+ },
+ "exposure": {
+  "total_chunks": 1354,
+  "truncated_chunks": 0,
+  "truncated_share": 0.0,
+  "dropped_tokens": {
+   "min": 0,
+   "median": 0,
+   "p95": 0,
+   "max": 0
+  },
+  "by_act": {},
+  "chunks": [],
+  "needs_with_a_truncated_relevant_chunk": {},
+  "judged_nodes_in_truncated_text": {
+   "relevant": [],
+   "grade_1": [],
+   "grade_0": []
+  }
+ },
+ "metrics": {
+  "official_by_language": {
+   "en": {
+    "needs": 27,
+    "queries": 54,
+    "nDCG@10": 0.5186382928868289,
+    "Recall@10": 0.7574074074074074,
+    "MRR@10": 0.7152998236331569,
+    "Recall@5": 0.6540123456790125,
+    "Recall@20": 0.8222222222222222,
+    "Recall@T=1000": 0.680364542864543,
+    "Recall@T=2000": 0.836964732798066
+   },
+   "es": {
+    "needs": 27,
+    "queries": 27,
+    "nDCG@10": 0.41197603380305936,
+    "Recall@10": 0.674074074074074,
+    "MRR@10": 0.5482951205173427,
+    "Recall@5": 0.5938271604938272,
+    "Recall@20": 0.7666666666666666,
+    "Recall@T=1000": 0.6372744539411206,
+    "Recall@T=2000": 0.7266964516964518
+   }
+  },
+  "by_style": {
+   "en formal": {
+    "needs": 27,
+    "nDCG@10": 0.5793177316296976,
+    "Recall@10": 0.8129629629629629,
+    "MRR@10": 0.7950617283950616,
+    "Recall@5": 0.6987654320987654,
+    "Recall@20": 0.85,
+    "Recall@T=1000": 0.7046404213070879,
+    "Recall@T=2000": 0.8467581800915134
+   },
+   "en natural": {
+    "needs": 27,
+    "nDCG@10": 0.4579588541439604,
+    "Recall@10": 0.7018518518518518,
+    "MRR@10": 0.6355379188712521,
+    "Recall@5": 0.6092592592592593,
+    "Recall@20": 0.7944444444444444,
+    "Recall@T=1000": 0.6560886644219978,
+    "Recall@T=2000": 0.8271712855046188
+   },
+   "es natural": {
+    "needs": 27,
+    "nDCG@10": 0.41197603380305936,
+    "Recall@10": 0.674074074074074,
+    "MRR@10": 0.5482951205173427,
+    "Recall@5": 0.5938271604938272,
+    "Recall@20": 0.7666666666666666,
+    "Recall@T=1000": 0.6372744539411206,
+    "Recall@T=2000": 0.7266964516964518
+   }
+  },
+  "macro_by_need": {
+   "needs": 27,
+   "queries": 81,
+   "nDCG@10": 0.48308420652557243,
+   "Recall@10": 0.7296296296296296,
+   "MRR@10": 0.6596315892612189,
+   "Recall@5": 0.6339506172839506,
+   "Recall@20": 0.8037037037037037,
+   "Recall@T=1000": 0.6660011798900688,
+   "Recall@T=2000": 0.8002086390975279
+  },
+  "by_type": {
+   "direct": {
+    "needs": 11,
+    "descriptive_only": false,
+    "nDCG@10": 0.5544209095554361,
+    "Recall@10": 0.8636363636363636,
+    "MRR@10": 0.7677128427128427,
+    "Recall@5": 0.8181818181818182,
+    "Recall@20": 0.9090909090909091,
+    "Recall@T=1000": 0.8151515151515152,
+    "Recall@T=2000": 0.8757575757575757
+   },
+   "exception_confusion": {
+    "needs": 7,
+    "descriptive_only": false,
+    "nDCG@10": 0.4385866348658974,
+    "Recall@10": 0.7380952380952381,
+    "MRR@10": 0.5063492063492063,
+    "Recall@5": 0.5952380952380952,
+    "Recall@20": 0.8571428571428571,
+    "Recall@T=1000": 0.5714285714285714,
+    "Recall@T=2000": 0.8095238095238095
+   },
+   "multi_provision": {
+    "needs": 6,
+    "descriptive_only": false,
+    "nDCG@10": 0.4445010969150167,
+    "Recall@10": 0.39444444444444443,
+    "MRR@10": 0.6472883597883597,
+    "Recall@5": 0.2972222222222222,
+    "Recall@20": 0.44999999999999996,
+    "Recall@T=1000": 0.4099682724682725,
+    "Recall@T=2000": 0.5509388759388759
+   },
+   "partial_out_of_scope": {
+    "needs": 3,
+    "descriptive_only": true,
+    "nDCG@10": 0.40251018184309234,
+    "Recall@10": 0.8888888888888888,
+    "MRR@10": 0.645679012345679,
+    "Recall@5": 0.7222222222222222,
+    "Recall@20": 1.0,
+    "Recall@T=1000": 0.8518518518518517,
+    "Recall@T=2000": 1.0
+   }
+  },
+  "by_difficulty": {
+   "easy": {
+    "needs": 7,
+    "descriptive_only": false,
+    "nDCG@10": 0.5114202898658378,
+    "Recall@10": 0.7777777777777778,
+    "MRR@10": 0.6845804988662131,
+    "Recall@5": 0.6904761904761905,
+    "Recall@20": 0.8174603174603174,
+    "Recall@T=1000": 0.680952380952381,
+    "Recall@T=2000": 0.7428571428571429
+   },
+   "hard": {
+    "needs": 6,
+    "descriptive_only": false,
+    "nDCG@10": 0.5145793946050816,
+    "Recall@10": 0.5703703703703703,
+    "MRR@10": 0.7736772486772487,
+    "Recall@5": 0.5194444444444445,
+    "Recall@20": 0.6074074074074074,
+    "Recall@T=1000": 0.5613571613571614,
+    "Recall@T=2000": 0.6926055426055426
+   },
+   "medium": {
+    "needs": 14,
+    "descriptive_only": false,
+    "nDCG@10": 0.4554182271070787,
+    "Recall@10": 0.7738095238095238,
+    "MRR@10": 0.5982804232804233,
+    "Recall@5": 0.6547619047619048,
+    "Recall@20": 0.880952380952381,
+    "Recall@T=1000": 0.7033730158730158,
+    "Recall@T=2000": 0.875
+   }
+  },
+  "by_answerability": {
+   "complete": {
+    "needs": 24,
+    "descriptive_only": false,
+    "nDCG@10": 0.4931559596108825,
+    "Recall@10": 0.7097222222222221,
+    "MRR@10": 0.6613756613756614,
+    "Recall@5": 0.6229166666666667,
+    "Recall@20": 0.7791666666666667,
+    "Recall@T=1000": 0.6427698458948459,
+    "Recall@T=2000": 0.775234718984719
+   },
+   "partial": {
+    "needs": 3,
+    "descriptive_only": true,
+    "nDCG@10": 0.40251018184309234,
+    "Recall@10": 0.8888888888888888,
+    "MRR@10": 0.645679012345679,
+    "Recall@5": 0.7222222222222222,
+    "Recall@20": 1.0,
+    "Recall@T=1000": 0.8518518518518517,
+    "Recall@T=2000": 1.0
+   }
+  },
+  "by_driver": {
+   "(none)": {
+    "needs": 1,
+    "descriptive_only": true,
+    "nDCG@10": 0.512710837738155,
+    "Recall@10": 1.0,
+    "MRR@10": 0.7777777777777778,
+    "Recall@5": 1.0,
+    "Recall@20": 1.0,
+    "Recall@T=1000": 1.0,
+    "Recall@T=2000": 1.0
+   },
+   "cross_act": {
+    "needs": 2,
+    "descriptive_only": true,
+    "nDCG@10": 0.5877857480510094,
+    "Recall@10": 0.33333333333333337,
+    "MRR@10": 0.8888888888888888,
+    "Recall@5": 0.29166666666666663,
+    "Recall@20": 0.33333333333333337,
+    "Recall@T=1000": 0.47777777777777775,
+    "Recall@T=2000": 0.5055555555555555
+   },
+   "cross_reference": {
+    "needs": 11,
+    "descriptive_only": false,
+    "nDCG@10": 0.4784974140223881,
+    "Recall@10": 0.6242424242424242,
+    "MRR@10": 0.6854256854256854,
+    "Recall@5": 0.4803030303030303,
+    "Recall@20": 0.6696969696969697,
+    "Recall@T=1000": 0.553922088012997,
+    "Recall@T=2000": 0.6914212050575688
+   },
+   "date": {
+    "needs": 1,
+    "descriptive_only": true,
+    "nDCG@10": 0.675431201950795,
+    "Recall@10": 1.0,
+    "MRR@10": 1.0,
+    "Recall@5": 1.0,
+    "Recall@20": 1.0,
+    "Recall@T=1000": 1.0,
+    "Recall@T=2000": 1.0
+   },
+   "exception": {
+    "needs": 14,
+    "descriptive_only": false,
+    "nDCG@10": 0.5302889016902604,
+    "Recall@10": 0.7321428571428571,
+    "MRR@10": 0.6492630385487529,
+    "Recall@5": 0.5952380952380952,
+    "Recall@20": 0.8154761904761905,
+    "Recall@T=1000": 0.6198565323565324,
+    "Recall@T=2000": 0.7928266178266179
+   },
+   "level2_gap": {
+    "needs": 1,
+    "descriptive_only": true,
+    "nDCG@10": 0.4816960044008578,
+    "Recall@10": 1.0,
+    "MRR@10": 1.0,
+    "Recall@5": 1.0,
+    "Recall@20": 1.0,
+    "Recall@T=1000": 1.0,
+    "Recall@T=2000": 1.0
+   },
+   "lexical_twin": {
+    "needs": 17,
+    "descriptive_only": false,
+    "nDCG@10": 0.46139841506882395,
+    "Recall@10": 0.7156862745098039,
+    "MRR@10": 0.6479769685652039,
+    "Recall@5": 0.6029411764705882,
+    "Recall@20": 0.7941176470588235,
+    "Recall@T=1000": 0.6573655103066868,
+    "Recall@T=2000": 0.7891905480140774
+   },
+   "negation": {
+    "needs": 7,
+    "descriptive_only": false,
+    "nDCG@10": 0.39374198327077875,
+    "Recall@10": 0.6714285714285715,
+    "MRR@10": 0.4937074829931973,
+    "Recall@5": 0.5047619047619047,
+    "Recall@20": 0.7666666666666667,
+    "Recall@T=1000": 0.47359307359307357,
+    "Recall@T=2000": 0.677056277056277
+   },
+   "numeric": {
+    "needs": 10,
+    "descriptive_only": false,
+    "nDCG@10": 0.5103941187133938,
+    "Recall@10": 0.7722222222222223,
+    "MRR@10": 0.6862433862433862,
+    "Recall@5": 0.6833333333333333,
+    "Recall@20": 0.861111111111111,
+    "Recall@T=1000": 0.7577991452991453,
+    "Recall@T=2000": 0.8955128205128204
+   }
+  },
+  "language_effect": {
+   "nDCG@10": {
+    "es_natural_minus_en_natural": {
+     "mean": -0.04598282034090107,
+     "ci95_low": -0.11162011840019977,
+     "ci95_high": 0.025397325858909706,
+     "es_better": 7,
+     "en_better": 16,
+     "equal": 4
+    },
+    "es_natural_minus_en_formal": {
+     "mean": -0.16734169782663819,
+     "ci95_low": -0.24851916802766977,
+     "ci95_high": -0.09048723638483862,
+     "es_better": 3,
+     "en_better": 23,
+     "equal": 1
+    }
+   },
+   "Recall@10": {
+    "es_natural_minus_en_natural": {
+     "mean": -0.027777777777777776,
+     "ci95_low": -0.10802469135802469,
+     "ci95_high": 0.04938271604938271,
+     "es_better": 3,
+     "en_better": 4,
+     "equal": 20
+    },
+    "es_natural_minus_en_formal": {
+     "mean": -0.1388888888888889,
+     "ci95_low": -0.26851851851851855,
+     "ci95_high": -0.037037037037037035,
+     "es_better": 0,
+     "en_better": 5,
+     "equal": 22
+    }
+   }
+  }
+ },
+ "per_need": [
+  {
+   "need": "N004",
+   "type": "direct",
+   "difficulty": "easy",
+   "answerability": "complete",
+   "drivers": [
+    "numeric",
+    "lexical_twin"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 0.6080129628908767,
+   "Recall@10": 1.0,
+   "MRR@10": 1.0,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 1
+   },
+   "flags": []
+  },
+  {
+   "need": "N006",
+   "type": "exception_confusion",
+   "difficulty": "medium",
+   "answerability": "complete",
+   "drivers": [
+    "exception",
+    "lexical_twin"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.0,
+   "nDCG@10": 0.17083689274885314,
+   "Recall@10": 0.3333333333333333,
+   "MRR@10": 0.03333333333333333,
+   "Recall@5": 0.0,
+   "Recall@20": 0.6666666666666666,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 0.6666666666666666,
+   "first_relevant_rank": {
+    "en formal": 10,
+    "en natural": 12,
+    "es natural": 22
+   },
+   "flags": [
+    "Recall@10<1",
+    "first relevant >10",
+    "low nDCG@10"
+   ]
+  },
+  {
+   "need": "N008",
+   "type": "direct",
+   "difficulty": "easy",
+   "answerability": "complete",
+   "drivers": [
+    "numeric",
+    "lexical_twin"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 0.6339337353224029,
+   "Recall@10": 1.0,
+   "MRR@10": 0.7777777777777778,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 3
+   },
+   "flags": [
+    "ES much worse"
+   ]
+  },
+  {
+   "need": "N009",
+   "type": "exception_confusion",
+   "difficulty": "medium",
+   "answerability": "complete",
+   "drivers": [
+    "exception",
+    "negation",
+    "cross_reference"
+   ],
+   "relevant_chunks": 2,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.3333333333333333,
+   "nDCG@10": 0.5364767481330518,
+   "Recall@10": 0.8333333333333334,
+   "MRR@10": 0.5,
+   "Recall@5": 0.3333333333333333,
+   "Recall@20": 0.8333333333333334,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 0.8333333333333334,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 6,
+    "es natural": 3
+   },
+   "flags": [
+    "Recall@10<1"
+   ]
+  },
+  {
+   "need": "N011",
+   "type": "direct",
+   "difficulty": "medium",
+   "answerability": "complete",
+   "drivers": [
+    "lexical_twin"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 0.5304354793022996,
+   "Recall@10": 1.0,
+   "MRR@10": 1.0,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 1
+   },
+   "flags": []
+  },
+  {
+   "need": "N012",
+   "type": "direct",
+   "difficulty": "easy",
+   "answerability": "complete",
+   "drivers": [
+    "numeric",
+    "exception"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 1.0,
+   "Recall@10": 1.0,
+   "MRR@10": 1.0,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 1
+   },
+   "flags": []
+  },
+  {
+   "need": "N013",
+   "type": "multi_provision",
+   "difficulty": "medium",
+   "answerability": "complete",
+   "drivers": [
+    "numeric",
+    "exception",
+    "cross_reference"
+   ],
+   "relevant_chunks": 2,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.5,
+   "nDCG@10": 0.5239018186760637,
+   "Recall@10": 0.6666666666666666,
+   "MRR@10": 0.5333333333333333,
+   "Recall@5": 0.5,
+   "Recall@20": 0.6666666666666666,
+   "Recall@T=1000": 0.625,
+   "Recall@T=2000": 0.9166666666666666,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 2,
+    "es natural": 10
+   },
+   "flags": [
+    "Recall@10<1",
+    "ES much worse"
+   ]
+  },
+  {
+   "need": "N014",
+   "type": "direct",
+   "difficulty": "medium",
+   "answerability": "complete",
+   "drivers": [
+    "lexical_twin"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 0.51708467558715,
+   "Recall@10": 1.0,
+   "MRR@10": 0.611111111111111,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 2,
+    "es natural": 3
+   },
+   "flags": []
+  },
+  {
+   "need": "N015",
+   "type": "partial_out_of_scope",
+   "difficulty": "medium",
+   "answerability": "partial",
+   "drivers": [
+    "numeric",
+    "lexical_twin"
+   ],
+   "relevant_chunks": 2,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.16666666666666666,
+   "nDCG@10": 0.20494482488379173,
+   "Recall@10": 0.6666666666666666,
+   "MRR@10": 0.15925925925925924,
+   "Recall@5": 0.16666666666666666,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 0.5555555555555555,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 6,
+    "en natural": 5,
+    "es natural": 9
+   },
+   "flags": [
+    "Recall@10<1",
+    "low nDCG@10"
+   ]
+  },
+  {
+   "need": "N016",
+   "type": "exception_confusion",
+   "difficulty": "medium",
+   "answerability": "complete",
+   "drivers": [],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 0.512710837738155,
+   "Recall@10": 1.0,
+   "MRR@10": 0.7777777777777778,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 3
+   },
+   "flags": [
+    "ES much worse"
+   ]
+  },
+  {
+   "need": "N017",
+   "type": "multi_provision",
+   "difficulty": "hard",
+   "answerability": "complete",
+   "drivers": [
+    "exception",
+    "numeric",
+    "cross_reference",
+    "lexical_twin"
+   ],
+   "relevant_chunks": 3,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.3333333333333333,
+   "nDCG@10": 0.575122394881305,
+   "Recall@10": 0.5555555555555555,
+   "MRR@10": 0.7142857142857143,
+   "Recall@5": 0.3333333333333333,
+   "Recall@20": 0.7777777777777777,
+   "Recall@T=1000": 0.5641025641025642,
+   "Recall@T=2000": 0.8717948717948718,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 7,
+    "es natural": 1
+   },
+   "flags": [
+    "Recall@10<1"
+   ]
+  },
+  {
+   "need": "N018",
+   "type": "exception_confusion",
+   "difficulty": "medium",
+   "answerability": "complete",
+   "drivers": [
+    "exception",
+    "negation"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 0.5747618743248943,
+   "Recall@10": 1.0,
+   "MRR@10": 0.5,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 2,
+    "en natural": 2,
+    "es natural": 2
+   },
+   "flags": []
+  },
+  {
+   "need": "N019",
+   "type": "direct",
+   "difficulty": "easy",
+   "answerability": "complete",
+   "drivers": [
+    "exception",
+    "cross_reference"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 0.6402878731467269,
+   "Recall@10": 1.0,
+   "MRR@10": 1.0,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 1
+   },
+   "flags": []
+  },
+  {
+   "need": "N020",
+   "type": "partial_out_of_scope",
+   "difficulty": "medium",
+   "answerability": "partial",
+   "drivers": [
+    "numeric",
+    "level2_gap",
+    "lexical_twin",
+    "cross_reference"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 0.4816960044008578,
+   "Recall@10": 1.0,
+   "MRR@10": 1.0,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 1
+   },
+   "flags": [
+    "low nDCG@10"
+   ]
+  },
+  {
+   "need": "N021",
+   "type": "exception_confusion",
+   "difficulty": "medium",
+   "answerability": "complete",
+   "drivers": [
+    "negation",
+    "lexical_twin"
+   ],
+   "relevant_chunks": 2,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.3333333333333333,
+   "nDCG@10": 0.3050420925832143,
+   "Recall@10": 0.5,
+   "MRR@10": 0.15,
+   "Recall@5": 0.3333333333333333,
+   "Recall@20": 0.6666666666666666,
+   "Recall@T=1000": 0.3333333333333333,
+   "Recall@T=2000": 0.6666666666666666,
+   "first_relevant_rank": {
+    "en formal": 4,
+    "en natural": 5,
+    "es natural": 13
+   },
+   "flags": [
+    "Recall@10<1",
+    "first relevant >10",
+    "low nDCG@10"
+   ]
+  },
+  {
+   "need": "N022",
+   "type": "multi_provision",
+   "difficulty": "easy",
+   "answerability": "complete",
+   "drivers": [
+    "lexical_twin",
+    "exception",
+    "cross_reference"
+   ],
+   "relevant_chunks": 6,
+   "recall5_ceiling": 0.8333333333333334,
+   "recall5_over_ceiling": 0.19999999999999998,
+   "nDCG@10": 0.2137159280141122,
+   "Recall@10": 0.27777777777777773,
+   "MRR@10": 0.2916666666666667,
+   "Recall@5": 0.16666666666666666,
+   "Recall@20": 0.38888888888888884,
+   "Recall@T=1000": 0.13333333333333333,
+   "Recall@T=2000": 0.23333333333333336,
+   "first_relevant_rank": {
+    "en formal": 2,
+    "en natural": 8,
+    "es natural": 4
+   },
+   "flags": [
+    "Recall@10<1",
+    "low nDCG@10"
+   ]
+  },
+  {
+   "need": "N023",
+   "type": "direct",
+   "difficulty": "easy",
+   "answerability": "complete",
+   "drivers": [
+    "negation",
+    "lexical_twin",
+    "exception",
+    "cross_reference"
+   ],
+   "relevant_chunks": 2,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.16666666666666666,
+   "nDCG@10": 0.1909402255045769,
+   "Recall@10": 0.6666666666666666,
+   "MRR@10": 0.15595238095238095,
+   "Recall@5": 0.16666666666666666,
+   "Recall@20": 0.8333333333333334,
+   "Recall@T=1000": 0.13333333333333333,
+   "Recall@T=2000": 0.4666666666666666,
+   "first_relevant_rank": {
+    "en formal": 5,
+    "en natural": 8,
+    "es natural": 7
+   },
+   "flags": [
+    "Recall@10<1",
+    "low nDCG@10"
+   ]
+  },
+  {
+   "need": "N024",
+   "type": "multi_provision",
+   "difficulty": "hard",
+   "answerability": "complete",
+   "drivers": [
+    "negation",
+    "cross_reference"
+   ],
+   "relevant_chunks": 5,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.20000000000000004,
+   "nDCG@10": 0.17869494381660045,
+   "Recall@10": 0.20000000000000004,
+   "MRR@10": 0.5666666666666667,
+   "Recall@5": 0.20000000000000004,
+   "Recall@20": 0.20000000000000004,
+   "Recall@T=1000": 0.1818181818181818,
+   "Recall@T=2000": 0.2727272727272727,
+   "first_relevant_rank": {
+    "en formal": 2,
+    "en natural": 1,
+    "es natural": 5
+   },
+   "flags": [
+    "Recall@10<1",
+    "low nDCG@10"
+   ]
+  },
+  {
+   "need": "N025",
+   "type": "direct",
+   "difficulty": "hard",
+   "answerability": "complete",
+   "drivers": [
+    "exception",
+    "lexical_twin",
+    "cross_reference"
+   ],
+   "relevant_chunks": 3,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 0.747064121570956,
+   "Recall@10": 1.0,
+   "MRR@10": 1.0,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 1
+   },
+   "flags": []
+  },
+  {
+   "need": "N026",
+   "type": "direct",
+   "difficulty": "easy",
+   "answerability": "complete",
+   "drivers": [
+    "numeric",
+    "lexical_twin"
+   ],
+   "relevant_chunks": 2,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.5,
+   "nDCG@10": 0.29305130418216874,
+   "Recall@10": 0.5,
+   "MRR@10": 0.5666666666666667,
+   "Recall@5": 0.5,
+   "Recall@20": 0.5,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 0.5,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 5,
+    "es natural": 2
+   },
+   "flags": [
+    "Recall@10<1",
+    "low nDCG@10"
+   ]
+  },
+  {
+   "need": "N027",
+   "type": "direct",
+   "difficulty": "medium",
+   "answerability": "complete",
+   "drivers": [
+    "date",
+    "exception",
+    "lexical_twin"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 0.675431201950795,
+   "Recall@10": 1.0,
+   "MRR@10": 1.0,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 1
+   },
+   "flags": []
+  },
+  {
+   "need": "N028",
+   "type": "partial_out_of_scope",
+   "difficulty": "medium",
+   "answerability": "partial",
+   "drivers": [
+    "numeric",
+    "lexical_twin"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 0.5208897162446277,
+   "Recall@10": 1.0,
+   "MRR@10": 0.7777777777777778,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 3
+   },
+   "flags": []
+  },
+  {
+   "need": "N029",
+   "type": "direct",
+   "difficulty": "medium",
+   "answerability": "complete",
+   "drivers": [
+    "numeric"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.3333333333333333,
+   "nDCG@10": 0.2623884256518439,
+   "Recall@10": 0.3333333333333333,
+   "MRR@10": 0.3333333333333333,
+   "Recall@5": 0.3333333333333333,
+   "Recall@20": 0.6666666666666666,
+   "Recall@T=1000": 0.3333333333333333,
+   "Recall@T=2000": 0.6666666666666666,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 12,
+    "es natural": 28
+   },
+   "flags": [
+    "Recall@10<1",
+    "first relevant >10",
+    "low nDCG@10"
+   ]
+  },
+  {
+   "need": "N030",
+   "type": "exception_confusion",
+   "difficulty": "hard",
+   "answerability": "complete",
+   "drivers": [
+    "negation",
+    "exception"
+   ],
+   "relevant_chunks": 1,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 1.0,
+   "nDCG@10": 0.4110234112596094,
+   "Recall@10": 1.0,
+   "MRR@10": 0.5833333333333334,
+   "Recall@5": 1.0,
+   "Recall@20": 1.0,
+   "Recall@T=1000": 0.6666666666666666,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": {
+    "en formal": 4,
+    "en natural": 2,
+    "es natural": 1
+   },
+   "flags": [
+    "low nDCG@10"
+   ]
+  },
+  {
+   "need": "N031",
+   "type": "exception_confusion",
+   "difficulty": "medium",
+   "answerability": "complete",
+   "drivers": [
+    "exception",
+    "negation"
+   ],
+   "relevant_chunks": 2,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.5,
+   "nDCG@10": 0.5592545872735037,
+   "Recall@10": 0.5,
+   "MRR@10": 1.0,
+   "Recall@5": 0.5,
+   "Recall@20": 0.8333333333333334,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 0.5,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 1
+   },
+   "flags": [
+    "Recall@10<1"
+   ]
+  },
+  {
+   "need": "N034",
+   "type": "multi_provision",
+   "difficulty": "hard",
+   "answerability": "complete",
+   "drivers": [
+    "cross_act",
+    "cross_reference",
+    "lexical_twin",
+    "exception"
+   ],
+   "relevant_chunks": 4,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.3333333333333333,
+   "nDCG@10": 0.6052275461791982,
+   "Recall@10": 0.4166666666666667,
+   "MRR@10": 0.7777777777777778,
+   "Recall@5": 0.3333333333333333,
+   "Recall@20": 0.4166666666666667,
+   "Recall@T=1000": 0.5555555555555555,
+   "Recall@T=2000": 0.611111111111111,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 3
+   },
+   "flags": [
+    "Recall@10<1",
+    "ES much worse"
+   ]
+  },
+  {
+   "need": "N035",
+   "type": "multi_provision",
+   "difficulty": "hard",
+   "answerability": "complete",
+   "drivers": [
+    "cross_act",
+    "cross_reference",
+    "lexical_twin"
+   ],
+   "relevant_chunks": 4,
+   "recall5_ceiling": 1.0,
+   "recall5_over_ceiling": 0.25,
+   "nDCG@10": 0.5703439499228207,
+   "Recall@10": 0.25,
+   "MRR@10": 1.0,
+   "Recall@5": 0.25,
+   "Recall@20": 0.25,
+   "Recall@T=1000": 0.4000000000000001,
+   "Recall@T=2000": 0.4000000000000001,
+   "first_relevant_rank": {
+    "en formal": 1,
+    "en natural": 1,
+    "es natural": 1
+   },
+   "flags": [
+    "Recall@10<1"
+   ]
+  }
+ ],
+ "per_query": {
+  "N004-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.6929592591721359,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:6.5": 1
+   }
+  },
+  "N004-en-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5655398147502472,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:6.5": 1
+   }
+  },
+  "N004-es-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5655398147502472,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:6.5": 1
+   }
+  },
+  "N006-en-3": {
+   "Recall@5": 0.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.1,
+   "nDCG@10": 0.3355828402664795,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 10,
+   "relevant_ranks": {
+    "DORA:2.1": 10
+   }
+  },
+  "N006-en-4": {
+   "Recall@5": 0.0,
+   "Recall@10": 0.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.0,
+   "nDCG@10": 0.11507586792774147,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 12,
+   "relevant_ranks": {
+    "DORA:2.1": 12
+   }
+  },
+  "N006-es-2": {
+   "Recall@5": 0.0,
+   "Recall@10": 0.0,
+   "Recall@20": 0.0,
+   "MRR@10": 0.0,
+   "nDCG@10": 0.061851970052338466,
+   "Judged@10": 0.1,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 0.0,
+   "first_relevant_rank": 22,
+   "relevant_ranks": {
+    "DORA:2.1": 22
+   }
+  },
+  "N008-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.8124580632741002,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:75.5": 1
+   }
+  },
+  "N008-en-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.7262287617954056,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:75.5": 1
+   }
+  },
+  "N008-es-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.3333333333333333,
+   "nDCG@10": 0.3631143808977028,
+   "Judged@10": 0.1,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 3,
+   "relevant_ranks": {
+    "MiCA:75.5": 3
+   }
+  },
+  "N009-en-1": {
+   "Recall@5": 0.5,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.8710785440003369,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 0.75,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:59": 6,
+    "MiCA:61": 1
+   }
+  },
+  "N009-en-2": {
+   "Recall@5": 0.0,
+   "Recall@10": 0.5,
+   "Recall@20": 0.5,
+   "MRR@10": 0.16666666666666666,
+   "nDCG@10": 0.2507406824493034,
+   "Judged@10": 0.1,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 0.75,
+   "first_relevant_rank": 6,
+   "relevant_ranks": {
+    "MiCA:59": 31,
+    "MiCA:61": 6
+   }
+  },
+  "N009-es-1": {
+   "Recall@5": 0.5,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.3333333333333333,
+   "nDCG@10": 0.4876110179495151,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 0.75,
+   "Recall@T=2000": 0.75,
+   "first_relevant_rank": 3,
+   "relevant_ranks": {
+    "MiCA:59": 10,
+    "MiCA:61": 3
+   }
+  },
+  "N011-en-3": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5094067557286251,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:68.7": 1
+   }
+  },
+  "N011-en-4": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5752236201935865,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:68.7": 1
+   }
+  },
+  "N011-es-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5066760619846872,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:68.7": 1
+   }
+  },
+  "N012-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 1.0,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "PSD2:101": 1
+   }
+  },
+  "N012-en-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 1.0,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "PSD2:101": 1
+   }
+  },
+  "N012-es-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 1.0,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "PSD2:101": 1
+   }
+  },
+  "N013-en-3": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.9260446319296772,
+   "Judged@10": 0.5,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "PSD2:76": 1,
+    "PSD2:77": 2
+   }
+  },
+  "N013-en-4": {
+   "Recall@5": 0.5,
+   "Recall@10": 0.5,
+   "Recall@20": 0.5,
+   "MRR@10": 0.5,
+   "nDCG@10": 0.49674701470413135,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 0.875,
+   "Recall@T=2000": 0.875,
+   "first_relevant_rank": 2,
+   "relevant_ranks": {
+    "PSD2:76": 2,
+    "PSD2:77": 24
+   }
+  },
+  "N013-es-2": {
+   "Recall@5": 0.0,
+   "Recall@10": 0.5,
+   "Recall@20": 0.5,
+   "MRR@10": 0.1,
+   "nDCG@10": 0.14891380939438262,
+   "Judged@10": 0.1,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 0.875,
+   "first_relevant_rank": 10,
+   "relevant_ranks": {
+    "PSD2:76": 10,
+    "PSD2:77": 73
+   }
+  },
+  "N014-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.6971757377669772,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:28.7": 1
+   }
+  },
+  "N014-en-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.5,
+   "nDCG@10": 0.4634578872724179,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 2,
+   "relevant_ranks": {
+    "DORA:28.7": 2
+   }
+  },
+  "N014-es-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.3333333333333333,
+   "nDCG@10": 0.3906204017220548,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 3,
+   "relevant_ranks": {
+    "DORA:28.7": 3
+   }
+  },
+  "N015-en-1": {
+   "Recall@5": 0.0,
+   "Recall@10": 0.5,
+   "Recall@20": 1.0,
+   "MRR@10": 0.16666666666666666,
+   "nDCG@10": 0.20825838229023177,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 0.3333333333333333,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 6,
+   "relevant_ranks": {
+    "DORA:50.3": 6,
+    "DORA:50.4": 14
+   }
+  },
+  "N015-en-2": {
+   "Recall@5": 0.5,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.2,
+   "nDCG@10": 0.284592853849973,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 5,
+   "relevant_ranks": {
+    "DORA:50.3": 5,
+    "DORA:50.4": 8
+   }
+  },
+  "N015-es-1": {
+   "Recall@5": 0.0,
+   "Recall@10": 0.5,
+   "Recall@20": 1.0,
+   "MRR@10": 0.1111111111111111,
+   "nDCG@10": 0.12198323851117035,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 0.3333333333333333,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 9,
+   "relevant_ranks": {
+    "DORA:50.3": 9,
+    "DORA:50.4": 18
+   }
+  },
+  "N016-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5702869586611812,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:19.2": 1
+   }
+  },
+  "N016-en-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.6353174118210886,
+   "Judged@10": 0.5,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:19.2": 1
+   }
+  },
+  "N016-es-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.3333333333333333,
+   "nDCG@10": 0.3325281427321951,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 3,
+   "relevant_ranks": {
+    "DORA:19.2": 3
+   }
+  },
+  "N017-en-1": {
+   "Recall@5": 0.3333333333333333,
+   "Recall@10": 0.6666666666666666,
+   "Recall@20": 0.6666666666666666,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.6503657585456414,
+   "Judged@10": 0.6,
+   "Recall@T=1000": 0.7692307692307693,
+   "Recall@T=2000": 0.9230769230769231,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:26.11": 61,
+    "DORA:26.8": 7,
+    "DORA:27": 1
+   }
+  },
+  "N017-en-2": {
+   "Recall@5": 0.0,
+   "Recall@10": 0.3333333333333333,
+   "Recall@20": 0.6666666666666666,
+   "MRR@10": 0.14285714285714285,
+   "nDCG@10": 0.27619446016137555,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 0.7692307692307693,
+   "first_relevant_rank": 7,
+   "relevant_ranks": {
+    "DORA:26.11": 110,
+    "DORA:26.8": 11,
+    "DORA:27": 7
+   }
+  },
+  "N017-es-1": {
+   "Recall@5": 0.6666666666666666,
+   "Recall@10": 0.6666666666666666,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.7988069659368983,
+   "Judged@10": 0.7,
+   "Recall@T=1000": 0.9230769230769231,
+   "Recall@T=2000": 0.9230769230769231,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:26.11": 13,
+    "DORA:26.8": 3,
+    "DORA:27": 1
+   }
+  },
+  "N018-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.5,
+   "nDCG@10": 0.6051876670166411,
+   "Judged@10": 0.5,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 2,
+   "relevant_ranks": {
+    "DORA:31.8": 2
+   }
+  },
+  "N018-en-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.5,
+   "nDCG@10": 0.6051876670166411,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 2,
+   "relevant_ranks": {
+    "DORA:31.8": 2
+   }
+  },
+  "N018-es-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.5,
+   "nDCG@10": 0.5139102889414009,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 2,
+   "relevant_ranks": {
+    "DORA:31.8": 2
+   }
+  },
+  "N019-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.722634207736427,
+   "Judged@10": 0.5,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:45": 1
+   }
+  },
+  "N019-en-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.6326895969535064,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:45": 1
+   }
+  },
+  "N019-es-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5655398147502472,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:45": 1
+   }
+  },
+  "N020-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.49923783028254776,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:43": 1
+   }
+  },
+  "N020-en-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5146297957850003,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:43": 1
+   }
+  },
+  "N020-es-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.43122038713502525,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:43": 1
+   }
+  },
+  "N021-en-1": {
+   "Recall@5": 0.5,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.25,
+   "nDCG@10": 0.45387103102719106,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 4,
+   "relevant_ranks": {
+    "MiCA:11": 8,
+    "MiCA:8.3": 4
+   }
+  },
+  "N021-en-2": {
+   "Recall@5": 0.5,
+   "Recall@10": 0.5,
+   "Recall@20": 0.5,
+   "MRR@10": 0.2,
+   "nDCG@10": 0.3193939172531311,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 0.5,
+   "first_relevant_rank": 5,
+   "relevant_ranks": {
+    "MiCA:11": 29,
+    "MiCA:8.3": 5
+   }
+  },
+  "N021-es-1": {
+   "Recall@5": 0.0,
+   "Recall@10": 0.0,
+   "Recall@20": 0.5,
+   "MRR@10": 0.0,
+   "nDCG@10": 0.14186132946932076,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 0.5,
+   "first_relevant_rank": 13,
+   "relevant_ranks": {
+    "MiCA:11": 32,
+    "MiCA:8.3": 13
+   }
+  },
+  "N022-en-1": {
+   "Recall@5": 0.3333333333333333,
+   "Recall@10": 0.3333333333333333,
+   "Recall@20": 0.3333333333333333,
+   "MRR@10": 0.5,
+   "nDCG@10": 0.3483939390158962,
+   "Judged@10": 0.5,
+   "Recall@T=1000": 0.3,
+   "Recall@T=2000": 0.4,
+   "first_relevant_rank": 2,
+   "relevant_ranks": {
+    "MiCA:3.1.6": 21,
+    "MiCA:3.1.7": 57,
+    "MiCA:39": 2,
+    "MiCA:46.1": 24,
+    "MiCA:46.3": 508,
+    "MiCA:46.4": 5
+   }
+  },
+  "N022-en-2": {
+   "Recall@5": 0.0,
+   "Recall@10": 0.16666666666666666,
+   "Recall@20": 0.3333333333333333,
+   "MRR@10": 0.125,
+   "nDCG@10": 0.07371397348469656,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 0.1,
+   "first_relevant_rank": 8,
+   "relevant_ranks": {
+    "MiCA:3.1.6": 72,
+    "MiCA:3.1.7": 135,
+    "MiCA:39": 12,
+    "MiCA:46.1": 28,
+    "MiCA:46.3": 580,
+    "MiCA:46.4": 8
+   }
+  },
+  "N022-es-1": {
+   "Recall@5": 0.16666666666666666,
+   "Recall@10": 0.3333333333333333,
+   "Recall@20": 0.5,
+   "MRR@10": 0.25,
+   "nDCG@10": 0.21903987154174387,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 0.1,
+   "Recall@T=2000": 0.2,
+   "first_relevant_rank": 4,
+   "relevant_ranks": {
+    "MiCA:3.1.6": 4,
+    "MiCA:3.1.7": 11,
+    "MiCA:39": 21,
+    "MiCA:46.1": 39,
+    "MiCA:46.3": 359,
+    "MiCA:46.4": 6
+   }
+  },
+  "N023-en-1": {
+   "Recall@5": 0.5,
+   "Recall@10": 0.5,
+   "Recall@20": 0.5,
+   "MRR@10": 0.2,
+   "nDCG@10": 0.14900341658712246,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 0.2,
+   "Recall@T=2000": 0.2,
+   "first_relevant_rank": 5,
+   "relevant_ranks": {
+    "MiCA:3.1.7": 5,
+    "MiCA:48": 46
+   }
+  },
+  "N023-en-2": {
+   "Recall@5": 0.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.125,
+   "nDCG@10": 0.29542784514092685,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 8,
+   "relevant_ranks": {
+    "MiCA:3.1.7": 8,
+    "MiCA:48": 9
+   }
+  },
+  "N023-es-1": {
+   "Recall@5": 0.0,
+   "Recall@10": 0.5,
+   "Recall@20": 1.0,
+   "MRR@10": 0.14285714285714285,
+   "nDCG@10": 0.1283894147856814,
+   "Judged@10": 0.1,
+   "Recall@T=1000": 0.2,
+   "Recall@T=2000": 0.2,
+   "first_relevant_rank": 7,
+   "relevant_ranks": {
+    "MiCA:3.1.7": 7,
+    "MiCA:48": 16
+   }
+  },
+  "N024-en-1": {
+   "Recall@5": 0.2,
+   "Recall@10": 0.2,
+   "Recall@20": 0.2,
+   "MRR@10": 0.5,
+   "nDCG@10": 0.1676255297126334,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 0.2727272727272727,
+   "Recall@T=2000": 0.2727272727272727,
+   "first_relevant_rank": 2,
+   "relevant_ranks": {
+    "MiCA:86": 2,
+    "MiCA:87": 129,
+    "MiCA:89.1": 104,
+    "MiCA:89.2": 60,
+    "MiCA:89.5": 469
+   }
+  },
+  "N024-en-2": {
+   "Recall@5": 0.2,
+   "Recall@10": 0.2,
+   "Recall@20": 0.2,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.2656801787580439,
+   "Judged@10": 0.1,
+   "Recall@T=1000": 0.2727272727272727,
+   "Recall@T=2000": 0.2727272727272727,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:86": 1,
+    "MiCA:87": 113,
+    "MiCA:89.1": 107,
+    "MiCA:89.2": 75,
+    "MiCA:89.5": 389
+   }
+  },
+  "N024-es-1": {
+   "Recall@5": 0.2,
+   "Recall@10": 0.2,
+   "Recall@20": 0.2,
+   "MRR@10": 0.2,
+   "nDCG@10": 0.1027791229791241,
+   "Judged@10": 0.1,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 0.2727272727272727,
+   "first_relevant_rank": 5,
+   "relevant_ranks": {
+    "MiCA:86": 5,
+    "MiCA:87": 70,
+    "MiCA:89.1": 72,
+    "MiCA:89.2": 50,
+    "MiCA:89.5": 356
+   }
+  },
+  "N025-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.7851818312046612,
+   "Judged@10": 0.6,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:103.1": 1,
+    "MiCA:103.2": 2,
+    "MiCA:103.3": 3
+   }
+  },
+  "N025-en-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.7232956184006087,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:103.1": 1,
+    "MiCA:103.2": 2,
+    "MiCA:103.3": 3
+   }
+  },
+  "N025-es-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.7327149151075982,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:103.1": 1,
+    "MiCA:103.2": 2,
+    "MiCA:103.3": 4
+   }
+  },
+  "N026-en-1": {
+   "Recall@5": 0.5,
+   "Recall@10": 0.5,
+   "Recall@20": 0.5,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.43570299873903656,
+   "Judged@10": 0.1,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 0.5,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:3.1.36": 119,
+    "MiCA:83.1": 1
+   }
+  },
+  "N026-en-2": {
+   "Recall@5": 0.5,
+   "Recall@10": 0.5,
+   "Recall@20": 0.5,
+   "MRR@10": 0.2,
+   "nDCG@10": 0.16855292818270423,
+   "Judged@10": 0.1,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 0.5,
+   "first_relevant_rank": 5,
+   "relevant_ranks": {
+    "MiCA:3.1.36": 59,
+    "MiCA:83.1": 5
+   }
+  },
+  "N026-es-1": {
+   "Recall@5": 0.5,
+   "Recall@10": 0.5,
+   "Recall@20": 0.5,
+   "MRR@10": 0.5,
+   "nDCG@10": 0.27489798562476536,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 0.5,
+   "first_relevant_rank": 2,
+   "relevant_ranks": {
+    "MiCA:3.1.36": 219,
+    "MiCA:83.1": 2
+   }
+  },
+  "N027-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.7203984695774446,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:143.3": 1
+   }
+  },
+  "N027-en-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.6618848514482987,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:143.3": 1
+   }
+  },
+  "N027-es-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.6440102848266417,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "MiCA:143.3": 1
+   }
+  },
+  "N028-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5595975811335802,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "PSD2:7": 1
+   }
+  },
+  "N028-en-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5415070395954071,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "PSD2:7": 1
+   }
+  },
+  "N028-es-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.3333333333333333,
+   "nDCG@10": 0.46156452800489567,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 3,
+   "relevant_ranks": {
+    "PSD2:7": 3
+   }
+  },
+  "N029-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.6343432502369442,
+   "Judged@10": 0.6,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "PSD2:54": 1
+   }
+  },
+  "N029-en-2": {
+   "Recall@5": 0.0,
+   "Recall@10": 0.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.0,
+   "nDCG@10": 0.07641101335929376,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 12,
+   "relevant_ranks": {
+    "PSD2:54": 12
+   }
+  },
+  "N029-es-1": {
+   "Recall@5": 0.0,
+   "Recall@10": 0.0,
+   "Recall@20": 0.0,
+   "MRR@10": 0.0,
+   "nDCG@10": 0.07641101335929376,
+   "Judged@10": 0.2,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 0.0,
+   "first_relevant_rank": 28,
+   "relevant_ranks": {
+    "PSD2:54": 28
+   }
+  },
+  "N030-en-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.25,
+   "nDCG@10": 0.31071452307335995,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 4,
+   "relevant_ranks": {
+    "PSD2:88": 4
+   }
+  },
+  "N030-en-2": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 0.5,
+   "nDCG@10": 0.3568158959552211,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 2,
+   "relevant_ranks": {
+    "PSD2:88": 2
+   }
+  },
+  "N030-es-1": {
+   "Recall@5": 1.0,
+   "Recall@10": 1.0,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5655398147502472,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 1.0,
+   "Recall@T=2000": 1.0,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "PSD2:88": 1
+   }
+  },
+  "N031-en-1": {
+   "Recall@5": 0.5,
+   "Recall@10": 0.5,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.7206625370399483,
+   "Judged@10": 0.7,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 0.5,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "PSD2:71": 11,
+    "PSD2:74": 1
+   }
+  },
+  "N031-en-2": {
+   "Recall@5": 0.5,
+   "Recall@10": 0.5,
+   "Recall@20": 0.5,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.47855061239028146,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 0.5,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "PSD2:71": 28,
+    "PSD2:74": 1
+   }
+  },
+  "N031-es-1": {
+   "Recall@5": 0.5,
+   "Recall@10": 0.5,
+   "Recall@20": 1.0,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.47855061239028146,
+   "Judged@10": 0.3,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 0.5,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "PSD2:71": 16,
+    "PSD2:74": 1
+   }
+  },
+  "N034-en-1": {
+   "Recall@5": 0.25,
+   "Recall@10": 0.5,
+   "Recall@20": 0.5,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.7017925455053892,
+   "Judged@10": 0.5,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 0.6666666666666666,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:19.1": 1,
+    "DORA:46.b": 6,
+    "DORA:46:own": 53,
+    "PSD2:22": 160
+   }
+  },
+  "N034-en-2": {
+   "Recall@5": 0.5,
+   "Recall@10": 0.5,
+   "Recall@20": 0.5,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.685392981777244,
+   "Judged@10": 0.5,
+   "Recall@T=1000": 0.6666666666666666,
+   "Recall@T=2000": 0.6666666666666666,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:19.1": 1,
+    "DORA:46.b": 5,
+    "DORA:46:own": 37,
+    "PSD2:22": 417
+   }
+  },
+  "N034-es-1": {
+   "Recall@5": 0.25,
+   "Recall@10": 0.25,
+   "Recall@20": 0.25,
+   "MRR@10": 0.3333333333333333,
+   "nDCG@10": 0.4284971112549614,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 0.5,
+   "Recall@T=2000": 0.5,
+   "first_relevant_rank": 3,
+   "relevant_ranks": {
+    "DORA:19.1": 3,
+    "DORA:46.b": 41,
+    "DORA:46:own": 61,
+    "PSD2:22": 502
+   }
+  },
+  "N035-en-1": {
+   "Recall@5": 0.25,
+   "Recall@10": 0.25,
+   "Recall@20": 0.25,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5536144644776243,
+   "Judged@10": 0.4,
+   "Recall@T=1000": 0.4,
+   "Recall@T=2000": 0.4,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:2.1": 1,
+    "DORA:3.37": 45,
+    "PSD2:33": 307,
+    "PSD2:4.16": 475
+   }
+  },
+  "N035-en-2": {
+   "Recall@5": 0.25,
+   "Recall@10": 0.25,
+   "Recall@20": 0.25,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5766367714606555,
+   "Judged@10": 0.5,
+   "Recall@T=1000": 0.4,
+   "Recall@T=2000": 0.4,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:2.1": 1,
+    "DORA:3.37": 24,
+    "PSD2:33": 350,
+    "PSD2:4.16": 560
+   }
+  },
+  "N035-es-1": {
+   "Recall@5": 0.25,
+   "Recall@10": 0.25,
+   "Recall@20": 0.25,
+   "MRR@10": 1.0,
+   "nDCG@10": 0.5807806138301823,
+   "Judged@10": 0.5,
+   "Recall@T=1000": 0.4,
+   "Recall@T=2000": 0.4,
+   "first_relevant_rank": 1,
+   "relevant_ranks": {
+    "DORA:2.1": 1,
+    "DORA:3.37": 50,
+    "PSD2:33": 380,
+    "PSD2:4.16": 633
+   }
+  }
+ },
+ "failures": [
+  {
+   "query_id": "N006-es-2",
+   "need": "N006",
+   "lang": "es",
+   "style": "natural",
+   "text": null,
+   "values": {
+    "Recall@5": 0.0,
+    "Recall@10": 0.0,
+    "Recall@20": 0.0,
+    "MRR@10": 0.0,
+    "nDCG@10": 0.061851970052338466,
+    "Judged@10": 0.1,
+    "Recall@T=1000": 0.0,
+    "Recall@T=2000": 0.0
+   },
+   "first_relevant_rank": 22,
+   "top10": [
+    {
+     "rank": 1,
+     "chunk": "DORA:3.63",
+     "score": 0.5660067796707153,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(63) 'small enterprise' means a financial entity that employs 10 or more persons, but fewer than 50 persons, and has an annual turnover and/or annual balance sh"
+    },
+    {
+     "rank": 2,
+     "chunk": "DORA:3.60",
+     "score": 0.5641716122627258,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(60) 'microenterprise' means a financial entity, other than a trading venue, a central counterparty, a trade repository or a central securities depository, whic"
+    },
+    {
+     "rank": 3,
+     "chunk": "DORA:3.36",
+     "score": 0.5529717206954956,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(36) 'payment institution exempted pursuant to Directive (EU) 2015/2366' means a payment institution exempted pursuant to Article 32(1) of Directive (EU) 2015/2"
+    },
+    {
+     "rank": 4,
+     "chunk": "DORA:3.39",
+     "score": 0.5242294669151306,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(39) 'electronic money institution exempted pursuant to Directive 2009/110/EC' means an electronic money institution benefitting from a waiver as referred to in"
+    },
+    {
+     "rank": 5,
+     "chunk": "DORA:2.3",
+     "score": 0.5179402232170105,
+     "grade": 1,
+     "relevant": false,
+     "truncated": false,
+     "preview": "3. This Regulation does not apply to: (a) managers of alternative investment funds as referred to in Article 3(2) of Directive 2011/61/EU; (b) insurance and rei"
+    },
+    {
+     "rank": 6,
+     "chunk": "DORA:3.53",
+     "score": 0.5170955061912537,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(53) 'small institution for occupational retirement provision' means an institution for occupational retirement provision which operates pension schemes which t"
+    },
+    {
+     "rank": 7,
+     "chunk": "DORA:3.64",
+     "score": 0.5110212564468384,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(64) 'medium-sized enterprise' means a financial entity that is not a small enterprise and employs fewer than 250 persons and has an annual turnover that does n"
+    },
+    {
+     "rank": 8,
+     "chunk": "DORA:3.32",
+     "score": 0.48898065090179443,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(32) 'institution exempted pursuant to Directive 2013/36/EU' means an entity as referred to in Article 2(5), points (4) to (23), of Directive 2013/36/EU;"
+    },
+    {
+     "rank": 9,
+     "chunk": "DORA:23",
+     "score": 0.48568063974380493,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "The requirements laid down in this Chapter shall also apply to operational or security payment-related incidents and to major operational or security payment-re"
+    },
+    {
+     "rank": 10,
+     "chunk": "PSD2:3.m",
+     "score": 0.4816593825817108,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(m) payment transactions carried out between payment service providers, their agents or branches for their own account;"
+    }
+   ],
+   "relevant_chunks": [
+    {
+     "chunk": "DORA:2.1",
+     "rank": 22,
+     "score": 0.4501539468765259,
+     "grade": 3,
+     "truncated": false
+    }
+   ],
+   "truncation_exposed": false
+  },
+  {
+   "query_id": "N022-en-2",
+   "need": "N022",
+   "lang": "en",
+   "style": "natural",
+   "text": "I'm a small private investor holding some stablecoin tokens whose value is tied to a mix of several currencies plus gold. Can I make the company that issued them take the tokens back and pay me out whenever I want?",
+   "values": {
+    "Recall@5": 0.0,
+    "Recall@10": 0.16666666666666666,
+    "Recall@20": 0.3333333333333333,
+    "MRR@10": 0.125,
+    "nDCG@10": 0.07371397348469656,
+    "Judged@10": 0.3,
+    "Recall@T=1000": 0.0,
+    "Recall@T=2000": 0.1
+   },
+   "first_relevant_rank": 8,
+   "top10": [
+    {
+     "rank": 1,
+     "chunk": "MiCA:49",
+     "score": 0.5657824873924255,
+     "grade": 0,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. By way of derogation from Article 11 of Directive 2009/110/EC, in respect of the issuance and redeemability of e-money tokens only the requirements set out i"
+    },
+    {
+     "rank": 2,
+     "chunk": "MiCA:45.2",
+     "score": 0.5426549315452576,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "2. Issuers of significant asset-referenced tokens shall ensure that such tokens can be held in custody by different crypto-asset service providers authorised fo"
+    },
+    {
+     "rank": 3,
+     "chunk": "MiCA:70",
+     "score": 0.538497269153595,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. Crypto-asset service providers that hold crypto-assets belonging to clients or the means of access to such crypto-assets shall make adequate arrangements to "
+    },
+    {
+     "rank": 4,
+     "chunk": "MiCA:13",
+     "score": 0.5339604616165161,
+     "grade": 0,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. Retail holders who purchase crypto-assets other than asset-referenced tokens and e-money tokens either directly from an offeror or from a crypto-asset servic"
+    },
+    {
+     "rank": 5,
+     "chunk": "MiCA:37.10",
+     "score": 0.5246482491493225,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "10. In the case of a loss of a financial instrument or a crypto-asset held in custody pursuant to paragraph 6, the crypto-asset service provider, credit institu"
+    },
+    {
+     "rank": 6,
+     "chunk": "MiCA:75.6",
+     "score": 0.5240061283111572,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "6. Crypto-asset service providers providing custody and administration of crypto-assets on behalf of clients shall ensure that necessary procedures are in place"
+    },
+    {
+     "rank": 7,
+     "chunk": "MiCA:36.5",
+     "score": 0.5223675966262817,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "5. Issuers that offer two or more asset-referenced tokens to the public shall operate and maintain segregated pools of reserves of assets for each asset-referen"
+    },
+    {
+     "rank": 8,
+     "chunk": "MiCA:46.4",
+     "score": 0.5223020911216736,
+     "grade": 2,
+     "relevant": true,
+     "truncated": false,
+     "preview": "4. In the circumstances referred to in paragraph 3, the competent authority shall have the power to temporarily suspend the redemption of asset-referenced token"
+    },
+    {
+     "rank": 9,
+     "chunk": "MiCA:40",
+     "score": 0.5218023061752319,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. Issuers of asset-referenced tokens shall not grant interest in relation to asset-referenced tokens. 2. Crypto-asset service providers shall not grant interes"
+    },
+    {
+     "rank": 10,
+     "chunk": "MiCA:24.1",
+     "score": 0.5215436220169067,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. Competent authorities shall withdraw the authorisation of an issuer of an asset-referenced token in any of the following situations: (a) the issuer has cease"
+    }
+   ],
+   "relevant_chunks": [
+    {
+     "chunk": "MiCA:46.4",
+     "rank": 8,
+     "score": 0.5223020911216736,
+     "grade": 2,
+     "truncated": false
+    },
+    {
+     "chunk": "MiCA:39",
+     "rank": 12,
+     "score": 0.519352912902832,
+     "grade": 3,
+     "truncated": false
+    },
+    {
+     "chunk": "MiCA:46.1",
+     "rank": 28,
+     "score": 0.4936988055706024,
+     "grade": 2,
+     "truncated": false
+    },
+    {
+     "chunk": "MiCA:3.1.6",
+     "rank": 72,
+     "score": 0.4668373167514801,
+     "grade": 2,
+     "truncated": false
+    },
+    {
+     "chunk": "MiCA:3.1.7",
+     "rank": 135,
+     "score": 0.4438718557357788,
+     "grade": 2,
+     "truncated": false
+    },
+    {
+     "chunk": "MiCA:46.3",
+     "rank": 580,
+     "score": 0.3330419361591339,
+     "grade": 2,
+     "truncated": false
+    }
+   ],
+   "truncation_exposed": false
+  },
+  {
+   "query_id": "N029-es-1",
+   "need": "N029",
+   "lang": "es",
+   "style": "natural",
+   "text": null,
+   "values": {
+    "Recall@5": 0.0,
+    "Recall@10": 0.0,
+    "Recall@20": 0.0,
+    "MRR@10": 0.0,
+    "nDCG@10": 0.07641101335929376,
+    "Judged@10": 0.2,
+    "Recall@T=1000": 0.0,
+    "Recall@T=2000": 0.0
+   },
+   "first_relevant_rank": 28,
+   "top10": [
+    {
+     "rank": 1,
+     "chunk": "PSD2:60",
+     "score": 0.47125470638275146,
+     "grade": 0,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. Where, for the use of a given payment instrument, the payee requests a charge or offers a reduction, the payee shall inform the payer thereof prior to the in"
+    },
+    {
+     "rank": 2,
+     "chunk": "PSD2:40",
+     "score": 0.4498184025287628,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. The payment service provider shall not charge the payment service user for providing information under this Title. 2. The payment service provider and the pa"
+    },
+    {
+     "rank": 3,
+     "chunk": "PSD2:52.3",
+     "score": 0.44418179988861084,
+     "grade": 1,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(3) on charges, interest and exchange rates: (a) all charges payable by the payment service user to the payment service provider including those connected to th"
+    },
+    {
+     "rank": 4,
+     "chunk": "PSD2:16",
+     "score": 0.4294825792312622,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "Where any change affects the accuracy of information and evidence provided in accordance with Article 5, the payment institution shall, without undue delay, inf"
+    },
+    {
+     "rank": 5,
+     "chunk": "PSD2:56",
+     "score": 0.4292473793029785,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "In the case of an individual payment transaction under a framework contract initiated by the payer, a payment service provider shall, at the payer's request for"
+    },
+    {
+     "rank": 6,
+     "chunk": "PSD2:66.5",
+     "score": 0.42388904094696045,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "5. The provision of payment initiation services shall not be dependent on the existence of a contractual relationship between the payment initiation service pro"
+    },
+    {
+     "rank": 7,
+     "chunk": "PSD2:28.4",
+     "score": 0.42296102643013,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "4. The payment institution shall communicate to the competent authorities of the home Member State without undue delay any relevant change regarding the informa"
+    },
+    {
+     "rank": 8,
+     "chunk": "PSD2:21",
+     "score": 0.41177067160606384,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "Member States shall require payment institutions to keep all appropriate records for the purpose of this Title for at least 5 years, without prejudice to Direct"
+    },
+    {
+     "rank": 9,
+     "chunk": "PSD2:109.3",
+     "score": 0.41129764914512634,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "3. This paragraph applies to natural or legal persons who benefited under Article 26 of Directive 2007/64/EC before 13 January 2018, and pursued payment service"
+    },
+    {
+     "rank": 10,
+     "chunk": "PSD2:34",
+     "score": 0.4096953868865967,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "If a Member State applies an exemption pursuant to Article 32, it shall, by 13 January 2018, notify the Commission of its decision accordingly and it shall noti"
+    }
+   ],
+   "relevant_chunks": [
+    {
+     "chunk": "PSD2:54",
+     "rank": 28,
+     "score": 0.37941330671310425,
+     "grade": 3,
+     "truncated": false
+    }
+   ],
+   "truncation_exposed": false
+  },
+  {
+   "query_id": "N029-en-2",
+   "need": "N029",
+   "lang": "en",
+   "style": "natural",
+   "text": "How much notice does a bank have to give its customers before raising the monthly fee on the personal current accounts they already have open with it?",
+   "values": {
+    "Recall@5": 0.0,
+    "Recall@10": 0.0,
+    "Recall@20": 1.0,
+    "MRR@10": 0.0,
+    "nDCG@10": 0.07641101335929376,
+    "Judged@10": 0.2,
+    "Recall@T=1000": 0.0,
+    "Recall@T=2000": 1.0
+   },
+   "first_relevant_rank": 12,
+   "top10": [
+    {
+     "rank": 1,
+     "chunk": "PSD2:60",
+     "score": 0.4820345342159271,
+     "grade": 0,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. Where, for the use of a given payment instrument, the payee requests a charge or offers a reduction, the payee shall inform the payer thereof prior to the in"
+    },
+    {
+     "rank": 2,
+     "chunk": "PSD2:40",
+     "score": 0.4656224846839905,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. The payment service provider shall not charge the payment service user for providing information under this Title. 2. The payment service provider and the pa"
+    },
+    {
+     "rank": 3,
+     "chunk": "PSD2:52.3",
+     "score": 0.462628573179245,
+     "grade": 1,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(3) on charges, interest and exchange rates: (a) all charges payable by the payment service user to the payment service provider including those connected to th"
+    },
+    {
+     "rank": 4,
+     "chunk": "PSD2:56",
+     "score": 0.43481749296188354,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "In the case of an individual payment transaction under a framework contract initiated by the payer, a payment service provider shall, at the payer's request for"
+    },
+    {
+     "rank": 5,
+     "chunk": "PSD2:34",
+     "score": 0.4218771159648895,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "If a Member State applies an exemption pursuant to Article 32, it shall, by 13 January 2018, notify the Commission of its decision accordingly and it shall noti"
+    },
+    {
+     "rank": 6,
+     "chunk": "MiCA:99",
+     "score": 0.41815832257270813,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "Member States shall notify the laws, regulations and administrative provisions implementing this Title, including any relevant criminal law provisions, to the C"
+    },
+    {
+     "rank": 7,
+     "chunk": "PSD2:16",
+     "score": 0.41669347882270813,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "Where any change affects the accuracy of information and evidence provided in accordance with Article 5, the payment institution shall, without undue delay, inf"
+    },
+    {
+     "rank": 8,
+     "chunk": "DORA:53",
+     "score": 0.4126690924167633,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "Member States shall notify the laws, regulations and administrative provisions implementing this Chapter, including any relevant criminal law provisions, to the"
+    },
+    {
+     "rank": 9,
+     "chunk": "PSD2:37",
+     "score": 0.40712013840675354,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. Member States shall prohibit natural or legal persons that are neither payment service providers nor explicitly excluded from the scope of this Directive fro"
+    },
+    {
+     "rank": 10,
+     "chunk": "PSD2:71",
+     "score": 0.40268781781196594,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. The payment service user shall obtain rectification of an unauthorised or incorrectly executed payment transaction from the payment service provider only if "
+    }
+   ],
+   "relevant_chunks": [
+    {
+     "chunk": "PSD2:54",
+     "rank": 12,
+     "score": 0.39568835496902466,
+     "grade": 3,
+     "truncated": false
+    }
+   ],
+   "truncation_exposed": false
+  },
+  {
+   "query_id": "N024-es-1",
+   "need": "N024",
+   "lang": "es",
+   "style": "natural",
+   "text": null,
+   "values": {
+    "Recall@5": 0.2,
+    "Recall@10": 0.2,
+    "Recall@20": 0.2,
+    "MRR@10": 0.2,
+    "nDCG@10": 0.1027791229791241,
+    "Judged@10": 0.1,
+    "Recall@T=1000": 0.0,
+    "Recall@T=2000": 0.2727272727272727
+   },
+   "first_relevant_rank": 5,
+   "top10": [
+    {
+     "rank": 1,
+     "chunk": "MiCA:92",
+     "score": 0.6376816630363464,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. Any person professionally arranging or executing transactions in crypto-assets shall have in place effective arrangements, systems and procedures to prevent "
+    },
+    {
+     "rank": 2,
+     "chunk": "MiCA:91.3",
+     "score": 0.6369088888168335,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "3. The following behaviour shall, inter alia, be considered market manipulation: (a) securing a dominant position over the supply of, or demand for, a crypto-as"
+    },
+    {
+     "rank": 3,
+     "chunk": "MiCA:91.2",
+     "score": 0.6331454515457153,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "2. For the purposes of this Regulation, market manipulation shall comprise any of the following activities: (a) unless carried out for legitimate reasons, enter"
+    },
+    {
+     "rank": 4,
+     "chunk": "MiCA:76.8",
+     "score": 0.6313247084617615,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "8. Crypto-asset service providers operating a trading platform for crypto-assets shall inform their competent authority when they identify cases of market abuse"
+    },
+    {
+     "rank": 5,
+     "chunk": "MiCA:86",
+     "score": 0.6193727254867554,
+     "grade": 2,
+     "relevant": true,
+     "truncated": false,
+     "preview": "1. This Title shall apply to acts carried out by any person concerning crypto-assets that are admitted to trading or in respect of which a request for admission"
+    },
+    {
+     "rank": 6,
+     "chunk": "MiCA:5.4",
+     "score": 0.6157805919647217,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "4. Paragraph 1, points (b), (c) and (d), shall not apply where: (a) the crypto-asset is already admitted to trading on another trading platform for crypto-asset"
+    },
+    {
+     "rank": 7,
+     "chunk": "MiCA:14",
+     "score": 0.614145815372467,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. Offerors and persons seeking admission to trading of crypto-assets other than asset-referenced tokens or e-money tokens shall: (a) act honestly, fairly and p"
+    },
+    {
+     "rank": 8,
+     "chunk": "MiCA:48",
+     "score": 0.6084839701652527,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. A person shall not make an offer to the public or seek the admission to trading of an e-money token, within the Union, unless that person is the issuer of su"
+    },
+    {
+     "rank": 9,
+     "chunk": "MiCA:102.1",
+     "score": 0.6062992811203003,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "1. Where the competent authority of a host Member State has clear and demonstrable grounds for suspecting that there are irregularities in the activities of an "
+    },
+    {
+     "rank": 10,
+     "chunk": "MiCA:76.13",
+     "score": 0.6025322079658508,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "13. Crypto-asset service providers operating a trading platform for crypto-assets shall ensure that their fee structures are transparent, fair and non-discrimin"
+    }
+   ],
+   "relevant_chunks": [
+    {
+     "chunk": "MiCA:86",
+     "rank": 5,
+     "score": 0.6193727254867554,
+     "grade": 2,
+     "truncated": false
+    },
+    {
+     "chunk": "MiCA:89.2",
+     "rank": 50,
+     "score": 0.5420089364051819,
+     "grade": 3,
+     "truncated": false
+    },
+    {
+     "chunk": "MiCA:87",
+     "rank": 70,
+     "score": 0.5268988013267517,
+     "grade": 2,
+     "truncated": false
+    },
+    {
+     "chunk": "MiCA:89.1",
+     "rank": 72,
+     "score": 0.5265844464302063,
+     "grade": 3,
+     "truncated": false
+    },
+    {
+     "chunk": "MiCA:89.5",
+     "rank": 356,
+     "score": 0.4440497159957886,
+     "grade": 2,
+     "truncated": false
+    }
+   ],
+   "truncation_exposed": false
+  },
+  {
+   "query_id": "N006-en-4",
+   "need": "N006",
+   "lang": "en",
+   "style": "natural",
+   "text": "I run a small payments company that works under my country's exemption for small payment firms instead of having a full licence. I assumed being exempt also means DORA doesn't apply to us. Is my business covered by DORA at all?",
+   "values": {
+    "Recall@5": 0.0,
+    "Recall@10": 0.0,
+    "Recall@20": 1.0,
+    "MRR@10": 0.0,
+    "nDCG@10": 0.11507586792774147,
+    "Judged@10": 0.2,
+    "Recall@T=1000": 0.0,
+    "Recall@T=2000": 1.0
+   },
+   "first_relevant_rank": 12,
+   "top10": [
+    {
+     "rank": 1,
+     "chunk": "DORA:3.63",
+     "score": 0.5837044715881348,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(63) 'small enterprise' means a financial entity that employs 10 or more persons, but fewer than 50 persons, and has an annual turnover and/or annual balance sh"
+    },
+    {
+     "rank": 2,
+     "chunk": "DORA:3.60",
+     "score": 0.5760062336921692,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(60) 'microenterprise' means a financial entity, other than a trading venue, a central counterparty, a trade repository or a central securities depository, whic"
+    },
+    {
+     "rank": 3,
+     "chunk": "DORA:3.36",
+     "score": 0.5743842124938965,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(36) 'payment institution exempted pursuant to Directive (EU) 2015/2366' means a payment institution exempted pursuant to Article 32(1) of Directive (EU) 2015/2"
+    },
+    {
+     "rank": 4,
+     "chunk": "DORA:2.3",
+     "score": 0.5726515054702759,
+     "grade": 1,
+     "relevant": false,
+     "truncated": false,
+     "preview": "3. This Regulation does not apply to: (a) managers of alternative investment funds as referred to in Article 3(2) of Directive 2011/61/EU; (b) insurance and rei"
+    },
+    {
+     "rank": 5,
+     "chunk": "DORA:3.64",
+     "score": 0.5385586023330688,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(64) 'medium-sized enterprise' means a financial entity that is not a small enterprise and employs fewer than 250 persons and has an annual turnover that does n"
+    },
+    {
+     "rank": 6,
+     "chunk": "DORA:3.39",
+     "score": 0.5324806571006775,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(39) 'electronic money institution exempted pursuant to Directive 2009/110/EC' means an electronic money institution benefitting from a waiver as referred to in"
+    },
+    {
+     "rank": 7,
+     "chunk": "DORA:3.34",
+     "score": 0.5234817862510681,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(34) 'small and non-interconnected investment firm' means an investment firm that meets the conditions laid out in Article 12(1) of Regulation (EU) 2019/2033 of"
+    },
+    {
+     "rank": 8,
+     "chunk": "DORA:3.32",
+     "score": 0.5075849890708923,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(32) 'institution exempted pursuant to Directive 2013/36/EU' means an entity as referred to in Article 2(5), points (4) to (23), of Directive 2013/36/EU;"
+    },
+    {
+     "rank": 9,
+     "chunk": "DORA:3.53",
+     "score": 0.5034517645835876,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(53) 'small institution for occupational retirement provision' means an institution for occupational retirement provision which operates pension schemes which t"
+    },
+    {
+     "rank": 10,
+     "chunk": "DORA:2.4",
+     "score": 0.495669424533844,
+     "grade": 1,
+     "relevant": false,
+     "truncated": false,
+     "preview": "4. Member States may exclude from the scope of this Regulation entities referred to in Article 2(5), points (4) to (23), of Directive 2013/36/EU that are locate"
+    }
+   ],
+   "relevant_chunks": [
+    {
+     "chunk": "DORA:2.1",
+     "rank": 12,
+     "score": 0.4681938886642456,
+     "grade": 3,
+     "truncated": false
+    }
+   ],
+   "truncation_exposed": false
+  },
+  {
+   "query_id": "N015-es-1",
+   "need": "N015",
+   "lang": "es",
+   "style": "natural",
+   "text": null,
+   "values": {
+    "Recall@5": 0.0,
+    "Recall@10": 0.5,
+    "Recall@20": 1.0,
+    "MRR@10": 0.1111111111111111,
+    "nDCG@10": 0.12198323851117035,
+    "Judged@10": 0.2,
+    "Recall@T=1000": 0.3333333333333333,
+    "Recall@T=2000": 1.0
+   },
+   "first_relevant_rank": 9,
+   "top10": [
+    {
+     "rank": 1,
+     "chunk": "DORA:2.3",
+     "score": 0.5304449796676636,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "3. This Regulation does not apply to: (a) managers of alternative investment funds as referred to in Article 3(2) of Directive 2011/61/EU; (b) insurance and rei"
+    },
+    {
+     "rank": 2,
+     "chunk": "DORA:3.49",
+     "score": 0.5132351517677307,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(49) 'insurance intermediary' means an insurance intermediary as defined in Article 2(1), point (3), of Directive (EU) 2016/97 of the European Parliament and of"
+    },
+    {
+     "rank": 3,
+     "chunk": "DORA:35.8",
+     "score": 0.49318745732307434,
+     "grade": 0,
+     "relevant": false,
+     "truncated": false,
+     "preview": "8. The amount of the periodic penalty payment, calculated from the date stipulated in the decision imposing the periodic penalty payment, shall be up to 1 % of "
+    },
+    {
+     "rank": 4,
+     "chunk": "DORA:3.64",
+     "score": 0.4849151372909546,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(64) 'medium-sized enterprise' means a financial entity that is not a small enterprise and employs fewer than 250 persons and has an annual turnover that does n"
+    },
+    {
+     "rank": 5,
+     "chunk": "DORA:3.50",
+     "score": 0.48088377714157104,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(50) 'ancillary insurance intermediary' means an ancillary insurance intermediary as defined in Article 2(1), point (4), of Directive (EU) 2016/97;"
+    },
+    {
+     "rank": 6,
+     "chunk": "DORA:35.7",
+     "score": 0.4756122827529907,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "7. The periodic penalty payment referred to in paragraph 6 shall be imposed on a daily basis until compliance is achieved and for no more than a period of six m"
+    },
+    {
+     "rank": 7,
+     "chunk": "DORA:3.47",
+     "score": 0.47266072034835815,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(47) 'insurance undertaking' means an insurance undertaking as defined in Article 13, point (1), of Directive 2009/138/EC;"
+    },
+    {
+     "rank": 8,
+     "chunk": "DORA:50.6",
+     "score": 0.4700368344783783,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "6. Member States shall ensure that any decision imposing administrative penalties or remedial measures set out in paragraph 2, point (c), is properly reasoned a"
+    },
+    {
+     "rank": 9,
+     "chunk": "DORA:50.3",
+     "score": 0.46695610880851746,
+     "grade": 2,
+     "relevant": true,
+     "truncated": false,
+     "preview": "3. Without prejudice to the right of Member States to impose criminal penalties in accordance with Article 52, Member States shall lay down rules establishing a"
+    },
+    {
+     "rank": 10,
+     "chunk": "DORA:46.l",
+     "score": 0.4613649845123291,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "(l) for insurance intermediaries, reinsurance intermediaries and ancillary insurance intermediaries, the competent authority designated in accordance with Artic"
+    }
+   ],
+   "relevant_chunks": [
+    {
+     "chunk": "DORA:50.3",
+     "rank": 9,
+     "score": 0.46695610880851746,
+     "grade": 2,
+     "truncated": false
+    },
+    {
+     "chunk": "DORA:50.4",
+     "rank": 18,
+     "score": 0.4272242784500122,
+     "grade": 2,
+     "truncated": false
+    }
+   ],
+   "truncation_exposed": false
+  },
+  {
+   "query_id": "N023-es-1",
+   "need": "N023",
+   "lang": "es",
+   "style": "natural",
+   "text": null,
+   "values": {
+    "Recall@5": 0.0,
+    "Recall@10": 0.5,
+    "Recall@20": 1.0,
+    "MRR@10": 0.14285714285714285,
+    "nDCG@10": 0.1283894147856814,
+    "Judged@10": 0.1,
+    "Recall@T=1000": 0.2,
+    "Recall@T=2000": 0.2
+   },
+   "first_relevant_rank": 7,
+   "top10": [
+    {
+     "rank": 1,
+     "chunk": "MiCA:51.3",
+     "score": 0.6120826005935669,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "3. The crypto-asset white paper shall contain the following clear and prominent statement on the first page: 'This crypto-asset white paper has not been approve"
+    },
+    {
+     "rank": 2,
+     "chunk": "MiCA:51.10",
+     "score": 0.5831542015075684,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "10. ESMA, in cooperation with EBA, shall develop draft implementing technical standards to establish standard forms, formats and templates for the purposes of p"
+    },
+    {
+     "rank": 3,
+     "chunk": "MiCA:51.13",
+     "score": 0.5471192002296448,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "13. Before offering the e-money token to the public in the Union or seeking an admission to trading of the e-money token, the issuer of such e-money token shall"
+    },
+    {
+     "rank": 4,
+     "chunk": "MiCA:51.15",
+     "score": 0.5470761656761169,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "15. ESMA, in cooperation with EBA, shall develop draft regulatory technical standards on the content, methodologies and presentation of the information referred"
+    },
+    {
+     "rank": 5,
+     "chunk": "MiCA:19.10",
+     "score": 0.5413488149642944,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "10. ESMA, in cooperation with EBA, shall develop draft implementing technical standards to establish standard forms, formats and templates for the purposes of p"
+    },
+    {
+     "rank": 6,
+     "chunk": "MiCA:51.8",
+     "score": 0.5387001633644104,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "8. The crypto-asset white paper shall be drawn up in an official language of the home Member State or in a language customary in the sphere of international fin"
+    },
+    {
+     "rank": 7,
+     "chunk": "MiCA:3.1.7",
+     "score": 0.536193311214447,
+     "grade": 2,
+     "relevant": true,
+     "truncated": false,
+     "preview": "(7) 'electronic money token' or 'e-money token' means a type of crypto-asset that purports to maintain a stable value by referencing the value of one official c"
+    },
+    {
+     "rank": 8,
+     "chunk": "MiCA:51.4",
+     "score": 0.530486524105072,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "4. The crypto-asset white paper shall contain a clear warning that: (a) the e-money token is not covered by the investor compensation schemes under Directive 97"
+    },
+    {
+     "rank": 9,
+     "chunk": "MiCA:6.3",
+     "score": 0.5275793075561523,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "3. The crypto-asset white paper shall contain the following clear and prominent statement on the first page: 'This crypto-asset white paper has not been approve"
+    },
+    {
+     "rank": 10,
+     "chunk": "MiCA:51.12",
+     "score": 0.5219053626060486,
+     "grade": null,
+     "relevant": false,
+     "truncated": false,
+     "preview": "12. Any significant new factor, any material mistake or any material inaccuracy that is capable of affecting the assessment of the e-money token shall be descri"
+    }
+   ],
+   "relevant_chunks": [
+    {
+     "chunk": "MiCA:3.1.7",
+     "rank": 7,
+     "score": 0.536193311214447,
+     "grade": 2,
+     "truncated": false
+    },
+    {
+     "chunk": "MiCA:48",
+     "rank": 16,
+     "score": 0.5138629078865051,
+     "grade": 3,
+     "truncated": false
+    }
+   ],
+   "truncation_exposed": false
+  }
+ ],
+ "sanity": {
+  "same_ranking_twice": true,
+  "dimension": 1024,
+  "max_norm_error": 2.6908078032406024e-07,
+  "top10_equals_float64_cosine_bruteforce": 90,
+  "max_score_diff_vs_float64_cosine": 9.880299304265705e-07,
+  "ranked_every_chunk": true,
+  "search": "exact: one dot product per query and chunk, numpy matrix product, no index",
+  "prefixes": {
+   "document": true,
+   "query": true
+  },
+  "embedded_string_is_prefix_plus_text_only": true,
+  "same_query_vectors_twice": true,
+  "documents_embedded_in_this_run": true
+ },
+ "performance": {
+  "documents": 1354,
+  "queries": 90,
+  "dimension": 1024,
+  "timings_seconds": {
+   "model load": 12.420351374981692,
+   "document embeddings": 565.8225413329783,
+   "query embeddings": 10.521543832990574,
+   "exact retrieval": 0.03739579100511037,
+   "query embeddings, second pass": 10.747460584010696
+  },
+  "embedding_bytes": {
+   "documents": 5546112,
+   "documents_meta": 257760,
+   "queries": 368768
+  },
+  "peak_rss_bytes": 3881926656,
+  "model_cache_bytes": 1207469240,
+  "environment": {
+   "platform": "macOS-27.0.1-arm64-arm-64bit",
+   "machine": "arm64",
+   "cpu": "Apple M1",
+   "cpu_count": "8",
+   "hf_home": ".cache/huggingface",
+   "torch_threads": "4"
+  }
+ }
+}

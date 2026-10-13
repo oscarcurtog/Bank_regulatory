@@ -12,9 +12,10 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
 - **Goal:** a RAG system that answers with verifiable citations to the exact article.
 - **Implemented today:** ingestion and source handling, legal hierarchy parsing, structural
   chunking, a retrieval benchmark (contracts, validation, node-to-chunk projection, metrics and
-  a DEV set of 30 judged questions), dense retrieval baselines with exact search for two
-  embedding models and their paired comparison (explicit truncation, stale-embedding detection),
-  Pydantic data contracts, stale-layer detection, measurement tooling, tests, Docker and CI.
+  a DEV set of 30 judged questions), retrieval baselines measured on DEV (three dense embedding
+  models with exact search, BM25, and a one-hop cross-reference expansion) under a protocol fixed
+  before the results, Pydantic data contracts, stale-layer detection, measurement tooling, tests,
+  Docker and CI.
 - **Not implemented yet:** a vector index, hybrid search and reranking, generation, citation
   verification, API and deployment.
 
@@ -24,9 +25,9 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
 - **Chunking:** implemented (structural, v1)
 - **Retrieval benchmark:** implemented; DEV holds 30 judged questions, reviewed and sealed under
   protocol v1.4
-- **Indexing and retrieval:** dense baselines with exact search implemented for
-  `multilingual-e5-large` and BGE-M3 (dense output), compared on DEV; lexical, hybrid and
-  reranked retrieval not measured yet
+- **Indexing and retrieval:** a first retrieval iteration on DEV is done (three dense models,
+  BM25, cross-reference expansion); no configuration beat `multilingual-e5-large` by the
+  protocol's margin, and a hybrid and a reranker did not pass their entry conditions
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -59,6 +60,11 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   `scripts/benchmark.py`): information needs, their queries in English and Spanish, and relevance
   judgments graded 0-3 on legal nodes (`MiCA:50.2`), never on chunks, so the same judgments
   evaluate any chunking. See [Retrieval benchmark](#retrieval-benchmark).
+- **Retrieval** (`ingest/embeddings.py`, `ingest/encoder.py`, `ingest/lexical.py`,
+  `ingest/references.py`, `ingest/retrieval.py`, `ingest/run_report.py`): dense retrieval with
+  exact search under a per-model contract, BM25, explicit cross-reference expansion, rank fusion,
+  and one report that measures every retriever the same way. See
+  [Retrieval iteration](#retrieval-iteration).
 - **Data contracts** (Pydantic): the manifest, the processed layer (`data/processed/{act}.json`),
   the chunk layer (`data/chunks/{act}.json`) and the benchmark files are validated when they are
   written and when they are read. Loading aborts instead of returning partly checked data.
@@ -75,8 +81,9 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
 ## Repository layout
 
 ```
-ingest/              library: download, parser, processed and chunk layers, benchmark, embeddings
+ingest/              library: download, parser, processed and chunk layers, benchmark, retrieval
 config/embeddings/   the contract of each embedding model, and the model comparison policy
+config/retrieval/    the retrieval iteration's protocol and the contracts of BM25, fusion, expansion
 scripts/             pipeline and measurement entry points
 tests/unit/          isolated tests, no files involved
 tests/integration/   tests on real EUR-Lex excerpts (tests/fixtures/, see PROVENANCE.md)
@@ -287,21 +294,58 @@ the report of each run, and the paired comparison, are versioned in `data/result
 The comparison changes only the model: same DEV 0.10.0, chunk layer, queries, qrels, projection
 and evaluator ([report](data/results/dev-0.10.0/comparisons/multilingual-e5-large-vs-bge-m3-layer-500/comparison.md)).
 On DEV's 27 evaluable needs, no difference between BGE-M3 (dense output) and
-`multilingual-e5-large` can be told apart from noise: in English nDCG@10 is 0.536 against 0.552 and Recall@10 0.761 against 0.777; in Spanish 0.498 against
-0.479 and 0.723 against 0.735. Every paired 95% interval contains zero, and 14 queries improve
-while 14 get worse. The main failure, where the chunk that answers ranks first and the evidence it
+`multilingual-e5-large` can be told apart from noise: in English nDCG@10 is 0.536 against 0.552
+and Recall@10 0.761 against 0.777; in Spanish 0.498 against 0.479 and 0.723 against 0.735. Every
+paired 95% interval contains zero. Counted by any change of nDCG@10, 38 queries improve, 38 get
+worse and 5 are equal; counted by the report's failure transitions (a query fails when a relevant
+chunk is outside its top 10), 14 move to a better state, 14 to a worse one and 53 keep theirs.
+The main failure, where the chunk that answers ranks first and the evidence it
 depends on (definitions, conditions, the other act) ranks far below, is the same for both models.
 Both are reproduced bit for bit by a new process.
+
+### Retrieval iteration
+
+```bash
+PYTHONPATH=. .venv/bin/python scripts/bm25_baseline.py --expect-version 0.10.0
+PYTHONPATH=. .venv/bin/python scripts/retrieval_oracle.py --expect-version 0.10.0
+PYTHONPATH=. .venv/bin/python scripts/xref_expansion.py --base multilingual-e5-large \
+    --expect-version 0.10.0
+PYTHONPATH=. .venv/bin/python scripts/embed_baseline.py \
+    --config config/embeddings/qwen3-embedding-0.6b.json --expect-version 0.10.0
+PYTHONPATH=. .venv/bin/python scripts/retrieval_leaderboard.py --expect-version 0.10.0
+```
+
+A sequence of controlled experiments on the frozen DEV benchmark, each one chosen by a rule
+applied to the previous result. The rules, the grids and the measures were committed before the
+first result ([`config/retrieval/README.md`](config/retrieval/README.md)), and every run is in
+[the record](data/results/dev-0.10.0/retrieval-iteration/log.md), losers included.
+
+- **BM25** (`ingest/lexical.py`, Lucene's variant through bm25s): global Recall@10 0.366 against
+  E5's 0.763. Its union with E5's top 10 adds 0.006 of Recall@10, so a hybrid was not built.
+- **One-hop cross-reference expansion** (`ingest/references.py`, a deterministic parser of
+  explicit references): it reaches real dependent evidence (dependent Recall@10 0.300 to 0.380)
+  but most references name whole articles, 1.3% of the added chunks are relevant, and global
+  Recall@10 falls to 0.653.
+- **A third dense model**, Qwen3-Embedding-0.6B: global Recall@10 0.730, under E5; dense model
+  swapping stops there.
+- **No reranker**: no retriever reaches the Recall@50 of 0.95 that would give it the evidence
+  to reorder (best 0.894).
+
+[The leaderboard](data/results/dev-0.10.0/retrieval-iteration/leaderboard.md) holds every
+system, measured by one code path. E5 stays the best retriever measured. What it misses is
+mostly evidence the answer depends on without being the answer: 54 of its 63 missed (query,
+relevant chunk) pairs are grade 2, at a median rank of 103.
 
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
 - CI skips the 38 `corpus` tests, so the full corpus is only validated where it is present.
 - The DEV benchmark holds 30 judged questions in two batches (27 evaluable), so a difference
-  between two retrievers needs to be large to be told apart from noise. Two dense retrievers
-  (two embedding models, exact search) have been measured on it; no index, lexical or hybrid
-  search or reranker has been measured yet. The benchmark evaluator is not in the Docker images
-  (no Linux ARM64 wheel for its backend).
+  between two retrievers needs to be large to be told apart from noise (about 0.08 of nDCG@10).
+  The retrieval iteration selected on DEV, so its numbers are development numbers; an
+  independent TEST set has not been built. No index, hybrid search or reranker has been
+  measured. The benchmark evaluator is not in the Docker images (no Linux ARM64 wheel for its
+  backend).
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4

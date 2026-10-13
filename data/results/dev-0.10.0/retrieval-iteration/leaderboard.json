@@ -1,0 +1,536 @@
+{
+ "benchmark_version": "0.10.0",
+ "systems": {
+  "multilingual-e5-large": {
+   "label": "dense, E5 (reference)",
+   "run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+   "columns": {
+    "nDCG@10": 0.5275020347424471,
+    "Recall@10": 0.7631687242798354,
+    "MRR@10": 0.7464628649813835,
+    "Recall@20": 0.8160493827160494,
+    "Recall@T=1000": 0.6796737555996815,
+    "Recall@T=2000": 0.7816073843851621,
+    "Recall@50": 0.862962962962963,
+    "multi_provision R@10": 0.48055555555555557,
+    "cross_reference R@10": 0.6611111111111111,
+    "cross_act R@10": 0.29166666666666663,
+    "dependent R@10": 0.3
+   },
+   "Recall@100": 0.8833333333333334,
+   "by_language": {
+    "nDCG@10": {
+     "en": 0.551852819848325,
+     "es": 0.47880046453069103
+    },
+    "Recall@10": {
+     "en": 0.7774691358024691,
+     "es": 0.7345679012345678
+    },
+    "Recall@T=1000": {
+     "en": 0.7422828714495381,
+     "es": 0.5544555238999683
+    }
+   },
+   "dependent_evidence": {
+    "needs": 11,
+    "queries": 33,
+    "Recall@10": 0.3,
+    "Recall@20": 0.47474747474747475,
+    "anchor_in_top10": 0.8484848484848485
+   },
+   "groups": {
+    "multi_provision": {
+     "needs": 6,
+     "Recall@10": 0.48055555555555557,
+     "nDCG@10": 0.5021204031917854,
+     "Recall@20": 0.5333333333333333
+    },
+    "cross_reference": {
+     "needs": 11,
+     "Recall@10": 0.6611111111111111,
+     "nDCG@10": 0.5284313521128706,
+     "Recall@20": 0.7000000000000001
+    },
+    "cross_act": {
+     "needs": 2,
+     "Recall@10": 0.29166666666666663,
+     "nDCG@10": 0.4689453594281185,
+     "Recall@20": 0.33333333333333337
+    },
+    "lexical_twin": {
+     "needs": 17,
+     "Recall@10": 0.7140522875816994,
+     "nDCG@10": 0.4786164555082607,
+     "Recall@20": 0.7647058823529411
+    }
+   }
+  },
+  "bge-m3": {
+   "label": "dense, BGE-M3",
+   "run_sha256": "e101dd6f559c1e5662d53e74bc67e3ae93200fbe90a9cd1d7d0b1fa9d7a464fd",
+   "columns": {
+    "nDCG@10": 0.5230942093765326,
+    "Recall@10": 0.748559670781893,
+    "MRR@10": 0.7331177738585146,
+    "Recall@20": 0.8144032921810699,
+    "Recall@T=1000": 0.6562543766247471,
+    "Recall@T=2000": 0.7620113768261917,
+    "Recall@50": 0.8855967078189301,
+    "multi_provision R@10": 0.4611111111111111,
+    "cross_reference R@10": 0.6404040404040404,
+    "cross_act R@10": 0.25,
+    "dependent R@10": 0.29292929292929293
+   },
+   "Recall@100": 0.9170781893004116,
+   "by_language": {
+    "nDCG@10": {
+     "en": 0.5356952067497761,
+     "es": 0.49789221463004546
+    },
+    "Recall@10": {
+     "en": 0.7611111111111112,
+     "es": 0.7234567901234569
+    },
+    "Recall@T=1000": {
+     "en": 0.6733200955423178,
+     "es": 0.6221229387896055
+    }
+   },
+   "dependent_evidence": {
+    "needs": 11,
+    "queries": 33,
+    "Recall@10": 0.29292929292929293,
+    "Recall@20": 0.35555555555555557,
+    "anchor_in_top10": 0.8787878787878788
+   },
+   "groups": {
+    "multi_provision": {
+     "needs": 6,
+     "Recall@10": 0.4611111111111111,
+     "nDCG@10": 0.47664181989444604,
+     "Recall@20": 0.5074074074074074
+    },
+    "cross_reference": {
+     "needs": 11,
+     "Recall@10": 0.6404040404040404,
+     "nDCG@10": 0.5534581498121978,
+     "Recall@20": 0.6656565656565656
+    },
+    "cross_act": {
+     "needs": 2,
+     "Recall@10": 0.25,
+     "nDCG@10": 0.4677837539842761,
+     "Recall@20": 0.33333333333333337
+    },
+    "lexical_twin": {
+     "needs": 17,
+     "Recall@10": 0.7320261437908497,
+     "nDCG@10": 0.5326174364035224,
+     "Recall@20": 0.7777777777777777
+    }
+   }
+  },
+  "bm25": {
+   "label": "BM25",
+   "run_sha256": "49b9d78fd41c12205e07a878ffeb2260d1110abd5ad99464b2d5f0e282c7aa76",
+   "columns": {
+    "nDCG@10": 0.22898953185156234,
+    "Recall@10": 0.36625514403292175,
+    "MRR@10": 0.2772437781697041,
+    "Recall@20": 0.43724279835390945,
+    "Recall@T=1000": 0.30254563680489605,
+    "Recall@T=2000": 0.3900311279940909,
+    "Recall@50": 0.5213991769547325,
+    "multi_provision R@10": 0.2222222222222222,
+    "cross_reference R@10": 0.27777777777777773,
+    "cross_act R@10": 0.08333333333333333,
+    "dependent R@10": 0.06666666666666667
+   },
+   "Recall@100": 0.6312757201646091,
+   "by_language": {
+    "nDCG@10": {
+     "en": 0.3109306988377654,
+     "es": 0.06510719787915613
+    },
+    "Recall@10": {
+     "en": 0.47067901234567905,
+     "es": 0.1574074074074074
+    },
+    "Recall@T=1000": {
+     "en": 0.40253640392529283,
+     "es": 0.10256410256410256
+    }
+   },
+   "dependent_evidence": {
+    "needs": 11,
+    "queries": 33,
+    "Recall@10": 0.06666666666666667,
+    "Recall@20": 0.1828282828282828,
+    "anchor_in_top10": 0.4242424242424242
+   },
+   "groups": {
+    "multi_provision": {
+     "needs": 6,
+     "Recall@10": 0.2222222222222222,
+     "nDCG@10": 0.18254426860870276,
+     "Recall@20": 0.32870370370370366
+    },
+    "cross_reference": {
+     "needs": 11,
+     "Recall@10": 0.27777777777777773,
+     "nDCG@10": 0.21004498063175622,
+     "Recall@20": 0.37626262626262624
+    },
+    "cross_act": {
+     "needs": 2,
+     "Recall@10": 0.08333333333333333,
+     "nDCG@10": 0.06255927249442383,
+     "Recall@20": 0.125
+    },
+    "lexical_twin": {
+     "needs": 17,
+     "Recall@10": 0.3660130718954248,
+     "nDCG@10": 0.22094638711928494,
+     "Recall@20": 0.44934640522875813
+    }
+   }
+  },
+  "xref1-e5-k5": {
+   "label": "E5 + one-hop references, K = 5",
+   "run_sha256": "31c47be10b39517add71239f5338d357073bfe46deea49fd21444534b132542c",
+   "columns": {
+    "nDCG@10": 0.49326742452805883,
+    "Recall@10": 0.6526748971193416,
+    "MRR@10": 0.6880805408583186,
+    "Recall@20": 0.692798353909465,
+    "Recall@T=1000": 0.6124046735157846,
+    "Recall@T=2000": 0.6635284468617803,
+    "Recall@50": 0.8006172839506173,
+    "multi_provision R@10": 0.5481481481481482,
+    "cross_reference R@10": 0.6171717171717171,
+    "cross_act R@10": 0.5,
+    "dependent R@10": 0.37979797979797975
+   },
+   "Recall@100": 0.8767489711934155,
+   "by_language": {
+    "nDCG@10": {
+     "en": 0.5080736385641486,
+     "es": 0.4636549964558795
+    },
+    "Recall@10": {
+     "en": 0.6796296296296297,
+     "es": 0.5987654320987654
+    },
+    "Recall@T=1000": {
+     "en": 0.6277475610808944,
+     "es": 0.581718898385565
+    }
+   },
+   "dependent_evidence": {
+    "needs": 11,
+    "queries": 33,
+    "Recall@10": 0.37979797979797975,
+    "Recall@20": 0.46868686868686865,
+    "anchor_in_top10": 0.5757575757575757
+   },
+   "groups": {
+    "multi_provision": {
+     "needs": 6,
+     "Recall@10": 0.5481481481481482,
+     "nDCG@10": 0.5362399327970384,
+     "Recall@20": 0.6175925925925926
+    },
+    "cross_reference": {
+     "needs": 11,
+     "Recall@10": 0.6171717171717171,
+     "nDCG@10": 0.5177372553155339,
+     "Recall@20": 0.6550505050505051
+    },
+    "cross_act": {
+     "needs": 2,
+     "Recall@10": 0.5,
+     "nDCG@10": 0.536543420030268,
+     "Recall@20": 0.5416666666666666
+    },
+    "lexical_twin": {
+     "needs": 17,
+     "Recall@10": 0.6013071895424836,
+     "nDCG@10": 0.4583528570421062,
+     "Recall@20": 0.6552287581699346
+    }
+   }
+  },
+  "xref1-e5-k10": {
+   "label": "E5 + one-hop references, K = 10",
+   "run_sha256": "d8542a1ab2999b7eb4f268f5611b89be116b31357bb8d412d32f0a86d22bad5b",
+   "columns": {
+    "nDCG@10": 0.491833513877225,
+    "Recall@10": 0.6403292181069958,
+    "MRR@10": 0.6868459729570842,
+    "Recall@20": 0.6804526748971194,
+    "Recall@T=1000": 0.6124046735157846,
+    "Recall@T=2000": 0.6635284468617803,
+    "Recall@50": 0.782716049382716,
+    "multi_provision R@10": 0.5481481481481482,
+    "cross_reference R@10": 0.6171717171717171,
+    "cross_act R@10": 0.5,
+    "dependent R@10": 0.37979797979797975
+   },
+   "Recall@100": 0.8839506172839506,
+   "by_language": {
+    "nDCG@10": {
+     "en": 0.5052252600531497,
+     "es": 0.46505002152537567
+    },
+    "Recall@10": {
+     "en": 0.6611111111111112,
+     "es": 0.5987654320987654
+    },
+    "Recall@T=1000": {
+     "en": 0.6277475610808944,
+     "es": 0.581718898385565
+    }
+   },
+   "dependent_evidence": {
+    "needs": 11,
+    "queries": 33,
+    "Recall@10": 0.37979797979797975,
+    "Recall@20": 0.46868686868686865,
+    "anchor_in_top10": 0.5757575757575757
+   },
+   "groups": {
+    "multi_provision": {
+     "needs": 6,
+     "Recall@10": 0.5481481481481482,
+     "nDCG@10": 0.5362399327970384,
+     "Recall@20": 0.6175925925925926
+    },
+    "cross_reference": {
+     "needs": 11,
+     "Recall@10": 0.6171717171717171,
+     "nDCG@10": 0.5188786394633035,
+     "Recall@20": 0.6550505050505051
+    },
+    "cross_act": {
+     "needs": 2,
+     "Recall@10": 0.5,
+     "nDCG@10": 0.536543420030268,
+     "Recall@20": 0.5416666666666666
+    },
+    "lexical_twin": {
+     "needs": 17,
+     "Recall@10": 0.5816993464052288,
+     "nDCG@10": 0.45607546953784067,
+     "Recall@20": 0.6356209150326797
+    }
+   }
+  },
+  "qwen3-embedding-0.6b": {
+   "label": "dense, Qwen3-Embedding-0.6B",
+   "run_sha256": "de9388a555a65d6a000f9210a711cd9a8fac36f2c79c6f13ddca6bfca55ca985",
+   "columns": {
+    "nDCG@10": 0.48308420652557243,
+    "Recall@10": 0.7296296296296296,
+    "MRR@10": 0.6596315892612189,
+    "Recall@20": 0.8037037037037037,
+    "Recall@T=1000": 0.6660011798900688,
+    "Recall@T=2000": 0.8002086390975279,
+    "Recall@50": 0.8936213991769547,
+    "multi_provision R@10": 0.39444444444444443,
+    "cross_reference R@10": 0.6242424242424242,
+    "cross_act R@10": 0.33333333333333337,
+    "dependent R@10": 0.34747474747474744
+   },
+   "Recall@100": 0.9302469135802469,
+   "by_language": {
+    "nDCG@10": {
+     "en": 0.5186382928868289,
+     "es": 0.41197603380305936
+    },
+    "Recall@10": {
+     "en": 0.7574074074074074,
+     "es": 0.674074074074074
+    },
+    "Recall@T=1000": {
+     "en": 0.680364542864543,
+     "es": 0.6372744539411206
+    }
+   },
+   "dependent_evidence": {
+    "needs": 11,
+    "queries": 33,
+    "Recall@10": 0.34747474747474744,
+    "Recall@20": 0.4444444444444444,
+    "anchor_in_top10": 0.7575757575757577
+   },
+   "groups": {
+    "multi_provision": {
+     "needs": 6,
+     "Recall@10": 0.39444444444444443,
+     "nDCG@10": 0.4445010969150167,
+     "Recall@20": 0.44999999999999996
+    },
+    "cross_reference": {
+     "needs": 11,
+     "Recall@10": 0.6242424242424242,
+     "nDCG@10": 0.4784974140223881,
+     "Recall@20": 0.6696969696969697
+    },
+    "cross_act": {
+     "needs": 2,
+     "Recall@10": 0.33333333333333337,
+     "nDCG@10": 0.5877857480510094,
+     "Recall@20": 0.33333333333333337
+    },
+    "lexical_twin": {
+     "needs": 17,
+     "Recall@10": 0.7156862745098039,
+     "nDCG@10": 0.46139841506882395,
+     "Recall@20": 0.7941176470588235
+    }
+   }
+  }
+ },
+ "best_by_global_recall10_then_ndcg10": "multilingual-e5-large",
+ "paired_against_e5": {
+  "bge-m3": {
+   "Recall@10": {
+    "mean": -0.014609053497942387,
+    "ci95_low": -0.08744855967078188,
+    "ci95_high": 0.054320987654320994,
+    "better": 8,
+    "equal": 64,
+    "worse": 9
+   },
+   "nDCG@10": {
+    "mean": -0.004407825365914486,
+    "ci95_low": -0.08439748372521584,
+    "ci95_high": 0.07182561443209032,
+    "better": 38,
+    "equal": 5,
+    "worse": 38
+   }
+  },
+  "bm25": {
+   "Recall@10": {
+    "mean": -0.3969135802469136,
+    "ci95_low": -0.4722222222222222,
+    "ci95_high": -0.32160493827160497,
+    "better": 0,
+    "equal": 35,
+    "worse": 46
+   },
+   "nDCG@10": {
+    "mean": -0.2985125028908847,
+    "ci95_low": -0.35489333722717975,
+    "ci95_high": -0.24330837542293512,
+    "better": 7,
+    "equal": 6,
+    "worse": 68
+   }
+  },
+  "xref1-e5-k5": {
+   "Recall@10": {
+    "mean": -0.11049382716049382,
+    "ci95_low": -0.205761316872428,
+    "ci95_high": -0.020987654320987655,
+    "better": 7,
+    "equal": 55,
+    "worse": 19
+   },
+   "nDCG@10": {
+    "mean": -0.03423461021438818,
+    "ci95_low": -0.08844556602922488,
+    "ci95_high": 0.021153503761360232,
+    "better": 30,
+    "equal": 10,
+    "worse": 41
+   }
+  },
+  "xref1-e5-k10": {
+   "Recall@10": {
+    "mean": -0.1228395061728395,
+    "ci95_low": -0.2345679012345679,
+    "ci95_high": -0.023662551440329218,
+    "better": 7,
+    "equal": 54,
+    "worse": 20
+   },
+   "nDCG@10": {
+    "mean": -0.03566852086522202,
+    "ci95_low": -0.09102837918153253,
+    "ci95_high": 0.020273301763993546,
+    "better": 30,
+    "equal": 10,
+    "worse": 41
+   }
+  },
+  "qwen3-embedding-0.6b": {
+   "Recall@10": {
+    "mean": -0.03353909465020576,
+    "ci95_low": -0.12654320987654322,
+    "ci95_high": 0.050411522633744855,
+    "better": 10,
+    "equal": 58,
+    "worse": 13
+   },
+   "nDCG@10": {
+    "mean": -0.04441782821687461,
+    "ci95_low": -0.1058540263013982,
+    "ci95_high": 0.01908460991311119,
+    "better": 30,
+    "equal": 5,
+    "worse": 46
+   }
+  }
+ },
+ "interesting_against_e5": {
+  "bge-m3": {
+   "A: Recall@10 +0.05": false,
+   "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+   "C: multi_provision Recall@10 +0.10": false,
+   "D: dependent evidence Recall@10 +0.10": false
+  },
+  "bm25": {
+   "A: Recall@10 +0.05": false,
+   "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+   "C: multi_provision Recall@10 +0.10": false,
+   "D: dependent evidence Recall@10 +0.10": false
+  },
+  "xref1-e5-k5": {
+   "A: Recall@10 +0.05": false,
+   "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+   "C: multi_provision Recall@10 +0.10": false,
+   "D: dependent evidence Recall@10 +0.10": false
+  },
+  "xref1-e5-k10": {
+   "A: Recall@10 +0.05": false,
+   "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+   "C: multi_provision Recall@10 +0.10": false,
+   "D: dependent evidence Recall@10 +0.10": false
+  },
+  "qwen3-embedding-0.6b": {
+   "A: Recall@10 +0.05": false,
+   "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+   "C: multi_provision Recall@10 +0.10": false,
+   "D: dependent evidence Recall@10 +0.10": false
+  }
+ },
+ "decision_5": {
+  "rule": "the third dense model must reach E5 + 0.05 global Recall@10; otherwise dense model swapping stops",
+  "e5_global_recall10": 0.763,
+  "third_model_global_recall10": 0.73,
+  "gain": -0.033,
+  "outcome": "stop testing dense embedding models: model swapping has diminishing returns"
+ },
+ "reranker_gate_recall50": {
+  "multilingual-e5-large": 0.863,
+  "bge-m3": 0.886,
+  "bm25": 0.521,
+  "xref1-e5-k5": 0.801,
+  "xref1-e5-k10": 0.783,
+  "qwen3-embedding-0.6b": 0.894
+ },
+ "reranker_gate_met_by": []
+}
