@@ -15,10 +15,16 @@ not in CI and not in the Docker images. Importing this module never fails; build
 an Encoder without them raises ModelUnavailableError with the remedy. The weights are
 downloaded once into the Hugging Face cache of ingest/embeddings.py (HF_HOME,
 .cache/huggingface by default) and loaded at the pinned revision only.
+
+When the pinned revision has a pytorch_model.bin and no safetensors (BGE-M3), transformers
+loads that file and also starts a background download of the safetensors from the Hub's
+conversion pull request, a revision nobody pinned, "for next time". The weights it loads
+are the pinned ones, but the download is turned off: nothing unpinned enters the cache.
 """
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 from typing import Any
 
@@ -47,6 +53,7 @@ class Encoder:
         self.config = config
         self._torch = torch
         cache = em.hf_home() / "hub"
+        os.environ["DISABLE_SAFETENSORS_CONVERSION"] = "1"
         try:
             model = transformers.AutoModel.from_pretrained(
                 config.model_id,

@@ -29,6 +29,46 @@ What is embedded is the prefix plus `chunk.text` for a document, and the prefix 
 for a query. Nothing else is added: no act, path, grade or other metadata. The article heading and
 the governing lead-ins are in `chunk.text` already, by the chunker's design (`ingest/chunks.py`).
 
+## bge-m3, dense output only
+
+[`bge-m3.json`](bge-m3.json). BGE-M3 produces three representations from one forward pass: a
+dense vector, sparse lexical weights and ColBERT multi-vectors. This contract uses the dense vector
+only. Every value was read from the model's own files at the pinned revision and from the reference
+implementation (FlagEmbedding v1.4.2, `BGEM3FlagModel`), not assumed:
+
+| Field | Value | Where it comes from |
+|---|---|---|
+| `model_id`, `revision` | `BAAI/bge-m3` at `5617a9f61b028005a4858fdac845db406aefb181` | the Hugging Face model API |
+| license | MIT | model card metadata |
+| tokenizer | XLM-RoBERTa, SentencePiece, 250,002 tokens; `<s>` opens and `</s>` closes every input | `tokenizer.json`, `tokenizer_config.json` |
+| `dimension` | 1024 | `config.json` (`hidden_size`), `1_Pooling/config.json` |
+| `max_input_tokens` | 8192, special tokens included | `sentence_bert_config.json` (`max_seq_length`), `tokenizer_config.json` (`model_max_length`), `config.json` (8194 positions, 2 reserved), the model card |
+| `query_prefix`, `document_prefix` | none | model card: "no longer requires adding instructions to the queries" |
+| `pooling` | the hidden state of the first token (`<s>`, the CLS position) | `1_Pooling/config.json` (`pooling_mode_cls_token`), `_dense_embedding` in FlagEmbedding |
+| `normalize` | L2 | the `Normalize` module in `modules.json`; `normalize_embeddings=True` in FlagEmbedding |
+| `similarity` | dot product | with L2-normalized vectors the dot product is the cosine similarity |
+| `dtype` | float32 | `config.json`; the model card's examples use fp16 for speed, which this project does not |
+
+No wrapper is needed. The dense vector is computed from the plain transformer
+(`transformers.AutoModel`), exactly as FlagEmbedding computes it. The sparse and ColBERT heads are
+separate files (`sparse_linear.pt`, `colbert_linear.pt`) that the encoder never loads, so neither
+lexical weights nor multi-vectors can enter the score. `FlagEmbedding` is not a dependency.
+
+Two differences from the reference library are deliberate and recorded:
+
+- `BGEM3FlagModel` defaults to `query_max_length=512` and `passage_max_length=512` and truncates
+  silently at that length. That default belongs to the library, not to the model, whose limit is
+  8192. This contract uses the model's limit, as the comparison policy below requires.
+- The model card prints its example scores with `use_fp16=True`. This project runs float32 on CPU;
+  `tests/integration/test_embedding_model_bge.py` reproduces the card's scores within 0.005 and
+  matches the reference dense vector within 1e-5.
+
+The pinned revision ships `pytorch_model.bin` and no safetensors. Loaded plainly, transformers
+reads that file and also starts a background download of `model.safetensors` from the Hub's
+automatic conversion pull request (`refs/pr/130`, commit `9a0624b8`), a revision nobody pinned.
+The encoder turns that download off. The 391 tensors it loads were checked equal, bit for bit, to
+the pinned `pytorch_model.bin`.
+
 ## Truncation is part of the contract, and it is never silent
 
 The official chunk layer is fixed and counted in `cl100k_base` tokens (D-005). A model counts with

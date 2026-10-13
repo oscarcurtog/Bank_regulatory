@@ -198,10 +198,14 @@ def paired(diffs: Sequence[float]) -> dict[str, float]:
 
 
 def model_cache_bytes(config: em.EmbeddingConfig) -> int:
-    """Size on disk of the model's files in the Hugging Face cache. The model's folder
-    holds links to blobs that may live elsewhere in the cache; each blob counts once."""
+    """Size on disk of the model's files at its pinned revision in the Hugging Face cache.
+    The snapshot holds links to blobs that may live elsewhere in the cache; each blob
+    counts once, and files of any other revision are not the model."""
     folder = em.hf_home() / "hub" / f"models--{config.model_id.replace('/', '--')}"
-    blobs = {f.resolve() for f in folder.rglob("*") if f.is_file()}
+    snapshots = [folder / "snapshots" / config.revision]
+    if config.tokenizer_commit != config.revision:
+        snapshots.append(folder / "snapshots" / config.tokenizer_commit)
+    blobs = {f.resolve() for s in snapshots for f in s.rglob("*") if f.is_file()}
     return sum(b.stat().st_size for b in blobs)
 
 
