@@ -1,0 +1,282 @@
+{
+ "experiment": "A",
+ "benchmark_version": "0.10.0",
+ "e5_run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+ "candidates": "acdr-e5-bridge3",
+ "candidates_run_sha256": "90bfd215590463243f92b75537670e7b0725bb6f6df3ba71dcc81877d1d47501",
+ "provenance_sha256": "d9e0c0b853d304b4295fd97c3295740f6f5e5dd77c040c3a51a89ccd13452c08",
+ "reranker": {
+  "schema_version": "1",
+  "name": "qwen3-reranker-0.6b",
+  "model_id": "Qwen/Qwen3-Reranker-0.6B",
+  "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+  "tokenizer_file": "tokenizer.json",
+  "prefix": "<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be \"yes\" or \"no\".<|im_end|>\n<|im_start|>user\n",
+  "body": "<Instruct>: {instruction}\n<Query>: {query}\n<Document>: {document}",
+  "suffix": "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "yes_token": "yes",
+  "no_token": "no",
+  "pad_token": "<|endoftext|>",
+  "max_input_tokens": 32768,
+  "truncation": "explicit_document_tail",
+  "score": "logit_yes_minus_no",
+  "batch_size": 8,
+  "device": "mps",
+  "dtype": "float32"
+ },
+ "reranker_config_hash": "72030d82e1ce0b79fb6c9a9d50c57d4dff0b77344aa9f9884138f5b83bbf9691",
+ "reranker_tokenizer_sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+ "instructions": {
+  "A1": "Determine whether the candidate provision is necessary to correctly address the user's question. Reply \"yes\" if the candidate is necessary supporting evidence, and \"no\" if it is merely related context or unnecessary.",
+  "A2": "Determine whether the candidate provision is necessary to correctly apply the anchor provision to the user's question. Reply \"yes\" if the candidate is necessary supporting evidence, and \"no\" if it is merely related context or unnecessary.",
+  "A3": "Determine whether the candidate provision is necessary to correctly apply the anchor provision to the user's question. Reply \"yes\" if the candidate is necessary supporting evidence, and \"no\" if it is merely related context or unnecessary."
+ },
+ "population": {
+  "anchors": 8,
+  "outside_e5_top": 10,
+  "triples": 10545,
+  "query_candidate_pairs": 5745,
+  "anchor_groups": 698,
+  "triples_per_query_median": 113.0,
+  "triples_by_link_kind": {
+   "bridge": 2228,
+   "definition": 3727,
+   "reference": 4088,
+   "definition_reference": 1553
+  },
+  "triples_by_relation_head": {
+   "term": 2432,
+   "definition": 3727,
+   "reference": 2098,
+   "condition": 1944,
+   "definition by reference": 1628,
+   "exception": 82
+  },
+  "r1_relations_checked_against_the_rebuilt_structure": 13906
+ },
+ "discrimination": {
+  "A1": {
+   "queries_measured": 81,
+   "average_precision": 0.23767387935790632,
+   "average_precision_queries": 19,
+   "auroc": 0.6618247820105765,
+   "precision_at_1": 0.2638888888888889,
+   "precision_at_3": 0.18467078189300412,
+   "anchor_groups_with_a_relevant_candidate": 58,
+   "support_recall@4": 0.12037037037037036,
+   "support_recall_ceiling": 0.6203703703703703,
+   "dependent_support_recall@4": 0.01111111111111111,
+   "dependent_support_recall_ceiling": 0.6277777777777778,
+   "probability_by_grade": {
+    "3": {
+     "candidates": 1,
+     "mean": 0.9980415557090649,
+     "p25": 0.9980415557090649,
+     "median": 0.9980415557090649,
+     "p75": 0.9980415557090649,
+     "share >= 0.50": 1.0,
+     "share >= 0.70": 1.0,
+     "share >= 0.85": 1.0
+    },
+    "2": {
+     "candidates": 36,
+     "mean": 0.41829830982866173,
+     "p25": 0.04117310640518475,
+     "median": 0.2972993721482398,
+     "p75": 0.8250996331478034,
+     "share >= 0.50": 0.4166666666666667,
+     "share >= 0.70": 0.3611111111111111,
+     "share >= 0.85": 0.2222222222222222
+    },
+    "1": {
+     "candidates": 194,
+     "mean": 0.5249742000040513,
+     "p25": 0.02844715825360254,
+     "median": 0.6017254108036021,
+     "p75": 0.9587005994883432,
+     "share >= 0.50": 0.5360824742268041,
+     "share >= 0.70": 0.4639175257731959,
+     "share >= 0.85": 0.41237113402061853
+    },
+    "0 or unjudged": {
+     "candidates": 4973,
+     "mean": 0.26005974715893526,
+     "p25": 0.0008027113638100584,
+     "median": 0.02866320851178184,
+     "p75": 0.5247697111082711,
+     "share >= 0.50": 0.2547757892620149,
+     "share >= 0.70": 0.20611301025537904,
+     "share >= 0.85": 0.15202091292982103
+    }
+   }
+  },
+  "A2": {
+   "queries_measured": 81,
+   "average_precision": 0.23823869085181335,
+   "average_precision_queries": 19,
+   "auroc": 0.7193049445807332,
+   "precision_at_1": 0.37191358024691357,
+   "precision_at_3": 0.2772633744855967,
+   "anchor_groups_with_a_relevant_candidate": 58,
+   "support_recall@4": 0.20462962962962963,
+   "support_recall_ceiling": 0.6203703703703703,
+   "dependent_support_recall@4": 0.14555555555555555,
+   "dependent_support_recall_ceiling": 0.6277777777777778,
+   "probability_by_grade": {
+    "3": {
+     "candidates": 1,
+     "mean": 0.9952793416504395,
+     "p25": 0.9952793416504395,
+     "median": 0.9952793416504395,
+     "p75": 0.9952793416504395,
+     "share >= 0.50": 1.0,
+     "share >= 0.70": 1.0,
+     "share >= 0.85": 1.0
+    },
+    "2": {
+     "candidates": 36,
+     "mean": 0.6490551665174977,
+     "p25": 0.1511899266305947,
+     "median": 0.8717707480636672,
+     "p75": 0.9887116625226722,
+     "share >= 0.50": 0.6944444444444444,
+     "share >= 0.70": 0.6111111111111112,
+     "share >= 0.85": 0.5
+    },
+    "1": {
+     "candidates": 194,
+     "mean": 0.6430884583641093,
+     "p25": 0.28210426299551095,
+     "median": 0.8087422905550976,
+     "p75": 0.9773498370763055,
+     "share >= 0.50": 0.6701030927835051,
+     "share >= 0.70": 0.5876288659793815,
+     "share >= 0.85": 0.4690721649484536
+    },
+    "0 or unjudged": {
+     "candidates": 4973,
+     "mean": 0.3440008723005331,
+     "p25": 0.007004966042102586,
+     "median": 0.130315451395763,
+     "p75": 0.754293250724966,
+     "share >= 0.50": 0.34446008445606274,
+     "share >= 0.70": 0.27126483008244523,
+     "share >= 0.85": 0.19465111602654334
+    }
+   }
+  },
+  "A3": {
+   "queries_measured": 81,
+   "average_precision": 0.18494916137157544,
+   "average_precision_queries": 19,
+   "auroc": 0.7109515166414722,
+   "precision_at_1": 0.19290123456790123,
+   "precision_at_3": 0.19341563786008228,
+   "anchor_groups_with_a_relevant_candidate": 58,
+   "support_recall@4": 0.0925925925925926,
+   "support_recall_ceiling": 0.6203703703703703,
+   "dependent_support_recall@4": 0.01111111111111111,
+   "dependent_support_recall_ceiling": 0.6277777777777778,
+   "probability_by_grade": {
+    "3": {
+     "candidates": 1,
+     "mean": 0.9986806700511591,
+     "p25": 0.9986806700511591,
+     "median": 0.9986806700511591,
+     "p75": 0.9986806700511591,
+     "share >= 0.50": 1.0,
+     "share >= 0.70": 1.0,
+     "share >= 0.85": 1.0
+    },
+    "2": {
+     "candidates": 36,
+     "mean": 0.7862891598027519,
+     "p25": 0.9334614036350535,
+     "median": 0.9929919495329196,
+     "p75": 0.9960881714284902,
+     "share >= 0.50": 0.8055555555555556,
+     "share >= 0.70": 0.7777777777777778,
+     "share >= 0.85": 0.7777777777777778
+    },
+    "1": {
+     "candidates": 194,
+     "mean": 0.7830021627806099,
+     "p25": 0.7510345620648825,
+     "median": 0.970649036411526,
+     "p75": 0.9907023762334759,
+     "share >= 0.50": 0.8092783505154639,
+     "share >= 0.70": 0.7525773195876289,
+     "share >= 0.85": 0.6907216494845361
+    },
+    "0 or unjudged": {
+     "candidates": 4973,
+     "mean": 0.6319808048102518,
+     "p25": 0.15455182906900683,
+     "median": 0.8720476208687095,
+     "p75": 0.9801629877299864,
+     "share >= 0.50": 0.651116026543334,
+     "share >= 0.70": 0.5954152423084658,
+     "share >= 0.85": 0.5200080434345465
+    }
+   }
+  }
+ },
+ "paired_average_precision": {
+  "A3 - A1": {
+   "mean": -0.013984883360562191,
+   "ci95_low": -0.11832919310234728,
+   "ci95_high": 0.06470678315277734,
+   "better": 9,
+   "equal": 1,
+   "worse": 9
+  },
+  "A3 - A2": {
+   "mean": -0.06834299459622233,
+   "ci95_low": -0.1189467926688258,
+   "ci95_high": -0.013433562169153035,
+   "better": 4,
+   "equal": 1,
+   "worse": 14
+  },
+  "A2 - A1": {
+   "mean": 0.05435811123566013,
+   "ci95_low": -0.08866934272170228,
+   "ci95_high": 0.1659261233237471,
+   "better": 10,
+   "equal": 1,
+   "worse": 8
+  }
+ },
+ "decision": {
+  "rule": "B runs if A3's average precision is above A1's and A2's; A3 improves clearly on A1 if its average precision is higher by at least 0.05 with the 95% paired interval above zero; if not, or if B does not run or reaches no success, research and C follow",
+  "average_precision": {
+   "A1": 0.238,
+   "A2": 0.238,
+   "A3": 0.185
+  },
+  "a3_clearly_better_than_a1": false,
+  "run_b": false,
+  "research": true
+ },
+ "performance": {
+  "inputs": 26835,
+  "tokens": {
+   "total": 14801276,
+   "median": 546,
+   "max": 1329
+  },
+  "truncated": 0,
+  "population_seconds": 1.0531537499919068,
+  "model_load_seconds": 6.394017874990823,
+  "scoring_seconds_this_run": 9809.209514207992,
+  "inputs_scored_this_run": 23060,
+  "peak_rss_bytes": 4146724864,
+  "environment": {
+   "platform": "macOS-27.0.1-arm64-arm-64bit",
+   "machine": "arm64",
+   "cpu": "Apple M1",
+   "cpu_count": "8",
+   "hf_home": ".cache/huggingface"
+  }
+ }
+}
