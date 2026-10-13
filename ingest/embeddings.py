@@ -122,12 +122,13 @@ class EmbeddingConfig(BaseModel):
     # The whole input: prefix, text and special tokens.
     max_input_tokens: int = Field(ge=3)
     # What goes before the text of a query and of a document. Empty for a model that
-    # takes both as they are.
+    # takes both as they are; an instruction-aware model (Qwen3-Embedding) puts an
+    # instruction before the query only.
     query_prefix: str
     document_prefix: str
     # mean: the mean of the token vectors over the attention mask; cls: the vector of the
-    # first token.
-    pooling: Literal["mean", "cls"]
+    # first token; last: the vector of the last real token (a decoder's end token).
+    pooling: Literal["mean", "cls", "last"]
     normalize: bool
     similarity: Literal["dot"]
     document_truncation: Literal["explicit_tail"]
@@ -138,8 +139,11 @@ class EmbeddingConfig(BaseModel):
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
-        if bool(self.query_prefix) != bool(self.document_prefix):
-            raise ValueError("a model prefixes both queries and documents, or neither")
+        if self.document_prefix and not self.query_prefix:
+            raise ValueError(
+                "a document prefix needs a query prefix: a model marks both sides, only the "
+                "query (an instruction), or neither"
+            )
         if self.query_prefix and self.query_prefix == self.document_prefix:
             raise ValueError("the query and document prefixes must differ")
         if self.similarity == "dot" and not self.normalize:

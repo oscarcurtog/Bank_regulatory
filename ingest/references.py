@@ -100,7 +100,9 @@ _PATTERNS: tuple[tuple[Form, re.Pattern[str]], ...] = (
     ),
     (
         "points_of_paragraph",
-        re.compile(rf"\bpoints?\s+(?P<points>{_POINT_LIST})\s+of\s+paragraph\s+(?P<para>{_NUM})\b"),
+        re.compile(
+            rf"\bpoints?\s+(?P<points>{_POINT_LIST})\s+of\s+paragraph\s+(?P<paragraph>{_NUM})\b"
+        ),
     ),
     ("paragraphs", re.compile(rf"\bparagraphs?\s+(?P<paras>{_NUM_LIST})\b")),
 )
@@ -199,7 +201,8 @@ def extract(
                     paths = bases
             elif form == "points_of_paragraph":
                 paths = [
-                    [article, g["para"], p] for p in _expand(g["points"], r"\(([a-z0-9]{1,4})\)")
+                    [article, g["paragraph"], p]
+                    for p in _expand(g["points"], r"\(([a-z0-9]{1,4})\)")
                 ]
             else:  # paragraphs of the same article
                 paths = [[article, p] for p in _expand(g["paras"], rf"({_NUM})")]

@@ -5,7 +5,8 @@ It receives token ids already counted and, where the contract allows it, already
 truncated by ingest/embeddings.py, never text: so it cannot cut anything by itself.
 It checks every input against its record before running the model, pads each batch
 with the model's pad token and masks the padding, pools as the contract says (the mean
-of the token vectors over the mask, or the vector of the first token), normalizes, and
+of the token vectors over the mask, the vector of the first token, or the vector of the last
+real token for a decoder such as Qwen3-Embedding), normalizes, and
 checks the vectors before returning them. Only the transformer is loaded: a model that
 ships other heads (BGE-M3's sparse and multi-vector layers) is used through its dense
 output alone.
@@ -72,13 +73,24 @@ class Encoder:
             raise em.EmbeddingError(
                 f"the model returns {hidden} dimensions, the contract says {config.dimension}"
             )
-        positions = model.config.max_position_embeddings - (model.config.pad_token_id or 0) - 1
+        positions = model.config.max_position_embeddings
+        if model.config.model_type in ("xlm-roberta", "roberta"):
+            # learned positions that start after the padding index (E5, BGE-M3)
+            positions -= (model.config.pad_token_id or 0) + 1
         if positions < config.max_input_tokens:
             raise em.EmbeddingError(
                 f"the model has {positions} usable positions, under the contract's "
                 f"{config.max_input_tokens}"
             )
-        self.pad_id = int(model.config.pad_token_id)
+        # Padding is masked, and in a causal model it also comes after every real token,
+        # so its id never reaches a vector; a model that declares no pad token (Qwen3) pads
+        # with its end token.
+        pad = model.config.pad_token_id
+        if pad is None:
+            pad = model.config.eos_token_id
+        if pad is None:
+            raise em.EmbeddingError("the model declares neither a pad token nor an end token")
+        self.pad_id = int(pad)
         self.model = model.to(config.device).eval()
 
     def environment(self) -> dict[str, str]:
@@ -110,6 +122,10 @@ class Encoder:
                 hidden = self.model(input_ids=ids, attention_mask=mask).last_hidden_state
                 if self.config.pooling == "cls":
                     pooled = hidden[:, 0]
+                elif self.config.pooling == "last":
+                    # the last real token of each row; the padding is on the right
+                    last = mask.sum(dim=1) - 1
+                    pooled = hidden[torch.arange(hidden.shape[0]), last]
                 else:
                     weights = mask.unsqueeze(-1).to(hidden.dtype)
                     pooled = (hidden * weights).sum(dim=1) / weights.sum(dim=1)

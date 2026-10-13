@@ -111,6 +111,11 @@ def main(argv: list[str] | None = None) -> int:
             for qid, trace in traces.items():
                 for p in trace:
                     f.write(json.dumps({"query_id": qid} | p.__dict__) + "\n")
+        lead = {
+            r.query_id: set(base_by_query[r.query_id].chunk_ids[:k])
+            | {p.chunk_id for p in traces[r.query_id]}
+            for r in expanded
+        }
         evaluated = rr.evaluate_ranked(dev, layer, expanded, bodies)
         diag = rr.diagnostics(dev, layer, expanded)
         prec = precision(traces, relevant)
@@ -137,9 +142,18 @@ def main(argv: list[str] | None = None) -> int:
                 "every_ranking_is_a_permutation_of_the_layer": all(
                     sorted(r.chunk_ids) == sorted(frozen.chunks) for r in expanded
                 ),
-                "anchors_kept_in_order": all(
-                    [c for c in r.chunk_ids if c in base_by_query[r.query_id].chunk_ids[:k]]
-                    == list(base_by_query[r.query_id].chunk_ids[:k])
+                # the first anchor stays first; anchors and their targets come before every
+                # other chunk; the rest keeps the base order (an anchor that an earlier anchor
+                # cites moves up, by design)
+                "first_anchor_first": all(
+                    r.chunk_ids[0] == base_by_query[r.query_id].chunk_ids[0] for r in expanded
+                ),
+                "anchors_and_targets_lead": all(
+                    set(r.chunk_ids[: len(lead[r.query_id])]) == lead[r.query_id] for r in expanded
+                ),
+                "the_rest_keeps_the_base_order": all(
+                    list(r.chunk_ids[len(lead[r.query_id]) :])
+                    == [c for c in base_by_query[r.query_id].chunk_ids if c not in lead[r.query_id]]
                     for r in expanded
                 ),
             },

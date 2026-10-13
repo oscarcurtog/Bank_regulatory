@@ -66,7 +66,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 703 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 709 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -112,11 +112,11 @@ uv pip install --require-hashes --no-deps -r requirements-embed.lock.txt
 ```
 
 Without the corpus, pytest skips the 38 tests marked `corpus`: they need `data/raw/`, which is
-not in the repository (see [Data and reproducibility](#data-and-reproducibility)). The 11 tests
-marked `embedding_model` need the `embed` extra and the weights of the two embedding models (about
-2.3 GB each, downloaded once into `.cache/huggingface`); without them they fail, unless the
-environment declares `FUNDAMENTO_EMBEDDING_MODEL=unsupported`, as CI does. With that declaration
-and without the corpus, pytest reports `654 passed, 49 skipped`.
+not in the repository (see [Data and reproducibility](#data-and-reproducibility)). The 15 tests
+marked `embedding_model` need the `embed` extra and the weights of the three embedding models
+(1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`); without them they fail, unless
+the environment declares `FUNDAMENTO_EMBEDDING_MODEL=unsupported`, as CI does. With that
+declaration and without the corpus, pytest reports `656 passed, 53 skipped`.
 
 ## Docker
 
@@ -145,7 +145,7 @@ The test image does not install the benchmark evaluator (`ir_measures`): its bac
 `FUNDAMENTO_EVALUATOR=unsupported`, which is the only thing that skips the 17 tests marked
 `evaluator`, and pytest prints the reason. Those tests run in the project venv and in CI. In the
 same way, neither image installs torch or the embedding model, and the test image declares
-`FUNDAMENTO_EMBEDDING_MODEL=unsupported` for the 11 tests marked `embedding_model`.
+`FUNDAMENTO_EMBEDDING_MODEL=unsupported` for the 15 tests marked `embedding_model`.
 
 ## Continuous integration
 
@@ -179,7 +179,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 
-Without the corpus you can run the test suite (654 tests pass and 49 are skipped with
+Without the corpus you can run the test suite (656 tests pass and 53 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported`), the linters and type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files

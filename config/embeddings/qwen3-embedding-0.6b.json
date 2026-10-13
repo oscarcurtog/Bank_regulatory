@@ -1,0 +1,20 @@
+{
+  "schema_version": "2",
+  "name": "qwen3-embedding-0.6b",
+  "model_id": "Qwen/Qwen3-Embedding-0.6B",
+  "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+  "tokenizer_revision": null,
+  "tokenizer_file": "tokenizer.json",
+  "dimension": 1024,
+  "max_input_tokens": 32768,
+  "query_prefix": "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery:",
+  "document_prefix": "",
+  "pooling": "last",
+  "normalize": true,
+  "similarity": "dot",
+  "document_truncation": "explicit_tail",
+  "query_truncation": "refuse",
+  "batch_size": 16,
+  "device": "cpu",
+  "dtype": "float32"
+}

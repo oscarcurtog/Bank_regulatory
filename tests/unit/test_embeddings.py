@@ -98,11 +98,38 @@ def test_the_versioned_config_is_the_contract_of_bge_m3_dense():
     assert (c.device, c.dtype) == ("cpu", "float32")
 
 
+def test_the_versioned_config_is_the_contract_of_qwen3_embedding():
+    c = em.load_config(CONFIG_PATH.with_name("qwen3-embedding-0.6b.json"))
+    assert (c.model_id, c.revision) == (
+        "Qwen/Qwen3-Embedding-0.6B",
+        "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    )
+    assert (c.dimension, c.max_input_tokens, c.pooling, c.normalize, c.similarity) == (
+        1024,
+        32768,
+        "last",
+        True,
+        "dot",
+    )
+    # the model's own default query prompt, and nothing before a document
+    assert c.query_prefix == (
+        "Instruct: Given a web search query, retrieve relevant passages that answer the query"
+        "\nQuery:"
+    )
+    assert c.document_prefix == ""
+
+
+def test_an_instruction_before_the_query_only_is_a_valid_contract():
+    c = config(document_prefix="", query_prefix="Instruct: retrieve\nQuery:", pooling="last")
+    assert em.model_input(c, "query", "When?") == "Instruct: retrieve\nQuery:When?"
+    assert em.model_input(c, "document", "MiCA Article 46") == "MiCA Article 46"
+
+
 @pytest.mark.parametrize(
     "overrides,message",
     [
         ({"query_prefix": "passage: "}, "must differ"),
-        ({"query_prefix": ""}, "both queries and documents, or neither"),
+        ({"query_prefix": ""}, "a document prefix needs a query prefix"),
         ({"normalize": False}, "cosine only on normalized"),
         ({"revision": "main"}, "revision"),
         ({"similarity": "cosine"}, "similarity"),
