@@ -9,8 +9,9 @@ only), the Spanish-against-English effect, a table per need, the scores per quer
 the rank of every relevant chunk, and the queries with the lowest nDCG@10.
 
 `diagnostics` adds what the retrieval iteration compares (config/retrieval/README.md):
-Recall@50 and Recall@100 from the same evaluator, the group recalls, and the recall of
-the dependent evidence.
+Recall@50 and Recall@100 from the same evaluator, the group recalls, the recall of the
+dependent evidence, and the full-evidence coverage at 10 (iteration 3): the share of queries
+whose every relevant chunk is in the top 10.
 """
 
 from __future__ import annotations
@@ -331,12 +332,29 @@ def diagnostics(
     dependent["anchor_in_top10"] = rt.macro_by_need(anchor_hits, dep_queries)
     dependent["per_query"] = per_query
 
+    relevant = {q.query_id: rt.relevant_chunks(t) for t in targets for q in t.queries}
+    full = {q.query_id: float(relevant[q.query_id] <= set(top[q.query_id][:10])) for q in queries}
+    full_evidence = {
+        "Full-evidence@10": rt.macro_by_need(full, queries),
+        "by_language": rt.per_language(full, queries),
+        "groups": {
+            name: rt.macro_by_need(
+                full, [q for q in queries if q.need_id in set(members(kind, label))]
+            )
+            for name, (kind, label) in GROUPS.items()
+        },
+        "queries_covered": int(sum(full.values())),
+        "queries": len(queries),
+    }
+
     return {
         "global": {m: rt.macro_by_need(values[m], queries) for m in names},
         "by_language": {m: rt.per_language(values[m], queries) for m in names},
         "groups": groups,
         "dependent_evidence": dependent,
-        "per_query": {m: values[m] for m in ("Recall@10", "nDCG@10", "Recall@50", "Recall@100")},
+        "full_evidence": full_evidence,
+        "per_query": {m: values[m] for m in ("Recall@10", "nDCG@10", "Recall@50", "Recall@100")}
+        | {"Full-evidence@10": full},
     }
 
 

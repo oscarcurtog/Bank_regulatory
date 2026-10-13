@@ -53,7 +53,7 @@ def glossary(node_text: Mapping[NodeKey, str]) -> list[Definition]:
     return out
 
 
-def _term_pattern(term: str) -> re.Pattern[str]:
+def term_pattern(term: str) -> re.Pattern[str]:
     stem = re.escape(term)
     if term.endswith("y") and term[-2:-1] not in ("a", "e", "o", "u"):
         forms = rf"(?:{stem}|{re.escape(term[:-1])}ies)"
@@ -68,7 +68,7 @@ class TermFinder:
     def __init__(self, definitions: Sequence[Definition]) -> None:
         self._by_act: dict[str, list[tuple[Definition, re.Pattern[str]]]] = {}
         for d in definitions:
-            self._by_act.setdefault(d.act, []).append((d, _term_pattern(d.term)))
+            self._by_act.setdefault(d.act, []).append((d, term_pattern(d.term)))
 
     def find(self, act: str, text: str) -> list[Definition]:
         hits = [(m.start(), d) for d, p in self._by_act.get(act, []) if (m := p.search(text))]
