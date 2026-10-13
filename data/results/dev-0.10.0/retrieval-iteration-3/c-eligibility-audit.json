@@ -1,0 +1,217 @@
+{
+ "experiment": "C, eligibility audit",
+ "benchmark_version": "0.10.0",
+ "e5_run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+ "candidates": "acdr-e5-bridge3",
+ "candidates_run_sha256": "90bfd215590463243f92b75537670e7b0725bb6f6df3ba71dcc81877d1d47501",
+ "provenance_sha256": "d9e0c0b853d304b4295fd97c3295740f6f5e5dd77c040c3a51a89ccd13452c08",
+ "population_sha256": "8721a1204c1d0bba064f36bb2a6524bbea093e62c3083061c4029d64a6597e77",
+ "rules": "- hop 0: E5's first 20 chunks; the first 10 are the anchors;\n- hop 1: R1's recorded pool (the anchors' explicit references and defined terms, and the hits of\n  its bridges), and the definitions of the defined terms the question uses, in any act;\n- hop 2: the anchors' definitions by reference (R1), and the explicit references and defined\n  terms of every hop-1 member reached by a reference, a definition or a term of the question;\n- the definitions of the terms used by every member of hop 0 or 1, one hop further, never past 2;\ndeduplicated by chunk, every route kept (source, relation, hop, clause), ordered by R1's list.",
+ "restrictions_removed_against_b": [
+  "anchors 9 and 10 now count (A and B used anchors 1 to 8 or 1 to n)",
+  "E5's ranks 1 to 20 compete as members (B excluded E5's top 10 and kept 6 to 8 fixed)",
+  "explicit references are followed for two hops (R1 followed one)",
+  "terms of the question and of the supports are resolved to their definitions",
+  "no relation to a kept anchor is required, and no position is reserved for E5"
+ ],
+ "population": {
+  "members": 15313,
+  "per_query": {
+   "median": 160.0,
+   "p90": 246,
+   "max": 392,
+   "min": 66
+  },
+  "by_hop": {
+   "0": 1800,
+   "1": 6809,
+   "2": 6704
+  },
+  "by_route_kind": {
+   "bridge": 3043,
+   "definition": 29737,
+   "definition_reference": 2279,
+   "e5": 1800,
+   "question_term": 118,
+   "reference": 20264
+  },
+  "visible_in_another_members_context": 161
+ },
+ "ladder": {
+  "all": {
+   "windows_of_8": 1948,
+   "members": 15313,
+   "oracle": {
+    "Recall@10": 0.9539094650205762,
+    "Full-evidence@10": 0.9259259259259259,
+    "multi_provision": 0.8481481481481481,
+    "cross_reference": 0.9171717171717172,
+    "cross_act": 1.0,
+    "dependent": 0.9090909090909091,
+    "by_language": {
+     "en": 0.9586419753086419,
+     "es": 0.9444444444444444
+    },
+    "followed_needs": {
+     "N022": {
+      "Recall@10": [
+       1.0,
+       1.0,
+       1.0
+      ],
+      "Full-evidence@10": [
+       1.0,
+       1.0,
+       1.0
+      ]
+     },
+     "N024": {
+      "Recall@10": [
+       0.2,
+       0.4,
+       0.0
+      ],
+      "Full-evidence@10": [
+       0.0,
+       0.0,
+       0.0
+      ]
+     },
+     "N034": {
+      "Recall@10": [
+       1.0,
+       1.0,
+       1.0
+      ],
+      "Full-evidence@10": [
+       1.0,
+       1.0,
+       1.0
+      ]
+     },
+     "N035": {
+      "Recall@10": [
+       1.0,
+       1.0,
+       1.0
+      ],
+      "Full-evidence@10": [
+       1.0,
+       1.0,
+       1.0
+      ]
+     }
+    },
+    "still_ineligible": {
+     "N017": [
+      "DORA:26.11"
+     ],
+     "N024": [
+      "MiCA:86",
+      "MiCA:87",
+      "MiCA:89.1",
+      "MiCA:89.2",
+      "MiCA:89.5"
+     ],
+     "N026": [
+      "MiCA:83.1"
+     ]
+    }
+   },
+   "gate": {
+    "Recall@10": true,
+    "Full-evidence@10": true
+   },
+   "passes": true
+  },
+  "first 128 in R1's order": {
+   "windows_of_8": 1356,
+   "members": 10762,
+   "oracle": {
+    "Recall@10": 0.9477366255144033,
+    "Full-evidence@10": 0.9135802469135803,
+    "multi_provision": 0.8481481481481481,
+    "cross_reference": 0.902020202020202,
+    "cross_act": 1.0,
+    "dependent": 0.8787878787878788,
+    "by_language": {
+     "en": 0.9493827160493827,
+     "es": 0.9444444444444444
+    },
+    "followed_needs": {
+     "N022": {
+      "Recall@10": [
+       1.0,
+       1.0,
+       1.0
+      ],
+      "Full-evidence@10": [
+       1.0,
+       1.0,
+       1.0
+      ]
+     },
+     "N024": {
+      "Recall@10": [
+       0.2,
+       0.4,
+       0.0
+      ],
+      "Full-evidence@10": [
+       0.0,
+       0.0,
+       0.0
+      ]
+     },
+     "N034": {
+      "Recall@10": [
+       1.0,
+       1.0,
+       1.0
+      ],
+      "Full-evidence@10": [
+       1.0,
+       1.0,
+       1.0
+      ]
+     },
+     "N035": {
+      "Recall@10": [
+       1.0,
+       1.0,
+       1.0
+      ],
+      "Full-evidence@10": [
+       1.0,
+       1.0,
+       1.0
+      ]
+     }
+    },
+    "still_ineligible": {
+     "N017": [
+      "DORA:26.11"
+     ],
+     "N023": [
+      "MiCA:3.1.7"
+     ],
+     "N024": [
+      "MiCA:86",
+      "MiCA:87",
+      "MiCA:89.1",
+      "MiCA:89.2",
+      "MiCA:89.5"
+     ],
+     "N026": [
+      "MiCA:83.1"
+     ]
+    }
+   },
+   "gate": {
+    "Recall@10": true,
+    "Full-evidence@10": true
+   },
+   "passes": true
+  }
+ }
+}

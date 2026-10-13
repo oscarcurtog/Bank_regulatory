@@ -196,6 +196,7 @@ class NecessityReranker:
                 diff = logits[:, self.yes_id] - logits[:, self.no_id]
                 # to the CPU first: on MPS, .to("cpu", torch.float64) returns zeros silently
                 out[batch] = diff.to("cpu").to(torch.float64).numpy()
+        self._release()
         return out
 
     def score_shared(self, prompts: Sequence[Prompt]) -> np.ndarray:
@@ -242,7 +243,16 @@ class NecessityReranker:
                 last = hidden[rows, ends]
                 diff = last @ (weight[self.yes_id] - weight[self.no_id])
                 out[batch] = diff.to("cpu").to(torch.float64).numpy()
+                del cache, hidden, last, diff
+            del past, layers
+        self._release()
         return out
+
+    def _release(self) -> None:
+        """Return the device's cached blocks: the expanded keys and values of a group hold
+        gigabytes that MPS otherwise keeps, and the machine swaps."""
+        if self.config.device == "mps":
+            self._torch.mps.empty_cache()
 
 
 # ---------------------------------------------------------------------------
@@ -642,6 +652,7 @@ def discrimination(
             s = score[(qid, t.anchor, t.candidate)]
             best.setdefault(qid, {})[t.candidate] = max(best.get(qid, {}).get(t.candidate, s), s)
     measured = [q for q in queries if q.query_id in best]
+    # every query counts for the recalls: one without candidates misses all its evidence
 
     def relevant(qid: str, c: str) -> bool:
         return grades[qid].get(c, 0) >= 2
@@ -656,9 +667,9 @@ def discrimination(
     pooled: list[tuple[float, bool]] = []
     bands: dict[int, list[float]] = {b: [] for b in GRADE_BANDS}
     groups_measured = 0
-    for q in measured:
+    for q in queries:
         qid = q.query_id
-        order = ranked_by_score(best[qid])
+        order = ranked_by_score(best.get(qid, {}))
         labels = [relevant(qid, c) for c in order]
         if any(labels):
             ap[qid] = average_precision(labels)
@@ -666,7 +677,7 @@ def discrimination(
         for c in order:
             bands[min(max(grades[qid].get(c, 0), 0), 3)].append(p_yes(best[qid][c]))
         groups: dict[str, dict[str, float]] = {}
-        for t in triples[qid]:
+        for t in triples.get(qid, ()):
             groups.setdefault(t.anchor, {})[t.candidate] = score[(qid, t.anchor, t.candidate)]
         at1, at3 = [], []
         for group in groups.values():
@@ -687,7 +698,7 @@ def discrimination(
             ceiling_dependent[qid] = len(dependents[qid] & set(order)) / len(dependents[qid])
 
     def macro(values: Mapping[str, float]) -> float | None:
-        return rt.macro_by_need(values, measured) if values else None
+        return rt.macro_by_need(values, queries) if values else None
 
     distribution = {}
     for b, values in bands.items():
@@ -719,3 +730,19 @@ def discrimination(
         "probability_by_grade": distribution,
         "per_query": {"average_precision": ap, f"dependent_support_recall@{k}": dependent},
     }
+
+
+def structure_of(frozen: rt.FrozenInputs, acts: Mapping[str, str]) -> Structure:
+    """R1's structure, built as scripts/dependency_retrieval.py builds it, from the parsed
+    corpus; `acts` names the acts a reference may point into (xref-expansion.json)."""
+    from ingest import benchmark as bm
+
+    corpus = bm.load_corpus()
+    texts = {
+        (act, n.path): n.own_text for act, d in corpus.items() for a in d.articles for n in a.nodes
+    }
+    graph = xr.build_graph(frozen.layer, texts, list(frozen.chunks), acts)
+    definitions = dp.glossary(texts)
+    index = dp.build_index(frozen.layer, texts, graph, definitions)
+    article = {cid: f"{act_of(cid)}:{c.article_id}" for cid, c in frozen.chunks.items()}
+    return Structure(texts, frozen.layer, graph, index, tuple(definitions), article)

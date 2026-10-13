@@ -147,3 +147,76 @@ need. N022, N024, N034 and N035 are followed one by one: E5, R1's pool and the s
   - A local model is preferred, and no API key is asked for.
 - If no reasonable model can run here, C is reported as the recommended experiment, with the
   exact model or API.
+
+## C, redesigned before it ran: expanded eligibility and legal-function set selection
+
+Written while A was still scoring, before any result of A or B. An external review showed that
+B's ceiling (0.884, section B) comes from B's eligibility rules, not from keeping E5's positions:
+anchors stop at rank 8, a candidate needs a relation to a kept anchor, nothing from E5's top 10
+competes, and R1 follows one hop. C removes those limits first and only then asks a model.
+
+**Population**, built without a label (`ingest/functional_selection.py`):
+- hop 0: E5's first 20 chunks; the first 10 are the anchors;
+- hop 1: R1's recorded pool (the anchors' references, defined terms and bridge hits), and the
+  definitions of the defined terms the question uses, in any of the three acts;
+- hop 2: the anchors' definitions by reference, and the explicit references and defined terms of
+  every hop-1 member reached by a reference, a definition or a term of the question;
+- the definitions of the terms used by every member of hop 0 or 1, one hop further, never past 2;
+- deduplicated by chunk, every route kept (source, relation, hop, clause), ordered by R1's list;
+  each member also says whether its text already appears in the inherited context of another.
+
+**Gate before any inference** (labels read only here, as an oracle): choosing 10 chunks from the
+population at best must reach Recall@10 >= 0.93 and full-evidence coverage at 10 >= 0.85. Measured
+(`c-eligibility-audit.json`, population `8721a1204c1d`): 15,313 members over the 90 queries (160
+at the median, 392 at most), oracle Recall@10 0.954, full-evidence 0.926, `multi_provision` 0.848,
+dependent evidence 0.909; N022, N034 and N035 reach 1.0; N024 stays at 0.20 (a first-hop failure,
+round 4's target). The gate passes.
+
+**Selector**: `Qwen/Qwen3-4B-Instruct-2507`, 4-bit MLX build `mlx-community/Qwen3-4B-Instruct-2507-4bit`
+at `50d42775`, greedy decoding, in its own environment (D-040; [qwen3-4b-instruct-mlx.json](qwen3-4b-instruct-mlx.json)).
+- Windows of at most 8 members, in the population's order. Each member is shown with its text
+  (act, article, title), its shortest route (source, relation, hop, the clause shortened to about
+  160 characters) and, if any, the members whose context already shows its text.
+- The question asked of every member: "if this candidate were removed, what legally necessary
+  part of the answer would no longer be supported?", and its legal function, one of: governing
+  rule, scope or applicability, legal category or definition, condition, exception, addressee or
+  authority, deadline or threshold, resolving cross-reference, merely related. One answer line per
+  member: `[number] function | yes or no`. No label, grade or answer is ever shown or asked for.
+- Merge, fixed now: the members judged necessary with a function other than merely related are
+  taken one per function in turn, functions in the order above, each function in the
+  population's order, up to 10. The ranking is that set, then E5's order. No position is reserved.
+
+**Time rule**: a fixed sample of windows (the first window of every tenth query) is timed first.
+The whole population runs if it projects to 8 hours or less; otherwise the first 128 members of
+each query in R1's order, if that projects to 8 hours or less (its oracle: Recall@10 0.948,
+full-evidence 0.914, the gate passes); otherwise C does not run.
+
+**Success**: useful when Recall@10 >= 0.85, `multi_provision` >= 0.60, dependent evidence >= 0.45
+and full-evidence >= 0.75; strong when Recall@10 >= 0.90 and nDCG@10 >= 0.65. Always against E5.
+
+## Round 4: closed-catalog legal reformulation (first-hop failures)
+
+Separate from C. It attacks queries whose answer provision E5 does not reach because the question
+describes facts and never names the legal concept (N024: "she learned at work before the
+announcement and bought the token" is insider dealing).
+
+- **Catalog**, built once from the whole corpus, never from E5's results: every article title
+  and every defined term, each once (440 entries, `ingest/reformulation.py`).
+- **R4-A**: the same local model lists the legally material facts of the question, in English,
+  without naming laws or legal concepts and without adding facts.
+- **R4-B**: the same facts, plus at most 3 entries copied from the catalog, each with the words
+  of the question that motivate it. An entry not literally in the catalog is dropped and counted;
+  whether its words are in the question is recorded.
+- **Retrieval**: E5 ranks the rewrite (facts, then "Legal concepts: ..."), and that ranking is
+  fused with E5's ranking of the original question by Reciprocal Rank Fusion, k = 60, equal
+  weights. k and the weights are not tuned. A query whose rewrite is empty keeps E5's ranking.
+- **This is not HyDE**: no hypothetical legal text is generated; every concept is an existing
+  heading or defined term.
+- **Kept** only if Recall@10 rises by at least 0.03 against E5, nDCG@10 >= 0.518 and full-evidence
+  falls by at most 0.01. N024, N022, N034 and N035 are followed query by query.
+
+## After C and round 4: stop
+
+No further family of experiments. If neither C nor round 4 reaches the useful success, nor at
+least Recall@10 +0.03 with full-evidence +0.03 and nDCG@10 >= 0.518, E5 is frozen provisionally
+and DEV is not optimized further.

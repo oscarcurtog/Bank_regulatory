@@ -239,3 +239,38 @@ def test_discrimination_scores_a_candidate_by_its_best_anchor():
     assert out["dependent_support_recall@1"] == 1.0
     assert out["probability_by_grade"]["2"]["candidates"] == 1
     assert out["probability_by_grade"]["0 or unjudged"]["candidates"] == 1
+
+
+def test_a_query_without_candidates_still_counts_in_the_support_recalls():
+    def query(qid: str) -> bm.Query:
+        return bm.Query.model_validate(
+            {
+                "query_id": qid,
+                "need_id": qid[:4],
+                "lang": "en",
+                "style": "natural",
+                "origin": "human",
+                "text": "x",
+            }
+        )
+
+    queries = [query("N001-en-1"), query("N002-en-1")]
+    triples = {
+        "N001-en-1": [
+            nc.Triple("N001-en-1", "A:1", 1, "C:1", ("definition",), "", ""),
+            nc.Triple("N001-en-1", "A:1", 1, "C:2", ("reference",), "", ""),
+        ]
+    }
+    out = nc.discrimination(
+        triples,
+        {("N001-en-1", "A:1", "C:1"): 1.0, ("N001-en-1", "A:1", "C:2"): -1.0},
+        {"N001-en-1": {"C:1": 2}, "N002-en-1": {"C:9": 2}},
+        missing={"N001-en-1": frozenset({"C:1"}), "N002-en-1": frozenset({"C:9"})},
+        dependents={"N001-en-1": frozenset({"C:1"}), "N002-en-1": frozenset({"C:9"})},
+        queries=queries,
+        k=4,
+    )
+    # N002 has evidence to recover and no candidate: a miss, not an absence
+    assert out["support_recall@4"] == 0.5 and out["support_recall_ceiling"] == 0.5
+    assert out["dependent_support_recall@4"] == 0.5
+    assert out["average_precision"] == 1.0 and out["queries_measured"] == 1
