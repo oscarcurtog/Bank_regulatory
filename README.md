@@ -224,7 +224,7 @@ parsed snapshot (by Directive 2022/2556 and Regulation 2024/886); no question ma
 is derived by comparing the parsed version with the consolidated version of 2025-01-17, kept in
 `data/reference/`, without changing which version Fundamento parses.
 
-`data/benchmark/dev/` holds the first DEV batch, ten needs built and judged with
+`data/benchmark/dev/` holds 30 DEV needs in two batches, built and judged with
 `data/benchmark/PROTOCOL.md`. Every need and its queries were committed before any evidence was
 searched. Every candidate was graded by two judges who did not see each other's grades, and every
 disagreement by an independent third judge; `adjudications.jsonl` records the three judgments
@@ -234,13 +234,15 @@ definition counts only when it is necessary, a hard negative needs a scope check
 judge never settles its own disagreement. Under v1.2 two needs were replaced (N005 by N014, N007
 by N015) and four were narrowed, each with new queries and its own lock. The methodological review
 of the batch led to v1.3: a grade 3 needs the facts of the need to establish that the node
-applies, ambiguity is kept for interpretation, and the drivers have a definition.
+applies, ambiguity is kept for interpretation, and the drivers have a definition. Batch 2 (N016 to
+N035) was planned, written, locked and judged under v1.3, and the same calibration record
+covers it.
 
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
 - CI skips the 38 `corpus` tests, so the full corpus is only validated where it is present.
-- The DEV benchmark holds a first batch of 10 judged questions, of the 30 planned, and there is
+- The DEV benchmark holds 30 judged questions in two batches, and there is
   no retriever yet, so no retrieval metric has been measured. The benchmark evaluator is not in
   the Docker images (no Linux ARM64 wheel for its backend).
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a

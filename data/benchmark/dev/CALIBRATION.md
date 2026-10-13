@@ -546,3 +546,219 @@ reading N011 would sit in a slice where following the reference finds nothing re
 **Record.** `adjudications.jsonl` holds the two escalated agreements, each with its reason.
 `validate` reports them apart from the 18 disagreements: one label kept by judge C, one changed.
 
+## Batch 2: N016 to N035 (2026-10-12)
+
+Protocol v1.3. Query template `query_variants.v1` (SHA-256 `466bcfe8…`). DEV was sealed at 0.7.0
+when the needs and queries were locked (commit `43ac3c7`), at 0.8.0 once judged (commit
+`ca4c412`), and at 0.9.0 with the drivers confirmed on the final qrels and every need ready.
+Batch 1 (N004 to N015) is frozen: no line of it changed in this batch.
+
+### 1. Coverage grid
+
+Planned at 18:58 UTC, before any legal text was read for these needs. Each cell names a concept,
+never a provision. The session that planned had read the evidence of batch 1, so the grid avoided
+those topics.
+
+| Need | Act(s) | Planned area | Type | Difficulty | Answerability | Planned drivers | Planned shape |
+|---|---|---|---|---|---|---|---|
+| N016 | DORA | incidents | exception_confusion | medium | complete | none | single provision |
+| N017 | DORA | testing (TLPT) | multi_provision | hard | complete | exception, numeric, cross_reference | multi-provision |
+| N018 | DORA | oversight of critical providers | exception_confusion | medium | complete | exception, negation | single provision |
+| N019 | DORA | information sharing | direct | easy | complete | exception | single provision |
+| N020 | DORA | oversight of critical providers (fees) | partial_out_of_scope | medium | partial | numeric, level2_gap | single provision |
+| N021 | MiCA | white papers | exception_confusion | medium | complete | negation, lexical_twin | single provision |
+| N022 | MiCA | asset-referenced tokens | direct | easy | complete | lexical_twin | single provision |
+| N023 | MiCA | e-money tokens | direct | easy | complete | negation, lexical_twin | single provision |
+| N024 | MiCA | market abuse | multi_provision | hard | complete | negation, cross_reference | multi-provision |
+| N025 | MiCA | supervision (product intervention) | direct | hard | complete | exception, lexical_twin | single provision |
+| N026 | MiCA | acquisitions | direct | easy | complete | numeric, lexical_twin | single provision |
+| N027 | MiCA | transitional measures (no row of the grid) | direct | medium | complete | date, exception | single provision |
+| N028 | PSD2 | payment institutions (initial capital) | partial_out_of_scope | medium | partial | numeric | single provision |
+| N029 | PSD2 | transparency | direct | medium | complete | numeric | single provision |
+| N030 | PSD2 | execution | multi_provision | hard | complete | exception, negation | multi-provision |
+| N031 | PSD2 | liability and authentication | exception_confusion | medium | complete | exception, negation | single provision |
+| N032 | PSD2 | card interchange fees (outside the corpus) | partial_out_of_scope | medium | none | numeric | none |
+| N033 | PSD2 | basic payment account (outside the corpus) | partial_out_of_scope | hard | none | none | none |
+| N034 | DORA, PSD2 | incident reporting and authorities | multi_provision | hard | complete | cross_act, cross_reference, lexical_twin | multi-act |
+| N035 | DORA, PSD2 | which firms DORA covers | multi_provision | hard | complete | cross_act | multi-act |
+
+Planned targets and result: types 7/5/4/4 against 6-8 direct, 4-6 multi_provision, 3-5
+exception_confusion, 3-5 partial_out_of_scope; difficulty 4 easy, 9 medium, 7 hard (fixed a
+priori, never revised); answerability 16 complete, 2 partial, 2 none; numeric or date in 7 cells.
+The corpus offers few genuine multi-act needs: the two planned ones pair DORA with PSD2. No MiCA
+cell needed a second act without inflating qrels, so none was planned.
+
+### 2. How the needs and queries were written
+
+- **Needs.** One fresh context per cell (20 contexts). Each received its cell, the acts and
+  versions in the corpus, what the corpus lacks, the statement rules, the atomicity check, the
+  topics already used, the numbers and broad topics of the excluded PSD2 articles, and the ten
+  existing needs for duplication only. None received legal text, a node, a qrel or an answer. Each
+  transcript shows one read of its own packet and the hand-back, nothing else. No writer offered
+  an alternative; the primary statement was selected for all 20.
+- **Atomicity check.** No statement can be split into two questions a user would ask separately.
+  The two closest calls: N019 ("under what conditions" presupposes the permission, one intent)
+  and N034 (the two options are the answer space of one question).
+- **Duplicates.** The closest statement pair involving a new need is N034 with the test case N003
+  (Jaccard of content words 0.30): N003 asks when a major incident is notified, N034 to whom. N035
+  shares the intent "does DORA apply to my firm" with N006, with a different firm type and
+  different grade-3 evidence (DORA 2(1)(c) against 2(1)(b)).
+- **Queries.** For each need, the sealed template was rendered from the statement alone and
+  answered in a fresh context (20 contexts): English formal, English natural, natural Spanish.
+  Every transcript shows one read and the hand-back. No query repeats another; the English formal
+  and natural pairs share 8% to 38% of their content words.
+
+### 3. Lock
+
+Needs and queries were committed in `43ac3c7`, pushed at 19:07:03 UTC and checked by CI run 15
+(green at 19:07:41). The first evidence search began at 19:08:25 UTC. `queries.jsonl` has not
+changed since the lock.
+
+### 4. Evidence search and judging
+
+- **Judge A.** Unlike batch 1, judge A was one fresh context per need, which searched the parsed
+  corpus with four read-only tools (article titles, whole articles, nodes, regex search) and wrote
+  one file. Every transcript shows only those tools, only its own packet and only its own output.
+  An API session limit stopped 11 of the 20 contexts; in 9 of them the output file was already
+  written as the last action, and N017 and N028 were resumed in their own context. All 20 files
+  were written by 20:39 UTC, before judge B started.
+- **Judge B.** One fresh context per need, with every candidate, its legal context and the
+  provisions that fix its scope, and no label of A. All 20 graded every candidate once.
+- **Judge C.** One fresh context per need with disagreements (16), with the two positions as
+  "Rationale A" and "Rationale B" in random order (seed 20261017). All 16 transcripts show one read
+  and the hand-back.
+
+### 5. Distribution
+
+| | Batch 2 | DEV (30) |
+|---|---|---|
+| Acts (counted per act) | DORA 7, MiCA 7, PSD2 8 | DORA 11, MiCA 11, PSD2 10 |
+| Two acts | 2 (both DORA and PSD2) | 2 |
+| Type | direct 6, multi_provision 5, exception_confusion 4, partial_out_of_scope 5 | direct 11, multi_provision 6, exception_confusion 6, partial_out_of_scope 7 |
+| Difficulty | easy 4, medium 9, hard 7 | easy 7, medium 15, hard 8 |
+| Answerability | complete 15, partial 3, none 2 | complete 23, partial 4, none 3 |
+| Numeric or date | 7 (one date) | 12 (one date) |
+| Queries | 60 (20 per formulation) | 90 |
+
+Two types changed after judging, as section 3 and the evidence required: N030 became
+`partial_out_of_scope` when judge C found it partial (the schema ties that type to partial and
+none), and N022 became `multi_provision` because its answer needs the right in MiCA Article 39 and
+its limits in Article 46.
+
+### 6. Qrels and adjudication
+
+- 310 qrels: 63 of grade 0, 152 of grade 1, 72 of grade 2 and 23 of grade 3. One is ambiguous:
+  DORA 26(11)(a) in N017, on which A and B agreed.
+- A and B agreed on 272 of 310 node labels and on 18 of 20 answerabilities. The 38 node
+  disagreements were 19 between 1 and 2, 13 between 0 and 1, 5 between 2 and 3 and one between 0
+  and 2; 20 crossed the relevance line. Judge C took A's label 27 times and B's 13 times (two of
+  them answerabilities). The final relevance differs from A's in 5 labels and from B's in 15.
+- Twelve definitions are graded 2, all by the necessity test: MiCA 3(1)(6) in N021, N022 and N025,
+  3(1)(7) in N022, N023 and N025, 3(1)(36) in N026, PSD2 4(21) in N029, 4(22) in N028, 4(30) in
+  N031, 4(16) and DORA 3(37) in N035. Most separate plausible categories (asset-referenced against
+  e-money token, a qualifying holding, account information service). They are listed for the
+  person's review.
+- Hard negatives: 2 or 3 in every evaluated need except N022 (5: the e-money twin, two repeats of
+  the redemption wording in the white paper and marketing rules, and the withdrawal right). The
+  none needs keep their examined candidates as the record of the search (N032 3, N033 8).
+
+### 7. Answerability and corpus boundary
+
+| Need | Answerability | In the corpus | Missing, and where it would be |
+|---|---|---|---|
+| N020 | partial | DORA 43(1) and (2): fees cover the oversight costs, proportionate to turnover; a delegated act fixes the amount | the amount and its payment, in Commission Delegated Regulation (EU) 2024/1505 (Level 2) |
+| N028 | partial | PSD2 7(a): EUR 20 000 for the service of point (6) of Annex I; 4(22) defines money remittance | PSD2 Annex I, which ties money remittance to point (6) |
+| N030 | partial | PSD2 88: correct execution by unique identifier, no liability, duty to try to recover | for credit transfers in euro, verification of payee under Regulation (EU) No 260/2012 as amended by Regulation (EU) 2024/886 |
+| N032 | none | PSD2 62(4) only names the Interchange Fee Regulation | the cap, in Chapter II of Regulation (EU) 2015/751 |
+| N033 | none | PSD2 36 gives payment institutions, not consumers, access to bank accounts | the right to a basic payment account, in Directive 2014/92/EU and national law |
+
+N030 was planned complete. Judge C made it partial on judge B's ground: a rule outside the corpus
+can change the answer for an unstated but likely fact (a euro transfer). The rule postdates the
+parsed PSD2 snapshot, which is worth keeping in mind when this need is read.
+
+### 8. Multi-provision and multi-act
+
+- **Multi-provision, one question:** N017 (DORA 26(8) and 27), N022 (MiCA 39 and 46), N024 (MiCA
+  86, 87 and 89), N034 and N035. Seven more needs have evidence in two articles because of a
+  necessary definition or condition (N021, N023, N025, N026, N028, N029, N031) but ask what one
+  rule answers.
+- **Multi-act, genuine:** N034 and N035, each with evidence of grade 2 or 3 in two acts.
+  - N034: DORA 19(1) sends the report to the authority of Article 46, 46(b) names the authority
+    designated under PSD2 Article 22, and PSD2 22(1) is what says that this is the authority that
+    licensed the payment institution. Both A and B graded PSD2 22(1) 2 independently.
+  - N035: DORA 2(1)(c) covers account information service providers; DORA 3(37) defines them
+    through PSD2 33(1), and PSD2 4(16) is what classifies the app's activity.
+  Neither became multi-act through a grade-1 reference.
+
+### 9. Drivers
+
+Confirmed on the final qrels with section 13; a mechanical check (relevant acts for `cross_act`,
+only gap drivers for a none need, a figure or a gap_note for `numeric`, at least two relevant
+nodes for `cross_reference`) finds no inconsistency in the 30 needs.
+
+| Need | Drivers | Nodes that make them hold |
+|---|---|---|
+| N016 | none | 19(2) alone; 19(1) and 19(1) third subparagraph set a different duty, distractors not twins |
+| N017 | exception, numeric, cross_reference, lexical_twin | 26(8) second subparagraph and 27(2) conditions; "every three tests" in 26(8); 26(8) to Article 27; twin 24(4), the same internal-tester rule for ordinary tests |
+| N018 | exception, negation | 31(8)(iv) read with its lead-in "shall not apply" |
+| N019 | exception, cross_reference | the conditions of 45(1); 45(2) and 45(3) refer to paragraph 1 |
+| N020 | numeric, level2_gap, lexical_twin | the gap names the amount, fixed by the delegated act that 43(2) mandates; twin MiCA 137(2) second subparagraph, the supervisory fee of significant e-money token issuers |
+| N021 | negation, lexical_twin | 8(3) "shall not require prior approval"; twin 51(11) second subparagraph, the same rule for e-money tokens |
+| N022 | lexical_twin, exception, cross_reference | twin 49(4), redemption of e-money tokens; suspension and limits in 46; 46(4) to paragraph 3 |
+| N023 | negation, lexical_twin, exception, cross_reference | 48(1)(a) read with "shall not make an offer ... unless"; twin 16(1), the same rule for asset-referenced tokens; exemption 48(5); 48(5) to paragraph 7 |
+| N024 | negation, cross_reference | 89(2) "No person shall"; 86(2), 86(3), 87(2) and 87(4) to paragraph 1 |
+| N025 | exception, lexical_twin, cross_reference | the conditions of 103(2) and 103(3); twin 104(1), the EBA power for stablecoins; 103(2) and 103(3) to paragraph 1 |
+| N026 | numeric, lexical_twin | 10% in 3(1)(36) and the thresholds of 83(1); twins 41(1) (issuers of asset-referenced tokens) and PSD2 6(1) |
+| N027 | date, exception, lexical_twin | 1 July 2026 in 143(3); the Member State option in its second subparagraph; twins 143(4) and PSD2 109(1) |
+| N028 | numeric, lexical_twin | EUR 20 000 in 7(a); twin MiCA 67(1)(a), the minimum capital of crypto-asset service providers |
+| N029 | numeric | 2 months in 54(1); PSD2 55(3) has the same figure for another duty, a distractor |
+| N030 | negation, exception | 88(2) "shall not be liable", an exclusion of the Article 89 liability |
+| N031 | exception, negation | 74(2) "shall not bear any financial losses", which displaces the EUR 50 rule |
+| N032 | numeric | the gap names the cap |
+| N033 | none | a none need whose gap is a right, not a figure |
+| N034 | cross_act, cross_reference, lexical_twin, exception | DORA and PSD2; 19(1) to Article 46 and 46(b) to PSD2 Article 22; twin 46(a); 19(1) second and sixth subparagraphs |
+| N035 | cross_act, cross_reference, lexical_twin | DORA and PSD2; DORA 3(37) to PSD2 33(1); twin 2(1)(b) |
+
+- No planned driver was removed. Eleven needs gained drivers from the evidence, most often
+  `lexical_twin` and `cross_reference`.
+- **Reading of `cross_reference`.** As in the check of batch 1, a reference counts when it names
+  another paragraph, article or act. A back-reference inside the same paragraph ("the first
+  subparagraph") is not another provision. This keeps N012 of batch 1 consistent and is why N027
+  and N030 do not carry the driver.
+
+### 10. Recall@5 by design
+
+| Need | Relevant nodes | Chunks at 500 | Chunks at 300 | Best Recall@5 at 500 / 300 | Reason |
+|---|---|---|---|---|---|
+| N022 | 11 | 6 | 9 | 0.83 / 0.56 | A and C: one question; the right (Article 39) and its limits (Article 46) are in two articles, two definitions separate the token types, and Article 46 falls into three chunks |
+| N024 | 11 | 5 | 7 | 1 / 0.71 | C: fragmentation at 300 only |
+| N034 | 6 | 4 | 6 | 1 / 0.83 | C: fragmentation at 300 only |
+
+No need is too broad (case B). The cases are left for decision.
+
+### 11. Leakage and duplication
+
+- Lexical overlap with the evidence (share of content words, median): English formal 0.37,
+  English natural 0.16, natural Spanish 0.03, as in batch 1.
+- Two `POSSIBLE COPY` flags, both English formal queries with a six-word run that is a term of
+  art: "a critical ICT third-party service provider" (N020-en-1) and "the payer's payment service
+  provider" (N030-en-1). Neither run is in the statement; the formal style uses official terms.
+  Approved.
+- No exact duplicate statement or query. The closest English queries of different needs share
+  25% of their content words (N016 and N034).
+
+### 12. Critical review
+
+- **For the person's methodological review (protocol step 7, pending):**
+  - the 12 definitions graded 2;
+  - N030's partial, which rests on a rule made after the PSD2 snapshot;
+  - the Recall@5 ceiling of N022;
+  - the reading of `cross_reference` in section 9;
+  - the 8 candidates of N033 graded 0, against the heuristic of one to three hard negatives.
+- **Process change.** Judge A ran as isolated contexts with read-only tools instead of the
+  planning session. It keeps A independent of the plan, but it is not what batch 1 did. The final
+  qrels of this batch hold 12 definitions at grade 2, against none in batch 1.
+- **Coverage still thin.** Cross-act needs are 2 of 30, both DORA with PSD2; `date` and
+  `level2_gap` appear once each; PSD2 security and authentication has no need of its own, since
+  three of its five articles are excluded.
+
