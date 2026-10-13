@@ -659,9 +659,9 @@
   "next": "research"
  },
  "timings_seconds": {
-  "structure (graph, glossary, relations)": 0.6299946669896599,
-  "bridge candidates encoded": 7.551607416011393,
-  "candidate lists, k=3": 0.05471204101922922,
-  "candidate lists, k=5": 0.05479558400111273
+  "structure (graph, glossary, relations)": 0.6400842499861028,
+  "bridge candidates encoded": 7.209088709001662,
+  "candidate lists, k=3": 0.052494792005745694,
+  "candidate lists, k=5": 0.05152837501373142
  }
 }

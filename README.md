@@ -25,9 +25,9 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
 - **Chunking:** implemented (structural, v1)
 - **Retrieval benchmark:** implemented; DEV holds 30 judged questions, reviewed and sealed under
   protocol v1.4
-- **Indexing and retrieval:** a first retrieval iteration on DEV is done (three dense models,
-  BM25, cross-reference expansion); no configuration beat `multilingual-e5-large` by the
-  protocol's margin, and a hybrid and a reranker did not pass their entry conditions
+- **Indexing and retrieval:** two retrieval iterations on DEV are done (three dense models,
+  BM25, cross-reference expansion, dependency retrieval, graph propagation, a cross-encoder
+  reranker); no configuration beat `multilingual-e5-large` by the protocols' margin
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -72,7 +72,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 719 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 723 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -123,7 +123,7 @@ not in the repository (see [Data and reproducibility](#data-and-reproducibility)
 marked `embedding_model` need the `embed` extra and the weights of the three embedding models and
 the reranker (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`); without them they
 fail, unless the environment declares `FUNDAMENTO_EMBEDDING_MODEL=unsupported`, as CI does. With
-that declaration and without the corpus, pytest reports `661 passed, 58 skipped`.
+that declaration and without the corpus, pytest reports `665 passed, 58 skipped`.
 
 ## Docker
 
@@ -186,7 +186,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 
-Without the corpus you can run the test suite (661 tests pass and 58 are skipped with
+Without the corpus you can run the test suite (665 tests pass and 58 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported`), the linters and type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files
@@ -336,15 +336,25 @@ system, measured by one code path. E5 stays the best retriever measured. What it
 mostly evidence the answer depends on without being the answer: 54 of its 63 missed (query,
 relevant chunk) pairs are grade 2, at a median rank of 103.
 
+A second iteration ([protocol](config/retrieval/dependency-retrieval.md),
+[record](data/results/dev-0.10.0/retrieval-iteration-2/log.md)) targeted that evidence.
+Anchor-conditioned dependency retrieval (`ingest/dependencies.py`: references, defined terms and
+definitions by reference read from E5's top 10, plus "What is <term>?" bridges) gathers it: the
+candidate list's Recall@100 rises from 0.883 to 0.947 and its dependent evidence at 50 from 0.582
+to 0.774. Ordering it failed three times: a dense-seeded Personalized PageRank over the law's
+graph, the cross-encoder `bge-reranker-v2-m3` with the question or with the bridges
+(`ingest/reranker.py`), and a fixed quota of the top 10. None changed Recall@10 by a material
+amount; the bridge-scored reranking fell to 0.629.
+
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
 - CI skips the 38 `corpus` tests, so the full corpus is only validated where it is present.
 - The DEV benchmark holds 30 judged questions in two batches (27 evaluable), so a difference
   between two retrievers needs to be large to be told apart from noise (about 0.08 of nDCG@10).
-  The retrieval iteration selected on DEV, so its numbers are development numbers; an
-  independent TEST set has not been built. No index, hybrid search or reranker has been
-  measured. The benchmark evaluator is not in the Docker images (no Linux ARM64 wheel for its
+  The retrieval iterations selected on DEV, so their numbers are development numbers; an
+  independent TEST set has not been built. No index or hybrid search has been measured, and
+  the cross-encoder reranker measured did not improve on E5. The benchmark evaluator is not in the Docker images (no Linux ARM64 wheel for its
   backend).
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text

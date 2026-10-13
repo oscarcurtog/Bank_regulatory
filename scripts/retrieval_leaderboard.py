@@ -33,6 +33,11 @@ SYSTEMS = [
     ("xref1-e5-k5", "E5 + one-hop references, K = 5"),
     ("xref1-e5-k10", "E5 + one-hop references, K = 10"),
     ("qwen3-embedding-0.6b", "dense, Qwen3-Embedding-0.6B"),
+    ("acdr-e5-bridge3", "R1: E5 top 20 + dependency pool (candidate list)"),
+    ("ppr-e5-n10-f3", "E2: dense-seeded PageRank, 10 seeds, follow 0.3"),
+    ("rerank-acdr-e5-bridge3-orig", "E3: cross-encoder on R1's top 50, original query"),
+    ("rerank-acdr-e5-bridge3-bridgemax", "E3: cross-encoder, bridge maximum"),
+    ("quota2-acdr-e5-bridge3", "E4: 2 top-10 places for dependencies"),
 ]
 REFERENCE = "multilingual-e5-large"
 THIRD_MODEL = "qwen3-embedding-0.6b"

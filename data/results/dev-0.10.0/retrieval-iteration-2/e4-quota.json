@@ -1,0 +1,94 @@
+{
+ "experiment": "E4",
+ "benchmark_version": "0.10.0",
+ "candidates": "acdr-e5-bridge3",
+ "configurations": {
+  "quota2-acdr-e5-bridge3": {
+   "slots": 2,
+   "columns": {
+    "Recall@10": 0.7467078189300411,
+    "nDCG@10": 0.528035489919119,
+    "multi_provision": 0.462037037037037,
+    "dependent": 0.28787878787878785
+   },
+   "recall20": 0.8160493827160493,
+   "cross_reference": 0.6661616161616162,
+   "cross_act": 0.29166666666666663,
+   "by_language_recall10": {
+    "en": 0.7712962962962963,
+    "es": 0.6975308641975309
+   },
+   "paired_against_e5": {
+    "Recall@10": {
+     "mean": -0.01646090534979424,
+     "ci95_low": -0.053497942386831275,
+     "ci95_high": 0.017489711934156375,
+     "better": 4,
+     "equal": 72,
+     "worse": 5
+    },
+    "nDCG@10": {
+     "mean": 0.0005334551766719605,
+     "ci95_low": -0.009811396330448474,
+     "ci95_high": 0.010952486444058575,
+     "better": 18,
+     "equal": 49,
+     "worse": 14
+    }
+   },
+   "material": {
+    "A: Recall@10 +0.05": false,
+    "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+    "C: multi_provision Recall@10 +0.10": false,
+    "D: dependent evidence Recall@10 +0.10": false
+   }
+  },
+  "quota3-acdr-e5-bridge3": {
+   "slots": 3,
+   "columns": {
+    "Recall@10": 0.7323045267489712,
+    "nDCG@10": 0.5233434356595205,
+    "multi_provision": 0.4527777777777777,
+    "dependent": 0.2818181818181818
+   },
+   "recall20": 0.8160493827160493,
+   "cross_reference": 0.645959595959596,
+   "cross_act": 0.29166666666666663,
+   "by_language_recall10": {
+    "en": 0.7589506172839506,
+    "es": 0.6790123456790123
+   },
+   "paired_against_e5": {
+    "Recall@10": {
+     "mean": -0.030864197530864196,
+     "ci95_low": -0.06584362139917695,
+     "ci95_high": -6.853228547068867e-19,
+     "better": 2,
+     "equal": 73,
+     "worse": 6
+    },
+    "nDCG@10": {
+     "mean": -0.004158599082926564,
+     "ci95_low": -0.013548032395664314,
+     "ci95_high": 0.005228044899680339,
+     "better": 18,
+     "equal": 42,
+     "worse": 21
+    }
+   },
+   "material": {
+    "A: Recall@10 +0.05": false,
+    "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+    "C: multi_provision Recall@10 +0.10": false,
+    "D: dependent evidence Recall@10 +0.10": false
+   }
+  }
+ },
+ "decision": {
+  "selected": "quota2-acdr-e5-bridge3",
+  "passed": [],
+  "kept": false,
+  "stop_A_strong": false,
+  "stop_B_useful": false
+ }
+}

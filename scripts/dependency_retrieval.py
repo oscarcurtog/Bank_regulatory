@@ -120,6 +120,22 @@ def main(argv: list[str] | None = None) -> int:
                 f.write(json.dumps(rec) + "\n")
         recall = rr.candidate_recall(frozen.dev, frozen.layer, lists)
         runs[k] = lists
+        # the candidate list measured as a ranking too (its top 20 is E5's), for the leaderboard
+        evaluated_list = rr.evaluate_ranked(
+            frozen.dev, frozen.layer, lists, {cid: c.body for cid, c in frozen.chunks.items()}
+        )
+        list_summary = {
+            "system": {"kind": "candidate_list", "dense": "multilingual-e5-large", "bridge_k": k},
+            "identity": {"base_run_sha256": summary["identity"]["run_sha256"], "run_sha256": sha},
+            "benchmark_version": version,
+            "metrics": evaluated_list["metrics"],
+            "per_query": evaluated_list["per_query"],
+        }
+        list_out = args.results / f"dev-{version}" / f"{name}-layer-{args.max_tokens}"
+        list_out.mkdir(parents=True, exist_ok=True)
+        (list_out / "summary.json").write_text(
+            json.dumps(list_summary, indent=1, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
         evaluated = [rec for rec in records if rec["query_id"] in frozen.evaluable]
         relevant = {q.query_id: rt.relevant_chunks(t) for t in frozen.targets for q in t.queries}
         entered: Counter[str] = Counter()
