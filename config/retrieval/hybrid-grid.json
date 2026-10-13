@@ -1,0 +1,10 @@
+{
+  "schema_version": "1",
+  "name": "hybrid-e5-bm25-rrf",
+  "dense": "multilingual-e5-large",
+  "lexical": "bm25",
+  "fusion": "weighted_rrf",
+  "k": [20, 60, 100],
+  "weights": [[0.75, 0.25], [0.5, 0.5], [0.25, 0.75]],
+  "selection": ["global Recall@10", "global nDCG@10", "grid order"]
+}

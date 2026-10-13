@@ -24,7 +24,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import random
 import resource
 import statistics
 import sys
@@ -42,29 +41,14 @@ from ingest import download as dl
 from ingest import embeddings as em
 from ingest import evaluation as ev
 from ingest import hierarchy as h
+from ingest import run_report as rr
 
-METRICS = [
-    "nDCG@10",
-    "Recall@10",
-    "MRR@10",
-    "Recall@5",
-    "Recall@20",
-    "Recall@T=1000",
-    "Recall@T=2000",
-]
-STYLES = [("en", "formal"), ("en", "natural"), ("es", "natural")]
-SMALL_GROUP = 5
-LOW_NDCG = 0.5
-SEED = 20261013
+METRICS = rr.METRICS
 
 
 def pct(values: Sequence[float], p: float) -> float:
     s = sorted(values)
     return s[min(len(s) - 1, round(p / 100 * (len(s) - 1)))]
-
-
-def mean_of(rows: Sequence[Mapping[str, float]], metric: str) -> float:
-    return statistics.fmean(r[metric] for r in rows)
 
 
 # ---------------------------------------------------------------------------
@@ -154,41 +138,6 @@ def exposure(
             "grade_1": [n for n in cut_nodes if n["grade"] == 1],
             "grade_0": [n for n in cut_nodes if n["grade"] == 0],
         },
-    }
-
-
-# ---------------------------------------------------------------------------
-# breakdowns
-# ---------------------------------------------------------------------------
-
-
-def group_means(
-    per_need: Mapping[str, Mapping[str, float]], keys: Mapping[str, Sequence[str]]
-) -> dict[str, dict[str, Any]]:
-    """Macro means over needs for each group a need belongs to (a need may be in several)."""
-    groups: dict[str, list[str]] = defaultdict(list)
-    for need_id, labels in keys.items():
-        for label in labels:
-            groups[label].append(need_id)
-    out = {}
-    for label, ids in sorted(groups.items()):
-        rows = [per_need[i] for i in ids]
-        out[label] = {"needs": len(ids), "descriptive_only": len(ids) < SMALL_GROUP} | {
-            m: mean_of(rows, m) for m in METRICS
-        }
-    return out
-
-
-def paired(diffs: Sequence[float]) -> dict[str, float]:
-    rng = random.Random(SEED)
-    means = sorted(statistics.fmean(rng.choices(diffs, k=len(diffs))) for _ in range(10_000))
-    return {
-        "mean": statistics.fmean(diffs),
-        "ci95_low": means[249],
-        "ci95_high": means[9749],
-        "es_better": sum(d > 0 for d in diffs),
-        "en_better": sum(d < 0 for d in diffs),
-        "equal": sum(d == 0 for d in diffs),
     }
 
 
@@ -367,7 +316,6 @@ def main(argv: list[str] | None = None) -> int:
     # Every query is ranked and kept in the run file; only the queries of evaluable needs
     # (complete or partial) go to the evaluator. A 'none' need is kept for abstention.
     evaluable = {q.query_id for t in ev.targets(dev, layer) for q in t.queries}
-    run = em.to_run([r for r in ranked if r.query_id in evaluable])
     run_dir = (
         Path("data/runs")
         / f"{config.name}-layer-{args.max_tokens}-dev-{dev.manifest.benchmark_version}"
@@ -388,160 +336,10 @@ def main(argv: list[str] | None = None) -> int:
             )
 
     print("5. metrics")
-    scores, missing = ev.score_queries(dev, layer, run)
-    if missing:
-        raise SystemExit(f"queries absent from the run: {missing}")
-    report = ev.aggregate(scores, [s.query.query_id for s in scores])
-    by_query = {s.query.query_id: s for s in scores}
-    targets = {t.need.need_id: t for t in ev.targets(dev, layer)}
-    rank_of = {r.query_id: {c: i + 1 for i, c in enumerate(r.chunk_ids)} for r in ranked}
-    score_of = {r.query_id: dict(zip(r.chunk_ids, r.scores, strict=True)) for r in ranked}
-
-    def first_relevant(query_id: str, need_id: str) -> int:
-        rel = [c for c, g in targets[need_id].chunk_grades.items() if g >= bm.RELEVANT_GRADE]
-        return min(rank_of[query_id][c] for c in rel)
-
-    per_need: dict[str, dict[str, float]] = {}
-    per_need_style: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
-    for need_id, t in targets.items():
-        rows = [by_query[q.query_id].values for q in t.queries]
-        per_need[need_id] = {m: mean_of(rows, m) for m in METRICS}
-        for q in t.queries:
-            per_need_style[need_id][f"{q.lang} {q.style}"] = dict(by_query[q.query_id].values) | {
-                "first_relevant_rank": first_relevant(q.query_id, need_id),
-                "query_id": q.query_id,
-            }
-    styles = {}
-    for lang, style in STYLES:
-        rows = [per_need_style[n][f"{lang} {style}"] for n in per_need]
-        styles[f"{lang} {style}"] = {"needs": len(rows)} | {m: mean_of(rows, m) for m in METRICS}
-    official = {
-        lang: {"needs": s.needs, "queries": s.queries} | {m: s.means[m] for m in METRICS}
-        for lang, s in report.by_language.items()
-    }
-    macro = {"needs": len(per_need), "queries": len(scores)} | {
-        m: mean_of(list(per_need.values()), m) for m in METRICS
-    }
-
-    needs = {n.need_id: n for n in dev.needs}
-    by_type = group_means(per_need, {n: [needs[n].type] for n in per_need})
-    by_difficulty = group_means(per_need, {n: [needs[n].difficulty] for n in per_need})
-    by_answerability = group_means(per_need, {n: [needs[n].answerability] for n in per_need})
-    by_driver = group_means(per_need, {n: list(needs[n].drivers) or ["(none)"] for n in per_need})
-    language = {
-        metric: {
-            "es_natural_minus_en_natural": paired(
-                [
-                    per_need_style[n]["es natural"][metric]
-                    - per_need_style[n]["en natural"][metric]
-                    for n in per_need
-                ]
-            ),
-            "es_natural_minus_en_formal": paired(
-                [
-                    per_need_style[n]["es natural"][metric] - per_need_style[n]["en formal"][metric]
-                    for n in per_need
-                ]
-            ),
-        }
-        for metric in ("nDCG@10", "Recall@10")
-    }
-
-    rel_chunks = {
-        n: sum(g >= bm.RELEVANT_GRADE for g in t.chunk_grades.values()) for n, t in targets.items()
-    }
-    truncated_ids = {c["chunk"] for c in exposed["chunks"]}
-    need_table = []
-    for need_id in sorted(per_need):
-        n = needs[need_id]
-        firsts = {k: v["first_relevant_rank"] for k, v in per_need_style[need_id].items()}
-        ceiling = min(1.0, 5 / rel_chunks[need_id])
-        flags = []
-        if any(per_need_style[need_id][k]["Recall@10"] < 1 for k in per_need_style[need_id]):
-            flags.append("Recall@10<1")
-        if any(r > 10 for r in firsts.values()):
-            flags.append("first relevant >10")
-        if per_need[need_id]["nDCG@10"] < LOW_NDCG:
-            flags.append("low nDCG@10")
-        es, en = (
-            per_need_style[need_id]["es natural"]["nDCG@10"],
-            per_need_style[need_id]["en natural"]["nDCG@10"],
-        )
-        if es < en - 0.2:
-            flags.append("ES much worse")
-        rel = {c for c, g in targets[need_id].chunk_grades.items() if g >= bm.RELEVANT_GRADE}
-        if rel & truncated_ids:
-            flags.append("truncation-exposed")
-        need_table.append(
-            {
-                "need": need_id,
-                "type": n.type,
-                "difficulty": n.difficulty,
-                "answerability": n.answerability,
-                "drivers": list(n.drivers),
-                "relevant_chunks": rel_chunks[need_id],
-                "recall5_ceiling": ceiling,
-                "recall5_over_ceiling": per_need[need_id]["Recall@5"] / ceiling,
-            }
-            | {m: per_need[need_id][m] for m in METRICS}
-            | {"first_relevant_rank": firsts, "flags": flags}
-        )
-
-    # failures: the queries with the lowest nDCG@10, then the latest first relevant chunk
-    ordered = sorted(
-        scores,
-        key=lambda s: (
-            s.values["nDCG@10"],
-            -first_relevant(s.query.query_id, s.query.need_id),
-            s.query.query_id,
-        ),
-    )
-    failures = []
-    for s in ordered[:8]:
-        q, t = s.query, targets[s.query.need_id]
-        top = []
-        for c in ranked[query_ids.index(q.query_id)].chunk_ids[:10]:
-            grade = t.chunk_grades.get(c)
-            text = chunk_by_id[c].body.replace("\n", " ")
-            top.append(
-                {
-                    "rank": rank_of[q.query_id][c],
-                    "chunk": c,
-                    "score": score_of[q.query_id][c],
-                    "grade": grade,
-                    "relevant": grade is not None and grade >= bm.RELEVANT_GRADE,
-                    "truncated": c in truncated_ids,
-                    "preview": text[:160],
-                }
-            )
-        rel_ranked = sorted(
-            (c for c, g in t.chunk_grades.items() if g >= bm.RELEVANT_GRADE),
-            key=lambda c: rank_of[q.query_id][c],
-        )
-        failures.append(
-            {
-                "query_id": q.query_id,
-                "need": q.need_id,
-                "lang": q.lang,
-                "style": q.style,
-                "text": q.text if q.lang == "en" else None,
-                "values": dict(s.values),
-                "first_relevant_rank": first_relevant(q.query_id, q.need_id),
-                "top10": top,
-                "relevant_chunks": [
-                    {
-                        "chunk": c,
-                        "rank": rank_of[q.query_id][c],
-                        "score": score_of[q.query_id][c],
-                        "grade": t.chunk_grades[c],
-                        "truncated": c in truncated_ids,
-                    }
-                    for c in rel_ranked
-                ],
-                "truncation_exposed": bool(set(rel_ranked) & truncated_ids)
-                or any(x["truncated"] for x in top),
-            }
-        )
+    bodies = {c: chunk_by_id[c].body for c in chunk_by_id}
+    truncated_ids = frozenset(c["chunk"] for c in exposed["chunks"])
+    evaluated = rr.evaluate_ranked(dev, layer, ranked, bodies, truncated_ids)
+    styles, macro = evaluated["metrics"]["by_style"], evaluated["metrics"]["macro_by_need"]
 
     print("6. sanity checks")
     sanity: dict[str, Any] = {}
@@ -637,30 +435,10 @@ def main(argv: list[str] | None = None) -> int:
         "queries_sha256": query_src.queries_sha256,
         "tokenization": tokenization,
         "exposure": exposed,
-        "metrics": {
-            "official_by_language": official,
-            "by_style": styles,
-            "macro_by_need": macro,
-            "by_type": by_type,
-            "by_difficulty": by_difficulty,
-            "by_answerability": by_answerability,
-            "by_driver": by_driver,
-            "language_effect": language,
-        },
-        "per_need": need_table,
-        "per_query": {
-            s.query.query_id: dict(s.values)
-            | {
-                "first_relevant_rank": first_relevant(s.query.query_id, s.query.need_id),
-                "relevant_ranks": {
-                    c: rank_of[s.query.query_id][c]
-                    for c, g in sorted(targets[s.query.need_id].chunk_grades.items())
-                    if g >= bm.RELEVANT_GRADE
-                },
-            }
-            for s in scores
-        },
-        "failures": failures,
+        "metrics": evaluated["metrics"],
+        "per_need": evaluated["per_need"],
+        "per_query": evaluated["per_query"],
+        "failures": evaluated["failures"],
         "sanity": sanity,
         "performance": performance,
     }

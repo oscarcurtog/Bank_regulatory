@@ -1,0 +1,19 @@
+{
+  "schema_version": "1",
+  "name": "bm25",
+  "library": "bm25s",
+  "library_version": "0.3.11",
+  "method": "lucene",
+  "k1": 1.2,
+  "b": 0.75,
+  "text": "chunk_text",
+  "analyzer": {
+    "lowercase": true,
+    "strip_possessive": true,
+    "token_pattern": "[^\\W_]+",
+    "stopwords": "lucene_english",
+    "stemmer": "porter",
+    "stemmer_library": "PyStemmer",
+    "stemmer_library_version": "3.1.0"
+  }
+}

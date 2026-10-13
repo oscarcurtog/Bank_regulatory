@@ -18,11 +18,15 @@ requires-python = ">=3.12"
 # and the chunker counts its budget with tiktoken.
 # numpy holds the embedding vectors and runs the exact search of the dense baseline
 # (ingest/embeddings.py); tokenizers also counts the embedding model's tokens there.
+# bm25s scores the lexical retriever (ingest/lexical.py, Lucene's BM25 variant) and
+# PyStemmer stems its English analyzer (the Porter algorithm, as Lucene's EnglishAnalyzer).
 dependencies = [
     "pydantic>=2.13,<3",
     "tiktoken>=0.14,<0.15",
     "tokenizers>=0.22,<0.23",
     "numpy>=2.5,<3",
+    "bm25s>=0.3.11,<0.4",
+    "PyStemmer>=3.1,<4",
 ]
 
 # Development dependencies, not production ones. They are installed with
@@ -151,6 +155,11 @@ disallow_incomplete_defs = false
 # a global ignore_missing_imports: tiktoken and pydantic do publish types.
 [[tool.mypy.overrides]]
 module = ["tokenizers.*"]
+ignore_missing_imports = true
+
+# bm25s and PyStemmer (the "Stemmer" module) publish no py.typed marker either.
+[[tool.mypy.overrides]]
+module = ["bm25s.*", "Stemmer.*"]
 ignore_missing_imports = true
 
 # torch and transformers are the optional "embed" extra, absent from CI and the images.

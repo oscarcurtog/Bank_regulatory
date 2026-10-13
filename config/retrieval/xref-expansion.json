@@ -1,0 +1,13 @@
+{
+  "schema_version": "1",
+  "name": "xref1",
+  "anchor_k": [5, 10],
+  "hops": 1,
+  "reference_source": "own_text_of_owned_nodes",
+  "acts": {
+    "Regulation (EU) 2022/2554": "DORA",
+    "Regulation (EU) 2023/1114": "MiCA",
+    "Directive (EU) 2015/2366": "PSD2"
+  },
+  "linearization": "anchor_then_its_targets"
+}
