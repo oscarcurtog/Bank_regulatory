@@ -62,7 +62,25 @@ def prompts_for(
     return rows, windows
 
 
-def run_worker(prompts: Path, outputs: Path, limit: int = 0) -> None:
+def prompt_lengths(rows: list[dict[str, Any]]) -> list[int]:
+    """Each prompt's tokens as the model counts them: the base model's tokenizer and chat
+    template, which the MLX build carries unchanged."""
+    import transformers
+
+    config = json.loads(MODEL.read_text(encoding="utf-8"))
+    tokenizer = transformers.AutoTokenizer.from_pretrained(
+        config["base_model"], revision=config["base_revision"], cache_dir=em.hf_home() / "hub"
+    )
+    out = []
+    for r in rows:
+        rendered = tokenizer.apply_chat_template(
+            r["messages"], add_generation_prompt=True, tokenize=False
+        )
+        out.append(len(tokenizer(rendered, add_special_tokens=False)["input_ids"]))
+    return out
+
+
+def run_worker(prompts: Path, outputs: Path, limit: int = 0, timeout: float | None = None) -> None:
     command = [
         str(MLX_PYTHON),
         "scripts/mlx_generate.py",
@@ -79,7 +97,14 @@ def run_worker(prompts: Path, outputs: Path, limit: int = 0) -> None:
         command += ["--limit", str(limit)]
     if not MLX_PYTHON.exists():
         raise SystemExit(f"{MLX_PYTHON} is missing: the MLX environment of D-040 is not set up")
-    subprocess.run(command, check=True, env=os.environ | {"HF_HOME": str(em.hf_home())})
+    try:
+        subprocess.run(
+            command, check=True, env=os.environ | {"HF_HOME": str(em.hf_home())}, timeout=timeout
+        )
+    except subprocess.TimeoutExpired:
+        raise SystemExit(
+            f"the generation passed the budget of {BUDGET_HOURS} hours: C is incomplete"
+        ) from None
 
 
 def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> str:
@@ -120,18 +145,30 @@ def main(argv: list[str] | None = None) -> int:
         run_worker(sample_prompts, sample_out)
         timed = [json.loads(line) for line in sample_out.read_text(encoding="utf-8").splitlines()]
         per_window = statistics.fmean(r["seconds"] for r in timed)
-        projection = {
-            name: entry["windows_of_8"] * per_window / 3600
-            for name, entry in audit["ladder"].items()
-        }
+        per_token = sum(r["seconds"] for r in timed) / sum(r["prompt_tokens"] for r in timed)
+        # the sample's windows are each query's first (E5's top chunks), longer than the
+        # average window: the projection weighs the sample's time by every window's tokens
+        projection, by_window, tokens = {}, {}, {}
+        for name in audit["ladder"]:
+            cap = 0 if name == "all" else int(name.split()[1])
+            ladder_rows, _ = prompts_for(populations, cap, question, text)
+            lengths = prompt_lengths(ladder_rows)
+            tokens[name] = {"windows": len(lengths), "mean": statistics.fmean(lengths)}
+            projection[name] = per_token * sum(lengths) / 3600
+            by_window[name] = per_window * len(lengths) / 3600
         fits = [
             n for n, h in projection.items() if h <= BUDGET_HOURS and audit["ladder"][n]["passes"]
         ]
         decision = {
             "rule": "the whole population if it projects to 8 hours or less, otherwise its first "
-            "128 members in R1's order if that does, otherwise C does not run",
+            "128 members in R1's order if that does, otherwise C does not run; the projection "
+            "weighs the sample's seconds per prompt token by every window's tokens, and the run "
+            "stops at 8 hours",
             "seconds_per_window": per_window,
+            "seconds_per_prompt_token": per_token,
+            "prompt_tokens": tokens,
             "projected_hours": projection,
+            "projected_hours_by_mean_window_superseded": by_window,
             "population": fits[0] if fits else None,
             "run": bool(fits),
         }
@@ -159,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
     rows, windows = prompts_for(populations, cap, question, text)
     prompts_path, outputs_path = run_path / "prompts.jsonl", run_path / "outputs.jsonl"
     prompts_sha = write_jsonl(prompts_path, rows)
-    run_worker(prompts_path, outputs_path)
+    run_worker(prompts_path, outputs_path, timeout=BUDGET_HOURS * 3600)
     outputs = {
         r["id"]: r for r in map(json.loads, outputs_path.read_text(encoding="utf-8").splitlines())
     }

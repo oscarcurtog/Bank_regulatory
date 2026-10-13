@@ -1,0 +1,92 @@
+{
+ "sample": [
+  "N004-en-1#w000",
+  "N009-en-2#w000",
+  "N012-es-1#w000",
+  "N016-en-1#w000",
+  "N019-en-2#w000",
+  "N022-es-1#w000",
+  "N026-en-1#w000",
+  "N029-en-2#w000",
+  "N032-es-1#w000"
+ ],
+ "prompt_tokens": [
+  1828,
+  2996,
+  3307,
+  2346,
+  2196,
+  3221,
+  1602,
+  2251,
+  3190
+ ],
+ "new_tokens": [
+  64,
+  61,
+  68,
+  71,
+  61,
+  63,
+  52,
+  61,
+  62
+ ],
+ "seconds": [
+  17.06572412501555,
+  25.764390458003618,
+  29.338505166990217,
+  22.596925290999934,
+  21.5609807499859,
+  33.4017098750046,
+  16.94094391600811,
+  23.05149483398418,
+  31.836308958998416
+ ],
+ "lines_parsed": [
+  8,
+  8,
+  8,
+  8,
+  8,
+  8,
+  7,
+  8,
+  7
+ ],
+ "versions": {
+  "mlx": "0.32.3",
+  "mlx_lm": "0.32.0",
+  "python": "3.12.14",
+  "machine": "arm64",
+  "model_id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+  "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+  "max_new_tokens": 160,
+  "decoding": "greedy"
+ },
+ "decision": {
+  "rule": "the whole population if it projects to 8 hours or less, otherwise its first 128 members in R1's order if that does, otherwise C does not run; the projection weighs the sample's seconds per prompt token by every window's tokens, and the run stops at 8 hours",
+  "seconds_per_window": 24.61744259722117,
+  "seconds_per_prompt_token": 0.009659370596633845,
+  "prompt_tokens": {
+   "all": {
+    "windows": 1948,
+    "mean": 1832.5965092402464
+   },
+   "first 128 in R1's order": {
+    "windows": 1356,
+    "mean": 1913.533185840708
+   }
+  },
+  "projected_hours": {
+   "all": 9.578602159494991,
+   "first 128 in R1's order": 6.962128198607296
+  },
+  "projected_hours_by_mean_window_superseded": {
+   "all": 13.320771716496346,
+   "first 128 in R1's order": 9.272570044953309
+  },
+  "population": "first 128 in R1's order",
+  "run": true
+ }
+}

@@ -200,6 +200,15 @@ The whole population runs if it projects to 8 hours or less; otherwise the first
 each query in R1's order, if that projects to 8 hours or less (its oracle: Recall@10 0.948,
 full-evidence 0.914, the gate passes); otherwise C does not run.
 
+**Projection, amended before C ran** (no label and no result read): the sample is each tenth
+query's first window, which holds E5's top chunks and is longer than the average window (2,549
+prompt tokens against 1,914 for the windows of the 128-member population). Multiplying the
+sample's mean seconds per window by the number of windows overstated the time (13.3 and 9.3
+hours). The projection now weighs the sample's seconds per prompt token (0.0097) by every
+window's tokens: 9.6 hours for the whole population, 7.0 hours for its first 128 members. The
+rule and the budget are unchanged, and a hard stop ends the generation at 8 hours (C would then
+be reported as incomplete). Decision: the first 128 members of each query, 1,356 windows.
+
 **Success**: useful when Recall@10 >= 0.85, `multi_provision` >= 0.60, dependent evidence >= 0.45
 and full-evidence >= 0.75; strong when Recall@10 >= 0.90 and nDCG@10 >= 0.65. Always against E5.
 
