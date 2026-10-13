@@ -371,6 +371,20 @@ def evaluate(
     """A run of one system on one chunk layer, against the benchmark: the standard
     metrics from ir_metrics, Recall@T from here, then the aggregation. Every query
     of every evaluable need is scored; one absent from the run scores 0."""
+    scores, missing = score_queries(benchmark, layer, run, recall_cutoffs, budgets)
+    return aggregate(scores, [s.query.query_id for s in scores], missing)
+
+
+def score_queries(
+    benchmark: bm.Benchmark,
+    layer: ChunkLayer,
+    run: Run,
+    recall_cutoffs: Sequence[int] = ir_metrics.DEFAULT_RECALL_CUTOFFS,
+    budgets: Sequence[int] = TOKEN_BUDGETS,
+) -> tuple[list[QueryScores], list[str]]:
+    """The scores of every query of every evaluable need, before any aggregation, and
+    the queries absent from the run (scored 0). evaluate() aggregates exactly these;
+    a report by query style or by need reads them directly."""
     evaluable = [(t, q) for t in targets(benchmark, layer) for q in t.queries]
     expected = [q.query_id for _, q in evaluable]
     check_run(run, layer, expected)
@@ -387,4 +401,4 @@ def evaluate(
             )
             values[f"Recall@T={budget}"] = recall.value
         scores.append(QueryScores(query, target.need.answerability, values))
-    return aggregate(scores, expected, (q for q in expected if q not in run.rankings))
+    return scores, [q for q in expected if q not in run.rankings]

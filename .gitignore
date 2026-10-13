@@ -26,6 +26,11 @@ data/t2_nodes.json
 # scripts/run_t2.py, with corpus text inside. Its profile, data/t2_chunk_profile.json,
 # IS versioned.
 data/chunks/
+# Embeddings and runs of the dense baseline: derived from the chunk layer, the queries
+# and an embedding model (ingest/embeddings.py), regenerable, and several MB each. Their
+# meta.json says what produced them. The summary of a run IS versioned, in data/results/.
+data/embeddings/
+data/runs/
 # Later versions of the acts, downloaded only to compare against the parsed snapshot
 # (scripts/build_psd2_exclusions.py). Never parsed or indexed, and never in the
 # ingestion manifest; their SHA-256 is recorded in the derived list.

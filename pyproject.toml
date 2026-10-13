@@ -16,10 +16,13 @@ requires-python = ">=3.12"
 # The parsing logic itself still uses only the standard library (xml.etree, re).
 # The T2 measurement scripts need tiktoken and tokenizers (D-005, M-005, M-006),
 # and the chunker counts its budget with tiktoken.
+# numpy holds the embedding vectors and runs the exact search of the dense baseline
+# (ingest/embeddings.py); tokenizers also counts the embedding model's tokens there.
 dependencies = [
     "pydantic>=2.13,<3",
     "tiktoken>=0.14,<0.15",
     "tokenizers>=0.22,<0.23",
+    "numpy>=2.5,<3",
 ]
 
 # Development dependencies, not production ones. They are installed with
@@ -33,6 +36,15 @@ dev = [
     # only. Its backend, pytrec-eval-terrier, publishes no Linux ARM64 wheel, so the
     # evaluator runs in the venv and in CI, not in the Docker images.
     "ir-measures>=0.4.3,<0.5",
+]
+# The model side of the dense baseline (ingest/encoder.py): the transformer that turns
+# token ids into vectors. Locked apart in requirements-embed.lock.txt and installed only
+# where documents are embedded: not in CI, not in the Docker images. The tests that
+# need it run where it is installed and are skipped only where the environment says
+# so (FUNDAMENTO_EMBEDDING_MODEL=unsupported).
+embed = [
+    "torch>=2.14,<3",
+    "transformers>=5.15,<6",
 ]
 
 [build-system]
@@ -138,4 +150,11 @@ disallow_incomplete_defs = false
 # a global ignore_missing_imports: tiktoken and pydantic do publish types.
 [[tool.mypy.overrides]]
 module = ["tokenizers.*"]
+ignore_missing_imports = true
+
+# torch and transformers are the optional "embed" extra, absent from CI and the images.
+# Where they are installed they are checked with their own types; where they are not,
+# only ingest/encoder.py imports them.
+[[tool.mypy.overrides]]
+module = ["torch.*", "transformers.*"]
 ignore_missing_imports = true

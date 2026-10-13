@@ -1,0 +1,19 @@
+{
+  "schema_version": "1",
+  "name": "multilingual-e5-large",
+  "model_id": "intfloat/multilingual-e5-large",
+  "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+  "tokenizer_file": "tokenizer.json",
+  "dimension": 1024,
+  "max_input_tokens": 512,
+  "query_prefix": "query: ",
+  "document_prefix": "passage: ",
+  "pooling": "mean",
+  "normalize": true,
+  "similarity": "dot",
+  "document_truncation": "explicit_tail",
+  "query_truncation": "refuse",
+  "batch_size": 16,
+  "device": "cpu",
+  "dtype": "float32"
+}

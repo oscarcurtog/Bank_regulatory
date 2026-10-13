@@ -72,7 +72,8 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
 ## Repository layout
 
 ```
-ingest/              library: download, parser, processed and chunk layers, benchmark
+ingest/              library: download, parser, processed and chunk layers, benchmark, embeddings
+config/embeddings/   the contract of each embedding model, and the model comparison policy
 scripts/             pipeline and measurement entry points
 tests/unit/          isolated tests, no files involved
 tests/integration/   tests on real EUR-Lex excerpts (tests/fixtures/, see PROVENANCE.md)
