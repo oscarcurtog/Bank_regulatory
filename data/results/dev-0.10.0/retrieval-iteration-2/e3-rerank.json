@@ -1,0 +1,131 @@
+{
+ "experiment": "E3",
+ "benchmark_version": "0.10.0",
+ "candidates": "acdr-e5-bridge3",
+ "e5_run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+ "reranker": {
+  "schema_version": "1",
+  "name": "bge-reranker-v2-m3",
+  "model_id": "BAAI/bge-reranker-v2-m3",
+  "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+  "tokenizer_file": "tokenizer.json",
+  "max_input_tokens": 8192,
+  "pair_truncation": "explicit_passage_tail",
+  "score": "logit",
+  "batch_size": 8,
+  "device": "cpu",
+  "dtype": "float32"
+ },
+ "pairs_scored": 4669,
+ "configurations": {
+  "rerank-acdr-e5-bridge3-orig": {
+   "rule": "orig",
+   "columns": {
+    "Recall@10": 0.761522633744856,
+    "nDCG@10": 0.5272691299604563,
+    "multi_provision": 0.45462962962962966,
+    "dependent": 0.27878787878787875
+   },
+   "recall20": 0.8129629629629629,
+   "mrr10": 0.7114687438761513,
+   "recall_t": {
+    "Recall@T=1000": 0.6808123974790641,
+    "Recall@T=2000": 0.7503597225819448
+   },
+   "cross_reference": 0.6419191919191919,
+   "cross_act": 0.20833333333333331,
+   "by_language": {
+    "Recall@10": {
+     "en": 0.7641975308641975,
+     "es": 0.7561728395061729
+    },
+    "nDCG@10": {
+     "en": 0.5447743326544585,
+     "es": 0.49225872457245207
+    }
+   },
+   "paired_against_e5": {
+    "Recall@10": {
+     "mean": -0.0016460905349794232,
+     "ci95_low": -0.030864197530864196,
+     "ci95_high": 0.03312757201646091,
+     "better": 3,
+     "equal": 73,
+     "worse": 5
+    },
+    "nDCG@10": {
+     "mean": -0.0002329047819906785,
+     "ci95_low": -0.037235080815191966,
+     "ci95_high": 0.041841947013529654,
+     "better": 41,
+     "equal": 8,
+     "worse": 32
+    }
+   },
+   "material": {
+    "A: Recall@10 +0.05": false,
+    "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+    "C: multi_provision Recall@10 +0.10": false,
+    "D: dependent evidence Recall@10 +0.10": false
+   }
+  },
+  "rerank-acdr-e5-bridge3-bridgemax": {
+   "rule": "bridgemax",
+   "columns": {
+    "Recall@10": 0.6290123456790124,
+    "nDCG@10": 0.25045854151509306,
+    "multi_provision": 0.5064814814814814,
+    "dependent": 0.21313131313131314
+   },
+   "recall20": 0.820164609053498,
+   "mrr10": 0.17971781305114637,
+   "recall_t": {
+    "Recall@T=1000": 0.4576210826210826,
+    "Recall@T=2000": 0.732664249330916
+   },
+   "cross_reference": 0.4984848484848485,
+   "cross_act": 0.4583333333333333,
+   "by_language": {
+    "Recall@10": {
+     "en": 0.6518518518518519,
+     "es": 0.5833333333333334
+    },
+    "nDCG@10": {
+     "en": 0.2707988804291694,
+     "es": 0.20977786368694054
+    }
+   },
+   "paired_against_e5": {
+    "Recall@10": {
+     "mean": -0.13415637860082305,
+     "ci95_low": -0.23189300411522637,
+     "ci95_high": -0.03950617283950617,
+     "better": 7,
+     "equal": 53,
+     "worse": 21
+    },
+    "nDCG@10": {
+     "mean": -0.27704349322735394,
+     "ci95_low": -0.3537013695365308,
+     "ci95_high": -0.20075452407477126,
+     "better": 12,
+     "equal": 2,
+     "worse": 67
+    }
+   },
+   "material": {
+    "A: Recall@10 +0.05": false,
+    "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+    "C: multi_provision Recall@10 +0.10": false,
+    "D: dependent evidence Recall@10 +0.10": false
+   }
+  }
+ },
+ "decision": {
+  "selected": "rerank-acdr-e5-bridge3-orig",
+  "passed": [],
+  "kept": false,
+  "stop_A_strong": false,
+  "stop_B_useful": false
+ }
+}

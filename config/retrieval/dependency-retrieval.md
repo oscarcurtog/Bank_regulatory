@@ -112,3 +112,19 @@ question and against the bridge that produced it puts the dependent evidence int
   or as the definition of the bridge's term).
 - Grid, 2 configurations: the original query only, and the maximum rule above. Selection and
   keep rule as E2.
+
+## E4: a fixed quota of the top 10 for the best dependency candidates
+
+Written after E2 and E3 failed and before E4 ran. E3 showed that one relevance scale does not
+order the dependency candidates against the anchors: with the original query the cross-encoder
+matches E5 (Recall@10 0.762), and with the bridge maximum the definitions of the bridges' terms
+take over the top 10 (Recall@10 0.629).
+
+**Hypothesis.** The dependent evidence that R1 gathers reaches the top 10 if it does not compete
+on the anchors' scale: a small fixed number of top-10 positions go to the best dependency
+candidates, the rest stays E5's.
+
+- Ranking: E5's top 10 - s in its order; then the first s chunks of R1's selected candidate list
+  after its position 20 (the pool's best by R1's probe score: the highest E5 cosine against the
+  original query or one of its bridges); then E5's ranks 11 - s to 20; then the rest of R1's list.
+- Grid: s in {2, 3}. Selection and keep rule as E2; the stop rules A and B are checked.
