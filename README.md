@@ -12,10 +12,11 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
 - **Goal:** a RAG system that answers with verifiable citations to the exact article.
 - **Implemented today:** ingestion and source handling, legal hierarchy parsing, structural
   chunking, a retrieval benchmark (contracts, validation, node-to-chunk projection, metrics and
-  a DEV set of 30 judged questions), Pydantic data contracts, stale-layer detection, measurement
-  tooling, tests, Docker and CI.
-- **Not implemented yet:** embeddings, retrieval, generation, citation verification, API and
-  deployment.
+  a DEV set of 30 judged questions), a dense retrieval baseline with exact search (one embedding
+  model, explicit truncation, stale-embedding detection), Pydantic data contracts, stale-layer
+  detection, measurement tooling, tests, Docker and CI.
+- **Not implemented yet:** a vector index, hybrid search and reranking, generation, citation
+  verification, API and deployment.
 
 ### Roadmap
 
@@ -23,7 +24,8 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
 - **Chunking:** implemented (structural, v1)
 - **Retrieval benchmark:** implemented; DEV holds 30 judged questions, reviewed and sealed under
   protocol v1.4
-- **Indexing and retrieval:** next
+- **Indexing and retrieval:** dense baseline with exact search implemented
+  (`multilingual-e5-large`); the comparison of embedding models is next
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -63,7 +65,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 601 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 637 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -93,7 +95,13 @@ uv venv --python 3.12.14
 uv pip install --require-hashes --no-deps -r requirements-dev.lock.txt
 ```
 
-`requirements-dev.lock.txt` pins every package, with hashes, to the versions CI installs.
+`requirements-dev.lock.txt` pins every package, with hashes, to the versions CI installs. The
+dense retrieval baseline also needs the optional `embed` extra (torch and transformers), which
+CI and the images do not install:
+
+```bash
+uv pip install --require-hashes --no-deps -r requirements-embed.lock.txt
+```
 
 ```bash
 .venv/bin/python -m pytest -rs
@@ -102,9 +110,12 @@ uv pip install --require-hashes --no-deps -r requirements-dev.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest reports `562 passed, 38 skipped`. The 38 skipped tests are marked
-`corpus`: they need `data/raw/`, which is not in the repository (see
-[Data and reproducibility](#data-and-reproducibility)).
+Without the corpus, pytest skips the 38 tests marked `corpus`: they need `data/raw/`, which is
+not in the repository (see [Data and reproducibility](#data-and-reproducibility)). The 6 tests
+marked `embedding_model` need the `embed` extra and the model weights (2.2 GB, downloaded once into
+`.cache/huggingface`); without them they fail, unless the environment declares
+`FUNDAMENTO_EMBEDDING_MODEL=unsupported`, as CI does. With that declaration and without the
+corpus, pytest reports `593 passed, 44 skipped`.
 
 ## Docker
 
@@ -131,7 +142,9 @@ docker run --rm -v "$PWD/data:/app/data" -v "$PWD/.cache/tiktoken:/app/.cache/ti
 The test image does not install the benchmark evaluator (`ir_measures`): its backend,
 `pytrec-eval-terrier`, publishes no Linux ARM64 wheel. The image declares
 `FUNDAMENTO_EVALUATOR=unsupported`, which is the only thing that skips the 17 tests marked
-`evaluator`, and pytest prints the reason. Those tests run in the project venv and in CI.
+`evaluator`, and pytest prints the reason. Those tests run in the project venv and in CI. In the
+same way, neither image installs torch or the embedding model, and the test image declares
+`FUNDAMENTO_EMBEDDING_MODEL=unsupported` for the 6 tests marked `embedding_model`.
 
 ## Continuous integration
 
@@ -243,12 +256,34 @@ It led to v1.4: answerability is judged against the legal snapshot that the mani
 and `cross_reference` has a definition. The review also applied the necessity test to every
 definition graded 2 again, and DEV was sealed at 0.10.0.
 
+### Dense retrieval baseline
+
+```bash
+PYTHONPATH=. .venv/bin/python scripts/embed_baseline.py --expect-version 0.10.0
+PYTHONPATH=. .venv/bin/python scripts/report_embedding_run.py \
+    data/results/dev-0.10.0/multilingual-e5-large-layer-500/summary.json
+```
+
+The contract of each embedding model is a versioned file in
+[`config/embeddings/`](config/embeddings/README.md), with the source of every value and the model
+comparison policy: one fixed chunk layer, a tokenizer check per model, and explicit, recorded
+truncation of a chunk that exceeds the model's input limit. `ingest/embeddings.py` counts every
+input whole before encoding, cuts only documents and only at the tail, refuses to cut a query, and
+ranks exactly (one dot product per query and chunk; with L2-normalized vectors that is the cosine).
+`ingest/encoder.py` runs the model on token ids, never on text, so it cannot truncate by itself.
+
+The embeddings (`data/embeddings/`) and the full run (`data/runs/`) are derived and not versioned.
+Their `meta.json` records the contract hash, the model revision and the chunk layer or queries they
+came from, and a set made from anything else is refused as stale. The summary and the report of
+each run are versioned in `data/results/`.
+
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
 - CI skips the 38 `corpus` tests, so the full corpus is only validated where it is present.
-- The DEV benchmark holds 30 judged questions in two batches, and there is
-  no retriever yet, so no retrieval metric has been measured. The benchmark evaluator is not in
+- The DEV benchmark holds 30 judged questions in two batches, and one retriever has been measured
+  on it: a dense baseline with one embedding model and exact search. No other model, index,
+  hybrid search or reranker has been measured yet. The benchmark evaluator is not in
   the Docker images (no Linux ARM64 wheel for its backend).
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
