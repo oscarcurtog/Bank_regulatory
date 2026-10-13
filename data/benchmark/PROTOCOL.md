@@ -1,4 +1,4 @@
-# Retrieval benchmark protocol, v1.3
+# Retrieval benchmark protocol, v1.4
 
 How one information need goes from an idea to the DEV benchmark (`data/benchmark/dev/`).
 Decisions D-019 to D-023 govern it; `ingest/benchmark.py` enforces what can be checked by code.
@@ -15,6 +15,7 @@ ambiguous, never turned silently into ground truth.
 | v1.1 | 2026-10-12 | From the calibration of batch 1: one primary retrieval problem per need (section 9); grades 3 and 2 decided by the question, with a worked example (section 2); a hard negative must be wrong whatever the need leaves open (section 2); the area of the act and numeric or date answers in the coverage grid (section 10); the person's review checks the method, not the law (section 11). No data schema changed. |
 | v1.2 | 2026-10-12 | From the review of batch 1 against v1.1: a definition is graded by necessity, not by mapping; a reference to whole articles marks where to look, not what is relevant; a grade 0 needs a scope check and must be definitely wrong on the stated facts (all three in section 2); every disagreement between judges A and B goes to an independent judge C, recorded in `adjudications.jsonl` (section 12); a replacement keeps its id only when it narrows the same need (section 5). No data schema changed: the adjudication record is a new file, outside the seal. |
 | v1.3 | 2026-10-12 | From the methodological review of batch 1: a grade 3 needs applicability established by the facts the need states; a node that would answer, or holds a condition that changes the answer, but applies only under a fact the need does not state that could reasonably hold, is a 2; ambiguity is for an interpretation, never for a missing fact (sections 2 and 4); a later protocol version escalates an agreed label to judge C when it changes the rule the label rests on (section 12); the drivers are defined (section 13). No data schema changed. |
+| v1.4 | 2026-10-13 | From the methodological review of the 30 DEV needs: answerability is judged against the legal snapshot that the manifest declares, so a norm made after it opens no gap (section 3); `cross_reference` is defined as a real retrieval hop between two relevant provisions (section 13). No data schema changed. |
 
 The data files do not record the protocol version: each batch states it in `dev/CALIBRATION.md`.
 
@@ -26,6 +27,14 @@ answerability, the adjudication by judges A, B and C, the parameters and the cov
 unchanged. It comes before the next 20 needs because both gaps showed up in batch 1, and every
 new need would have repeated them: each batch judged under a looser rule is one more batch to
 review again.
+
+v1.4 changes two things and nothing else. It fixes the reference point of answerability: the
+texts that the manifest declares, not the law as it stands on the day a need is read. And it
+defines the `cross_reference` driver, which v1.3 described by examples; the reading applied since
+batch 1 is now the written one. The grades, the definitions rule, the scope check, the
+adjudication, the parameters, the coverage grid and the other drivers are unchanged. It comes
+before the embedding evaluation because a benchmark whose gaps move whenever a new norm appears
+cannot be frozen, and a driver without a definition cannot be audited.
 
 ## 1. Workflow
 
@@ -159,6 +168,27 @@ A locked need is never rewritten to manufacture a hard negative.
 - **none**: no node gives evidence of grade >= 2. The candidates examined are still graded 0
   or 1, as the record of the search. It never enters Recall, MRR or nDCG; it is kept for
   abstention.
+
+### Legal snapshot
+
+Answerability is judged against the legal texts that the manifest declares: the `source_celex` and
+`source_sha256` of each act under `corpus` in `manifest.json`. They are the legal snapshot of the
+benchmark. A need is read as asking what those texts say, unless its statement asks for another
+legal framework in so many words: "under the law in force today", "as amended", or a date after
+the snapshot of the act concerned. A time word that describes the facts of the case ("as it
+stands today" about a firm's licence) does not ask for another framework.
+
+- A norm made or amended after the snapshot, in the corpus acts or outside them, opens no gap by
+  itself. It is not a missing element, it does not make a need `partial`, and `gap_note` does not
+  name it.
+- A gap exists when an element that the need asks for, as the law stood at the snapshot, is not
+  in the declared texts: it lives in a Level 2 act that a node mandates, in an annex, in another
+  act or in national law. A Level 2 act that a declared node mandates counts even if it was
+  adopted after the snapshot, because the mandate is part of the declared text.
+- If the manifest or the documentation says that the corpus represents a later period, the need
+  is judged against that period.
+- The list of PSD2 articles amended after the snapshot (section 5) is a separate guard and does
+  not change: it keeps qrels away from text that is no longer the text in force.
 
 ## 4. Ambiguity
 
@@ -369,5 +399,5 @@ missing (`numeric`, `date`, `level2_gap`) can apply to it, through its `gap_note
 | `numeric` | The answer is a figure or turns on one: an amount, a percentage, a period, a frequency or a count. A relevant node states it or, in a `partial` or `none` need, the `gap_note` names it as what the corpus lacks. |
 | `date` | The same for a calendar date: a date of application or of entry into force, or a deadline fixed as a date. |
 | `lexical_twin` | The corpus holds a twin of a relevant node, as step 3 and section 2 define it: identical own text, the same article title, or the parallel regime. A parallel regime is the same duty or right laid down for another actor, instrument, service or act: it would hold the answer if the need were about that one, and nothing else in the question changed. A purely lexical retriever can take the twin for the relevant node. Sharing words, a topic or a figure is not enough: a node that sets a different duty with similar words, or that the facts of the need rule out, is a distractor, not a twin. The twin is examined and graded, usually 0. |
-| `cross_reference` | The relevant evidence is linked by an explicit reference: a relevant node names another provision ("Article 59", "paragraph 3", "the time limits laid down in Article 77"), and the answer needs that provision, which is graded 2 or 3 too. A reference whose target is only context (graded 1, or unjudged) marks where to look and does not make the driver hold (section 2, references to whole articles); neither does the lead-in of a list. |
+| `cross_reference` | A relevant node (grade 2 or 3) contains an explicit legal reference to another provision, which may be another paragraph or article of the same act or another act ("Article 59", "paragraph 3", "the time limits laid down in Article 77", "Article 22 of Directive (EU) 2015/2366"), and following the reference leads to evidence that is also relevant: at least one node of the provision it names is graded 2 or 3. The driver stands for a real retrieval hop: the node that holds the reference and the node it leads to are both needed by the answer. It does not hold for a back-reference inside the same paragraph ("the first subparagraph"), for the lead-in of a list, for a reference whose target is only context (graded 1, or unjudged; section 2, references to whole articles), or for a reference that the answer does not need. |
 | `level2_gap` | An element of the answer is fixed in a Level 2 act outside the corpus (regulatory or implementing technical standards, guidelines) that a relevant node mandates, and the `gap_note` names it. A gap in national law or in another Level 1 act is not a Level 2 gap. |
