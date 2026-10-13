@@ -762,3 +762,232 @@ No need is too broad (case B). The cases are left for decision.
   `level2_gap` appear once each; PSD2 security and authentication has no need of its own, since
   three of its five articles are excluded.
 
+## Review of the 30 needs, protocol v1.4 (2026-10-13)
+
+DEV was sealed at 0.10.0 after this review (0.9.0 before it). The protocol is v1.4 (commit `e8a1181`, CI run 18, green), the parser
+stays at 1.4.0, and batch 1 (N004 to N015) is frozen: no line of it changed. No retrieval result exists, so no label below
+depends on one. Where this section differs from sections 6, 7, 9 and 10 of batch 2, this section holds.
+
+### 1. What was reviewed, and how
+
+The review answered what the batch 2 record left for the methodological review (the 12 definitions graded 2, N022's Recall@5
+ceiling, N030's partial, the reading of `cross_reference`), and added an audit of the two multi-act needs and a sample of five
+other needs.
+
+- **Positions first.** The reviewer's positions on the 12 definitions, on the 11 relevant nodes of N022 and on the two
+  multi-act needs were written down at 09:43 UTC (SHA-256 `bda2dfe3…`), before any other reviewer started. No packet carries a
+  chunk or a recall figure, and the ceilings were computed after the packets were fixed.
+- **Blind reviewers.** 14 fresh contexts, started at 09:44 UTC. Nine applied the definitions test to the definitions of one
+  need each (the need, the provisions that its answer rests on, the rules; no grade and no earlier rationale). One graded again
+  the 23 candidates of N022 as a judge B would. Four answered a need from a subset of its relevant provisions (section 6).
+- **Judge C.** Eight fresh contexts decided the nine labels that the reviewer or a blind reviewer put in doubt, with the two
+  positions as "Rationale A" and "Rationale B" in random order (seeds 20261019, 20261020 and 20261021) and the rules in force.
+  A label that nobody doubted was not sent. Every change below was decided by a judge C, never by the reviewer.
+- **Isolation.** All 22 transcripts show one `Read` of the context's own packet and the hand-back, nothing else.
+
+### 2. The 12 definitions graded 2
+
+The test is the one of section 2: without this definition, could the need reasonably be answered wrongly or incompletely? An
+obvious mapping from everyday words to the legal term is not a 2 by default. Six stay at 2 and six drop to 1.
+
+| Need | Node | Term | Reviewer | Blind | Judge C | Final | Why |
+|---|---|---|---|---|---|---|---|
+| N021 | MiCA 3(1)(6) | asset-referenced token | 1 | 1 | 1 | 1, changed | The need says "not a stablecoin": it negates the whole family, so the mapping to "other than an asset-referenced token" is obvious and the wrong answer would need a stated fact to be ignored. |
+| N022 | MiCA 3(1)(6) | asset-referenced token | 2 | 2 | none | 2 | A basket of currencies and gold: asset-referenced or e-money token, whose redemption rules differ (Article 39 against Article 49). |
+| N022 | MiCA 3(1)(7) | e-money token | 2 | 2 | none | 2 | "One official currency" is the line that rules the twin regime out. |
+| N023 | MiCA 3(1)(7) | e-money token | 2 | 2 | none | 2 | "Pegged one-to-one to the euro" does not say whether the token falls under Article 48 or under the authorisation of Article 16: different conditions. |
+| N025 | MiCA 3(1)(6) | asset-referenced token | 1 | 1 | 1 | 1, changed | Same as N021: "not a stablecoin" already places the coin outside the carve-out of 103(1)(a). |
+| N025 | MiCA 3(1)(7) | e-money token | 1 | 1 | 1 | 1, changed | Same. |
+| N026 | MiCA 3(1)(36) | qualifying holding | 2 | 2 | none | 2 | The duty of 83(1) is triggered by a qualifying holding; the 10% and the significant-influence criterion decide that the stated 25% is one. |
+| N028 | PSD2 4(22) | money remittance | 1 | 2 | 1 | 1, changed | The need names the service and restates its criterion; Article 7(a) is tied to point (6) of Annex I, which the definition does not mention and the corpus lacks, so the definition does not decide the tier. |
+| N029 | PSD2 4(21) | framework contract | 1 | 2 | 1 | 1, changed | Open current accounts under existing contracts are evidently contracts for successive payments; Article 54 is headed "framework contract" and no other rule on changes competes. |
+| N031 | PSD2 4(30) | strong customer authentication | 2 | 1 | 1 | 1, changed | "Never asked for an extra verification step" is the everyday description of the trigger of 74(2); with no extra step at all, the "two or more elements" test cannot change the answer. |
+| N035 | DORA 3(37) | account information service provider | 2 | 2 | none | 2 | DORA fixes its category by reference to PSD2 33(1), the registered provider, which is the fact the founders' assumption turns on. |
+| N035 | PSD2 4(16) | account information service | 2 | 1 | 2 | 2 | The need never names the activity; this is the only text that says what the service is (Annex I is not in the corpus), and it puts a firm that never holds money inside the category. |
+
+"Reviewer" is the position written before the blind reviewers started, "Blind" is the blind reviewer of that need, and "none"
+means that the reviewer and the blind reviewer agreed with the grade in force, so no judge C was needed.
+
+- The reviewer's position matched the final label in 11 of 12 cases (N031 is the exception), the blind reviewer's in 9 (N028,
+  N029 and N035 4(16) are the exceptions). Seven definitions went to judge C: it chose grade 1 for six and kept grade 2 for
+  N035 4(16).
+- The six that dropped share one pattern: the need already carries the category, in its own words or by negation, and the
+  definition confirms it. The six that stay separate categories with different rules (N022, N023), apply a numeric threshold
+  (N026) or classify an activity that the need never names (N035).
+- In batch 2, judges A and B agreed on grade 2 for 11 of these 12 definitions, and five of those agreements (N025 twice, N028,
+  N029, N031) did not survive the necessity test. That is why `validate` lists every definition graded 2 or 3 for review.
+
+### 3. N022 and the Recall@5 ceiling
+
+N022 asks one question (the independent regrade of its 23 candidates confirms it): is the holder of a token tied to a basket of
+currencies and gold entitled to have the issuer redeem it at any time. Each of its 11 relevant nodes was put to the question "is it
+needed to answer that one question correctly and completely?". Ten are, and one is not.
+
+| Node | Kind | Needed for the one question? | Final |
+|---|---|---|---|
+| 39(1) | the right at all times | yes | 3 |
+| 39(2), first subparagraph | how the issuer pays out | yes | 3 |
+| 39(2)(a) | thresholds, periods and timeframes to exercise the right | yes: it qualifies "at any time she chooses" | 2 |
+| 39(2), second subparagraph | form of the pay-out when the issuer took fiat | no: it fixes the currency of the pay-out, not whether or when she can redeem, and does not change the yes or no | 1, changed |
+| 3(1)(6) and 3(1)(7) | definitions | yes: asset-referenced token against e-money token | 2 and 2 |
+| 46(1), third subparagraph | lead-in of the recovery options | yes: it turns points (b) and (c) into options of the plan | 2 |
+| 46(1)(b) and (c) | daily limit, suspension of redemptions | yes: exceptions to "at any time" | 2 and 2 |
+| 46(3) | when the measures can be required | yes: condition of the exceptions | 2 |
+| 46(4) | the authority's power to suspend | yes: exception, and it refers to paragraph 3 | 2 |
+
+The one change comes from the blind regrade and from a fresh judge C under the necessity test, not from a metric. After it, N022
+has 10 relevant nodes in 6 chunks of 500 tokens and 8 of 300 (before: 11, 6 and 9). The best Recall@5 is 0.83 at 500 and 0.625 at
+300 (before: 0.83 and 0.56).
+
+**Cause: D, a legitimate atomic need (A) plus the chunker (C).** One question needs the right (Article 39), its limits (Article 46)
+and the classification of the token (Article 3): three places. The structural chunker keeps each definition and each paragraph of
+Article 46 in a chunk of its own, and paragraph 2 lies between paragraphs 1 and 3 (the three that matter hold 179, 141 and 64
+tokens). It is not B: the
+regrade confirms nine of the ten and judge C decided the eleventh. The 6 relevant chunks of 500 tokens hold 960 tokens.
+
+Recommendation, with the weights left to the owner of the benchmark:
+
+- Keep N022. It is a legitimate need, and it tells chunkers apart: one that packed adjacent paragraphs would lift its ceiling.
+- Recall@5 of N022 is capped in the same way for every system on the same layer, so comparing models within a layer stays valid;
+  report the ceiling next to the value, or the value over the ceiling, and never compare Recall@5 across layers.
+- On all 27 evaluable needs, Recall@10, Recall@20 and Recall@T at 1000 and 2000 tokens have a ceiling of 1.00 with a perfect
+  ranking: the relevant chunks of every need fit in 1000 tokens. Only Recall@5 is capped (N022 at both layers, N024 and N034 at
+  300). D-020 already says that Recall@K does not compare layers and Recall@T does. The comparison of chunkings and of models can
+  rest on Recall@T and on Recall@10 with nDCG@10, with Recall@5 as a stricter secondary reading.
+
+### 4. The legal snapshot and N030
+
+The rule: answerability is judged against the texts that the manifest declares, and a norm made after them opens no gap unless the
+statement asks for another framework in so many words or the documentation says that the corpus represents a later period.
+It was checked against four things before it was adopted.
+
+| Check | What the record says | Result |
+|---|---|---|
+| Design of the corpus | One parsed version per act; the snapshot is identified by the SHA-256 of the raw bytes; several versions of the law are out of scope in v1 (D-001 to D-003, section 5). | Consistent. |
+| Versioning | The manifest declares `source_celex` and `source_sha256` per act, and a changed snapshot makes the seal fail. | Consistent: the labels belong to the sealed snapshot by construction. |
+| PSD2 exclusions | Nine articles amended after the snapshot, kept away from qrels so that no need rests on text that is no longer in force. | Compatible: it is a guard on evidence, not a rule on answerability, and v1.4 leaves it as it is. |
+| Other partial and none needs | N010, N015, N020, N028, N032, N033 and the fixture N003. | None rests on a norm made after its snapshot. Their gaps are an annex, another act that existed at the snapshot, national law, or a Level 2 act that a node mandates. N030 was the only one. |
+
+No statement of the 30 asks for a later framework: N023's "as it stands today" describes the firm's licence. The README lists the
+versions and the date on which the sources were downloaded, and says nowhere that the corpus represents the law in force today,
+so the clause about a later period is empty today.
+
+**N030: partial to complete.** Judge C, with the two original positions in random order and v1.4, found that the
+verification-of-payee duty comes from a norm made after the PSD2 snapshot and opens no gap, and that PSD2 88(2) and 88(3), both
+grade 3, answer the need. No independent reason keeps it partial. Its type changes from `partial_out_of_scope`, which the schema
+ties to partial or none, to `exception_confusion`: all its evidence lies in Article 88, so the planned `multi_provision` does not
+hold, and the retrieval problem is the general liability rule of Article 89 against the exception of Article 88(2). Its drivers
+(`negation`, `exception`) still hold. No other existing need changes.
+
+**A residual tension, not a contradiction.** The exclusion list exists because a need must not rest on text that is no longer in
+force, which shows that the project cares about the law in force at the level of evidence. The snapshot rule accepts that an answer
+complete at the snapshot can be incomplete today. N030 is the known case: for a euro credit transfer, a payer's bank can be liable
+under the verification-of-payee duty that Regulation (EU) 2024/886 added to Regulation (EU) No 260/2012, which the 2015 text of
+PSD2 does not contain. It is recorded here and nowhere in the data.
+
+### 5. `cross_reference`
+
+The v1.4 wording was checked on the final qrels of the 30 needs: by code, on the explicit references in the own text of every
+relevant node, resolved to the nodes of the provision they name and leaving out references inside the same paragraph; and by
+reading the references of the 20 needs without the driver. The 10 declared drivers hold (N009, N013, N017, N019, N022, N023, N024,
+N025, N034, N035). One was missing: **N020**, where 43(1) charges the fees "in accordance with the delegated act referred to in
+paragraph 2", and 43(2), graded 2, is that act's mandate. It was added (batch 2, driver only, no qrel changed). The references
+that do not count are of two kinds. A target graded 1 or unjudged: N006 2(1) to paragraphs 3 and 4; N011 68(7) to DORA 11 and 12;
+N015 50(3) to Article 52; N016 19(2) to paragraph 6; N018 31(8) to 31(1)(a); N026 83(1) to 84(4); N027 143(3) to Article 63; N029
+54(1) to Articles 51 and 52; N030 88(2) to Article 89 and 88(5) to Articles 45 and 52; N031 71(1) to Article 89. And a reference
+inside the paragraph, "the first subparagraph": N012 101(2), N027 143(3) and N030 88(3). No driver of batch 1 changes.
+
+### 6. N034 and N035: multi-act
+
+Both are **genuine multi-act**. Four blind contexts answered a need from a subset of its relevant provisions, and each was told to
+call a step ungrounded if it needed the text of a provision that was not shown.
+
+| Need | Provisions shown | Verdict | What is missing |
+|---|---|---|---|
+| N034 | the five DORA nodes (19(1), two of its subparagraphs, 46, 46(b)), no PSD2 | incomplete | PSD2 Article 22: nothing shown says that the authority designated under it is the one that grants the licence |
+| N035 | DORA 2(1), 2(1)(c), 3(37), no PSD2 | incomplete | PSD2 33(1), which 3(37) names: the step "this fintech is an account information service provider" has no text |
+| N035 | DORA 2(1), 2(1)(c) and PSD2 33(1), no definition | incomplete | what an account information service provider is |
+| N035 | DORA 2(1), 2(1)(c), 3(37) and PSD2 4(16), no 33(1) | incomplete | 33(1) |
+
+- **N034.** DORA 19(1) and 46(b) send the report to the authority designated under PSD2 Article 22, and only PSD2 22(1) says that
+  this is the authority responsible for authorising payment institutions, which settles "same or different". The evidence of
+  grade 2 or more is DORA 19(1) (3), 19(1) second and sixth subparagraphs, 46 and 46(b), and PSD2 22(1). It is one question; no
+  definition is involved.
+- **N035.** The evidence of grade 2 or more is DORA 2(1)(c) (3), 2(1) and 3(37), and PSD2 33(1) and 4(16). DORA defines its own
+  category by reference to PSD2, so the answer cannot be grounded in one act. The PSD2 side is not a definition alone: 33(1) is a
+  substantive article, and removing it leaves the answer incomplete. It is one question.
+- Removing DORA was not tested: the rules that both needs ask about, Articles 19 and 2, are DORA's.
+
+### 7. Sample of five other needs
+
+Drawn with a seeded rejection sample (seed 20261013, one draw) from the 9 needs of batch 2 that sections 2 to 6 did not audit, with the
+constraints: all three acts, at least one direct, one exception_confusion, one partial or none, one hard. Nothing about retrieval
+entered the choice. Reviewed: atomicity, naturalness of the queries, grades 3 and 2, hard negatives, answerability, drivers and
+the consistency of the rationales.
+
+| Need | Type, act | Result | Finding |
+|---|---|---|---|
+| N018 | exception_confusion, DORA | PASS | |
+| N019 | direct, DORA | FLAG, minor | 45(3), the duty to notify participation, is graded 2 (A: 1, B and C: 2) because a complete answer for a bank joining the group would include it; the need asks for the conditions of sharing, which 45(3) is not. Borderline, inside the range of judgment, not changed. |
+| N020 | partial, DORA | FLAG | `cross_reference` was missing (section 5). Fixed. |
+| N024 | multi_provision, hard, MiCA | PASS | 86(2) and 86(3) rest on unstated facts that could reasonably hold, as v1.3 requires. |
+| N032 | none, PSD2 | PASS | 62(4) names Regulation (EU) 2015/751 and is graded 1 as a reference to another act, as in N010. |
+
+No systemic pattern in the sample. The systemic result of this review is in section 2.
+
+### 8. Data changes
+
+| File | Change |
+|---|---|
+| `qrels.jsonl` | 8 lines. Seven grades 2 to 1: N021 3(1)(6), N022 39(2) second subparagraph, N025 3(1)(6) and 3(1)(7), N028 4(22), N029 4(21), N031 4(30). One rationale replaced with judge C's: N035 4(16), grade unchanged. |
+| `adjudications.jsonl` | 9 lines. The record keeps judges A and B and takes judge C's decision as the final label; `escalated` gives the reason and, where an earlier C had decided (N021 3(1)(6), N030 answerability), that earlier decision. 7 agreements escalated, 2 labels decided again. |
+| `needs.jsonl` | N030: answerability complete, no `gap_note`, type `exception_confusion`. N020: driver `cross_reference` added. |
+| `manifest.json` | 0.10.0. |
+
+N028 keeps its `gap_note`: its mention of the definition of money remittance as "in the corpus" is still true. The `validate` report
+now counts the escalated agreements apart from the labels decided again.
+
+### 9. The combined 30 needs after the review
+
+| | 0.9.0 | 0.10.0 |
+|---|---|---|
+| Acts (counted per act) | DORA 11, MiCA 11, PSD2 10 | unchanged |
+| Type | direct 11, multi_provision 6, exception_confusion 6, partial_out_of_scope 7 | direct 11, multi_provision 6, exception_confusion 7, partial_out_of_scope 6 |
+| Difficulty | easy 7, medium 15, hard 8 | unchanged |
+| Answerability | complete 23, partial 4, none 3 | complete 24, partial 3, none 3 |
+| qrels | 428: 90 / 216 / 86 / 36 of grade 0 / 1 / 2 / 3, 2 ambiguous | 428: 90 / 223 / 79 / 36, 2 ambiguous |
+| Definitions graded 2 | 12 | 6 |
+| Drivers | cross_reference 10 | cross_reference 11; the rest unchanged |
+| Evidence shape | single article 13, 2+ articles 12, none 3, two acts 2 | single article 16, 2+ articles 9, none 3, two acts 2 |
+| Relevant nodes of the 27 evaluable needs | 122 (median 3, max 13) | 115 (median 3, max 13) |
+| Relevant chunks, median and max | 500: 2 and 6; 300: 2 and 9 | 500: 1 and 6; 300: 2 and 8 |
+| Needs with more than 5 relevant chunks | N022 (6 and 9), N024 (7 at 300), N034 (6 at 300) | N022 (6 and 8), N024 (7 at 300), N034 (6 at 300) |
+
+The ceilings of N030, N034 and N035 and the multi-act status of the last two do not change; N022 changes as in section 3.
+
+### 10. Validation
+
+- `scripts/benchmark.py validate data/benchmark/dev` passes: the seal (schema 1, parser 1.4.0, the SHA-256 of the three source
+  documents, of the three data files and of `query_variants.v1`), the dataset rules, the corpus check and the adjudication record,
+  whose final labels are exactly the qrels and the needs' answerability.
+- `queries.jsonl` is byte-identical to the one locked at `43ac3c7`, and every line of batch 1 in the four files is byte-identical
+  to commit `4b9fc70`.
+- The list of nine PSD2 articles matches the one rebuilt from the two consolidated texts, and no qrel rests on one of them.
+- Driver diagnostics find no inconsistency in the 30 needs, and the `cross_reference` check of section 5 finds no further change.
+- Ruff, the format check and mypy are clean, and the test suite passes with the corpus (601 tests).
+
+### 11. Open questions
+
+None of these blocks the evaluation, and none was added to the protocol.
+
+1. **Necessity, one definition at a time or as a set.** The test asks whether the need can be answered wrongly without this
+   definition. When several nodes together settle one classification (N035: DORA 3(37), PSD2 33(1) and 4(16)), each can look
+   dispensable given the others. The rule is silent, and the judges treated the chain as needed.
+2. **Definitions outside the definitions article.** The validator lists the definitions of Article 3 (DORA, MiCA) and Article 4
+   (PSD2) for review. Definition-like nodes elsewhere, such as the three paragraphs of MiCA Article 87 on inside information in N024,
+   are graded 2 without that review.
+3. **Completeness relative to the question or to the situation.** N019 45(3) is graded 2 because a complete answer for a bank that
+   joins the group would include it, while the need asks for the conditions of sharing.
+4. **N030 and the law in force.** Section 4: the label is right at the snapshot and incomplete today for a euro credit transfer.
+5. **N033.** Eight candidates graded 0 against the heuristic of one to three hard negatives. Not reviewed here; as a `none` need,
+   its candidates never enter Recall, MRR or nDCG.

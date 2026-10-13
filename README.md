@@ -11,18 +11,19 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
 
 - **Goal:** a RAG system that answers with verifiable citations to the exact article.
 - **Implemented today:** ingestion and source handling, legal hierarchy parsing, structural
-  chunking, the infrastructure of a retrieval benchmark (contracts, validation, node-to-chunk
-  projection and metrics), Pydantic data contracts, stale-layer detection, measurement tooling,
-  tests, Docker and CI.
-- **Not implemented yet:** the benchmark's DEV questions, embeddings, retrieval, generation,
-  citation verification, API and deployment.
+  chunking, a retrieval benchmark (contracts, validation, node-to-chunk projection, metrics and
+  a DEV set of 30 judged questions), Pydantic data contracts, stale-layer detection, measurement
+  tooling, tests, Docker and CI.
+- **Not implemented yet:** embeddings, retrieval, generation, citation verification, API and
+  deployment.
 
 ### Roadmap
 
 - **Foundations:** implemented
 - **Chunking:** implemented (structural, v1)
-- **Retrieval benchmark:** infrastructure implemented; a DEV pilot of about 30 questions is next
-- **Indexing and retrieval:** after the benchmark
+- **Retrieval benchmark:** implemented; DEV holds 30 judged questions, reviewed and sealed under
+  protocol v1.4
+- **Indexing and retrieval:** next
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -62,7 +63,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 600 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 601 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -236,7 +237,10 @@ by N015) and four were narrowed, each with new queries and its own lock. The met
 of the batch led to v1.3: a grade 3 needs the facts of the need to establish that the node
 applies, ambiguity is kept for interpretation, and the drivers have a definition. Batch 2 (N016 to
 N035) was planned, written, locked and judged under v1.3, and the same calibration record
-covers it.
+covers it. A methodological review of the 30 needs followed, before any retrieval result existed.
+It led to v1.4: answerability is judged against the legal snapshot that the manifest declares,
+and `cross_reference` has a definition. The review also applied the necessity test to every
+definition graded 2 again, and DEV was sealed at 0.10.0.
 
 ## Known limitations
 

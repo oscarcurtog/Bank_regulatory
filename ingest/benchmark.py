@@ -495,9 +495,13 @@ class Judgment(BaseModel):
 class Adjudication(BaseModel):
     """How one label of one need was decided. There is no majority: when A and B
     disagree, C decides against the text, and may pick A's label, B's, another or
-    ambiguous. An agreement goes to C only when it breaks an automatic check, or when
-    a later protocol version changes the rule it rests on, and then 'escalated' says
-    which."""
+    ambiguous. An agreement goes to C only when it breaks an automatic check, when
+    a later protocol version changes the rule it rests on, or when the methodological
+    review finds that the protocol was applied differently from the rest of the
+    benchmark, and then 'escalated' says which. The same field records that a fresh
+    judge C decided again a label that an earlier C had decided, and the earlier
+    decision is kept in its text; the record keeps A and B as they were and the
+    latest C is the final label."""
 
     model_config = STRICT
 

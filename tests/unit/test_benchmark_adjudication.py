@@ -133,6 +133,22 @@ def test_judge_c_on_an_agreement_needs_the_reason():
     assert record(judgment(2), judgment(2), c=judgment(3), escalated=reason).final.grade == 3
 
 
+def test_a_label_that_judge_c_decided_can_be_decided_again_by_a_fresh_judge_c():
+    """The methodological review can challenge a label that an earlier judge C settled: the
+    record keeps A and B as they were, the latest C is the final label, and the reason says why."""
+    first = record(judgment(2), judgment(1), c=judgment(2))
+    again = record(
+        judgment(2),
+        judgment(1),
+        c=judgment(1),
+        escalated="The review applied the necessity test of section 2 again.",
+    )
+    assert not first.agree and first.final.grade == 2
+    assert not again.agree and again.final.grade == 1
+    assert again.a.grade == 2 and again.b.grade == 1  # the first two judgments are untouched
+    assert again.escalated is not None and "again" in again.escalated
+
+
 def test_a_grade_0_names_the_provisions_that_fix_the_scope():
     with pytest.raises(ValidationError, match="scope_basis"):
         bm.Judgment.model_validate({"grade": 0, "rationale": "Another regime."})
