@@ -25,9 +25,10 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
 - **Chunking:** implemented (structural, v1)
 - **Retrieval benchmark:** implemented; DEV holds 30 judged questions, reviewed and sealed under
   protocol v1.4
-- **Indexing and retrieval:** two retrieval iterations on DEV are done (three dense models,
-  BM25, cross-reference expansion, dependency retrieval, graph propagation, a cross-encoder
-  reranker); no configuration beat `multilingual-e5-large` by the protocols' margin
+- **Indexing and retrieval:** three retrieval iterations on DEV are done (three dense models,
+  BM25, cross-reference expansion, dependency retrieval, graph propagation, two rerankers, a
+  local language model as set selector, closed-catalog query reformulation); no configuration
+  beat `multilingual-e5-large` by the protocols' margin
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -83,7 +84,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
 ```
 ingest/              library: download, parser, processed and chunk layers, benchmark, retrieval
 config/embeddings/   the contract of each embedding model, and the model comparison policy
-config/retrieval/    the retrieval iteration's protocol and the contracts of BM25, fusion, expansion
+config/retrieval/    the retrieval iterations' protocols and the contracts of BM25, fusion, rerankers
 scripts/             pipeline and measurement entry points
 tests/unit/          isolated tests, no files involved
 tests/integration/   tests on real EUR-Lex excerpts (tests/fixtures/, see PROVENANCE.md)
@@ -348,6 +349,20 @@ graph, the cross-encoder `bge-reranker-v2-m3` with the question or with the brid
 (`ingest/reranker.py`), and a fixed quota of the top 10. None changed Recall@10 by a material
 amount; the bridge-scored reranking fell to 0.629.
 
+A third iteration ([protocol](config/retrieval/necessity-selection.md),
+[record](data/results/dev-0.10.0/retrieval-iteration-3/log.md)) asked a different question of
+the same evidence: not "is this passage relevant?" but "is it necessary to apply the anchor to the
+question?". `Qwen3-Reranker-0.6B`, shown the anchor, the relation and the clause that creates it,
+said "yes" to nearly everything and ranked worse than without them (average precision 0.185
+against 0.238), so its evidence-set step did not run. A local 4-bit `Qwen3-4B-Instruct-2507`
+(MLX, in its own environment) then judged the legal function of each candidate of an expanded
+population whose oracle reaches Recall@10 0.948. It used 14% of that margin (Recall@10 0.789
+against E5's 0.763, inside the noise) and worsened nDCG@10 by 0.067, because it judges most
+candidates necessary. Rewriting the question with the facts, or the facts and concepts copied from
+a closed catalog of the corpus's own headings and defined terms, and fusing it with E5, lowered
+Recall@10 to 0.729 and 0.701. E5 stays the reference and, by the iteration's registered stop
+rule, optimization on DEV stops.
+
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
@@ -356,7 +371,7 @@ amount; the bridge-scored reranking fell to 0.629.
   between two retrievers needs to be large to be told apart from noise (about 0.08 of nDCG@10).
   The retrieval iterations selected on DEV, so their numbers are development numbers; an
   independent TEST set has not been built. No index or hybrid search has been measured, and
-  the cross-encoder reranker measured did not improve on E5. The benchmark evaluator is not in the Docker images (no Linux ARM64 wheel for its
+  neither the cross-encoder rerankers nor the local language model measured improved on E5. The benchmark evaluator is not in the Docker images (no Linux ARM64 wheel for its
   backend).
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text

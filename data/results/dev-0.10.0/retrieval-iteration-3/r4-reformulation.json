@@ -1,0 +1,662 @@
+{
+ "experiment": "R4",
+ "benchmark_version": "0.10.0",
+ "e5_run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+ "catalog": {
+  "entries": 440,
+  "sha256": "1dc1a25449aff71c491152bed50c71ff452dd0930d5d35de2f0beb43e4044ef8"
+ },
+ "prompts": {
+  "facts": "List the legally material facts of the question in English, as short declarative sentences, one per line. Keep who acts, in what capacity, what they did or plan to do, and the assets, services, events, amounts and dates involved. Do not answer the question, do not name laws, articles or legal concepts, and do not add facts that are not in the question.",
+  "concepts": "Then choose at most 3 entries of the CATALOG that the question turns on. Copy each entry exactly as it is written in the catalog, and give the words of the question that point to it. Do not answer the question.",
+  "sha256": "c37cc67cbabee3f2fcb961fd5bf9fce03d199fa196ccaa109601214267209ca7"
+ },
+ "e5_columns": {
+  "nDCG@10": 0.5275020347424471,
+  "Recall@10": 0.7631687242798354,
+  "Recall@20": 0.8160493827160494,
+  "MRR@10": 0.7464628649813835,
+  "Recall@T=1000": 0.6796737555996815,
+  "Recall@T=2000": 0.7816073843851621,
+  "Full-evidence@10": 0.6419753086419753,
+  "multi_provision": 0.48055555555555557,
+  "cross_reference": 0.6611111111111111,
+  "cross_act": 0.29166666666666663,
+  "dependent": 0.3
+ },
+ "systems": {
+  "r4a-facts-rrf60": {
+   "variant": "r4a",
+   "run_sha256": "1dd358311931a627b167d155c7b9719dedb5da90d4fc0b174edc4a180bae888c",
+   "columns": {
+    "nDCG@10": 0.5199312695720716,
+    "Recall@10": 0.7286008230452674,
+    "Recall@20": 0.8139917695473251,
+    "MRR@10": 0.6987997256515776,
+    "Recall@T=1000": 0.6589822728711617,
+    "Recall@T=2000": 0.7322196322196322,
+    "Full-evidence@10": 0.5925925925925926,
+    "multi_provision": 0.5009259259259259,
+    "cross_reference": 0.652020202020202,
+    "cross_act": 0.29166666666666663,
+    "dependent": 0.303030303030303
+   },
+   "by_language_recall10": {
+    "en": 0.7126543209876544,
+    "es": 0.7604938271604939
+   },
+   "paired_against_e5": {
+    "Recall@10": {
+     "mean": -0.0345679012345679,
+     "ci95_low": -0.13127572016460906,
+     "ci95_high": 0.037860082304526754,
+     "better": 8,
+     "equal": 66,
+     "worse": 7
+    },
+    "nDCG@10": {
+     "mean": -0.0075707651703754925,
+     "ci95_low": -0.03978215135951108,
+     "ci95_high": 0.02147943450742269,
+     "better": 30,
+     "equal": 24,
+     "worse": 27
+    },
+    "Full-evidence@10": {
+     "mean": -0.04938271604938271,
+     "ci95_low": -0.14814814814814814,
+     "ci95_high": 0.024691358024691357,
+     "better": 2,
+     "equal": 73,
+     "worse": 6
+    }
+   },
+   "gate": {
+    "Recall@10 +0.03": false,
+    "nDCG@10 >= 0.518": true,
+    "Full-evidence@10 down at most 0.01": false
+   },
+   "kept": false,
+   "success": {
+    "useful": false,
+    "strong": false
+   },
+   "rewrites": {
+    "queries_keeping_e5_ranking": 5,
+    "facts_per_query_median": 6.0
+   }
+  },
+  "r4b-catalog-rrf60": {
+   "variant": "r4b",
+   "run_sha256": "6f85bc60e715d375437bcfd421afe7952ade4724e68ef28864f952fa357fb38e",
+   "columns": {
+    "nDCG@10": 0.5029424362832613,
+    "Recall@10": 0.7008230452674896,
+    "Recall@20": 0.7993827160493827,
+    "MRR@10": 0.6612629825592788,
+    "Recall@T=1000": 0.6514376912525061,
+    "Recall@T=2000": 0.7267813462257906,
+    "Full-evidence@10": 0.5679012345679012,
+    "multi_provision": 0.4777777777777778,
+    "cross_reference": 0.6292929292929293,
+    "cross_act": 0.25,
+    "dependent": 0.302020202020202
+   },
+   "by_language_recall10": {
+    "en": 0.7049382716049384,
+    "es": 0.6925925925925925
+   },
+   "paired_against_e5": {
+    "Recall@10": {
+     "mean": -0.062345679012345674,
+     "ci95_low": -0.1816872427983539,
+     "ci95_high": 0.03580246913580247,
+     "better": 9,
+     "equal": 59,
+     "worse": 13
+    },
+    "nDCG@10": {
+     "mean": -0.024559598459185816,
+     "ci95_low": -0.08077340340051738,
+     "ci95_high": 0.028105216683434596,
+     "better": 37,
+     "equal": 7,
+     "worse": 37
+    },
+    "Full-evidence@10": {
+     "mean": -0.07407407407407407,
+     "ci95_low": -0.19753086419753085,
+     "ci95_high": 0.024691358024691357,
+     "better": 2,
+     "equal": 71,
+     "worse": 8
+    }
+   },
+   "gate": {
+    "Recall@10 +0.03": false,
+    "nDCG@10 >= 0.518": false,
+    "Full-evidence@10 down at most 0.01": false
+   },
+   "kept": false,
+   "success": {
+    "useful": false,
+    "strong": false
+   },
+   "rewrites": {
+    "queries_keeping_e5_ranking": 0,
+    "facts_per_query_median": 5.0,
+    "concepts_per_query": {
+     "0": 1,
+     "1": 15,
+     "2": 15,
+     "3": 59
+    },
+    "concepts_kept": 222,
+    "concepts_rejected": 34,
+    "fragments_found_in_the_question": 143,
+    "most_chosen": [
+     [
+      "payment service provider",
+      16
+     ],
+     [
+      "Provision of crypto-asset services by certain financial entities",
+      10
+     ],
+     [
+      "digital operational resilience",
+      9
+     ],
+     [
+      "ICT-related incident",
+      8
+     ],
+     [
+      "Classification of ICT-related incidents and cyber threats",
+      8
+     ],
+     [
+      "Reporting of major ICT-related incidents and voluntary notification of significant cyber threats",
+      7
+     ],
+     [
+      "operational or security payment-related incident",
+      7
+     ],
+     [
+      "Offers to the public of crypto-assets other than asset-referenced tokens or e-money tokens",
+      7
+     ],
+     [
+      "Notification of the crypto-asset white paper and of the marketing communications",
+      7
+     ],
+     [
+      "payment transaction",
+      7
+     ],
+     [
+      "ICT-related incident management process",
+      6
+     ],
+     [
+      "ICT risk management framework",
+      5
+     ],
+     [
+      "major ICT-related incident",
+      5
+     ],
+     [
+      "critical ICT third-party service provider",
+      5
+     ],
+     [
+      "payment institution",
+      4
+     ]
+    ]
+   }
+  }
+ },
+ "followed_needs": {
+  "N022": [
+   {
+    "query_id": "N022-en-1",
+    "lang": "en",
+    "relevant_ranks": {
+     "MiCA:3.1.6": {
+      "e5": 79,
+      "r4a": 81,
+      "r4b": 80
+     },
+     "MiCA:3.1.7": {
+      "e5": 264,
+      "r4a": 239,
+      "r4b": 67
+     },
+     "MiCA:39": {
+      "e5": 1,
+      "r4a": 1,
+      "r4b": 1
+     },
+     "MiCA:46.1": {
+      "e5": 13,
+      "r4a": 9,
+      "r4b": 12
+     },
+     "MiCA:46.3": {
+      "e5": 98,
+      "r4a": 74,
+      "r4b": 157
+     },
+     "MiCA:46.4": {
+      "e5": 7,
+      "r4a": 5,
+      "r4b": 7
+     }
+    },
+    "r4b_concepts": [
+     "Right of redemption",
+     "Issuance and redeemability of e-money tokens",
+     "Classification of e-money tokens as significant e-money tokens"
+    ]
+   },
+   {
+    "query_id": "N022-en-2",
+    "lang": "en",
+    "relevant_ranks": {
+     "MiCA:3.1.6": {
+      "e5": 337,
+      "r4a": 102,
+      "r4b": 119
+     },
+     "MiCA:3.1.7": {
+      "e5": 633,
+      "r4a": 332,
+      "r4b": 194
+     },
+     "MiCA:39": {
+      "e5": 2,
+      "r4a": 2,
+      "r4b": 2
+     },
+     "MiCA:46.1": {
+      "e5": 8,
+      "r4a": 4,
+      "r4b": 3
+     },
+     "MiCA:46.3": {
+      "e5": 105,
+      "r4a": 88,
+      "r4b": 108
+     },
+     "MiCA:46.4": {
+      "e5": 11,
+      "r4a": 8,
+      "r4b": 8
+     }
+    },
+    "r4b_concepts": [
+     "Right of redemption",
+     "Issuance and redeemability of e-money tokens"
+    ]
+   },
+   {
+    "query_id": "N022-es-1",
+    "lang": "es",
+    "relevant_ranks": {
+     "MiCA:3.1.6": {
+      "e5": 345,
+      "r4a": 146,
+      "r4b": 202
+     },
+     "MiCA:3.1.7": {
+      "e5": 462,
+      "r4a": 330,
+      "r4b": 167
+     },
+     "MiCA:39": {
+      "e5": 1,
+      "r4a": 1,
+      "r4b": 1
+     },
+     "MiCA:46.1": {
+      "e5": 17,
+      "r4a": 7,
+      "r4b": 5
+     },
+     "MiCA:46.3": {
+      "e5": 74,
+      "r4a": 65,
+      "r4b": 35
+     },
+     "MiCA:46.4": {
+      "e5": 44,
+      "r4a": 26,
+      "r4b": 15
+     }
+    },
+    "r4b_concepts": [
+     "Recovery plan",
+     "Right of redemption",
+     "Issuance and redeemability of e-money tokens"
+    ]
+   }
+  ],
+  "N024": [
+   {
+    "query_id": "N024-en-1",
+    "lang": "en",
+    "relevant_ranks": {
+     "MiCA:86": {
+      "e5": 1,
+      "r4a": 32,
+      "r4b": 20
+     },
+     "MiCA:87": {
+      "e5": 63,
+      "r4a": 25,
+      "r4b": 27
+     },
+     "MiCA:89.1": {
+      "e5": 94,
+      "r4a": 56,
+      "r4b": 95
+     },
+     "MiCA:89.2": {
+      "e5": 138,
+      "r4a": 114,
+      "r4b": 135
+     },
+     "MiCA:89.5": {
+      "e5": 407,
+      "r4a": 269,
+      "r4b": 309
+     }
+    },
+    "r4b_concepts": [
+     "Scope"
+    ]
+   },
+   {
+    "query_id": "N024-en-2",
+    "lang": "en",
+    "relevant_ranks": {
+     "MiCA:86": {
+      "e5": 4,
+      "r4a": 36,
+      "r4b": 25
+     },
+     "MiCA:87": {
+      "e5": 17,
+      "r4a": 5,
+      "r4b": 5
+     },
+     "MiCA:89.1": {
+      "e5": 23,
+      "r4a": 8,
+      "r4b": 6
+     },
+     "MiCA:89.2": {
+      "e5": 50,
+      "r4a": 44,
+      "r4b": 13
+     },
+     "MiCA:89.5": {
+      "e5": 363,
+      "r4a": 216,
+      "r4b": 51
+     }
+    },
+    "r4b_concepts": [
+     "operational or security payment-related incident",
+     "Prohibition of insider dealing"
+    ]
+   },
+   {
+    "query_id": "N024-es-1",
+    "lang": "es",
+    "relevant_ranks": {
+     "MiCA:86": {
+      "e5": 31,
+      "r4a": 70,
+      "r4b": 45
+     },
+     "MiCA:87": {
+      "e5": 29,
+      "r4a": 8,
+      "r4b": 8
+     },
+     "MiCA:89.1": {
+      "e5": 107,
+      "r4a": 34,
+      "r4b": 33
+     },
+     "MiCA:89.2": {
+      "e5": 150,
+      "r4a": 73,
+      "r4b": 49
+     },
+     "MiCA:89.5": {
+      "e5": 490,
+      "r4a": 288,
+      "r4b": 108
+     }
+    },
+    "r4b_concepts": [
+     "Operational or security payment-related incidents concerning credit institutions, payment institutions, account information service providers, and electronic money institutions",
+     "Prohibition of market manipulation",
+     "Prohibition of unlawful disclosure of inside information"
+    ]
+   }
+  ],
+  "N034": [
+   {
+    "query_id": "N034-en-1",
+    "lang": "en",
+    "relevant_ranks": {
+     "DORA:19.1": {
+      "e5": 2,
+      "r4a": 2,
+      "r4b": 1
+     },
+     "DORA:46.b": {
+      "e5": 10,
+      "r4a": 7,
+      "r4b": 12
+     },
+     "DORA:46:own": {
+      "e5": 40,
+      "r4a": 40,
+      "r4b": 54
+     },
+     "PSD2:22": {
+      "e5": 162,
+      "r4a": 158,
+      "r4b": 131
+     }
+    },
+    "r4b_concepts": [
+     "Reporting of major ICT-related incidents and voluntary notification of significant cyber threats",
+     "Centralisation of reporting of major ICT-related incidents",
+     "Governance and organisation"
+    ]
+   },
+   {
+    "query_id": "N034-en-2",
+    "lang": "en",
+    "relevant_ranks": {
+     "DORA:19.1": {
+      "e5": 1,
+      "r4a": 1,
+      "r4b": 1
+     },
+     "DORA:46.b": {
+      "e5": 20,
+      "r4a": 21,
+      "r4b": 29
+     },
+     "DORA:46:own": {
+      "e5": 67,
+      "r4a": 65,
+      "r4b": 96
+     },
+     "PSD2:22": {
+      "e5": 279,
+      "r4a": 334,
+      "r4b": 304
+     }
+    },
+    "r4b_concepts": [
+     "Reporting of major ICT-related incidents and voluntary notification of significant cyber threats",
+     "Centralisation of reporting of major ICT-related incidents",
+     "Classification of ICT-related incidents and cyber threats"
+    ]
+   },
+   {
+    "query_id": "N034-es-1",
+    "lang": "es",
+    "relevant_ranks": {
+     "DORA:19.1": {
+      "e5": 1,
+      "r4a": 1,
+      "r4b": 1
+     },
+     "DORA:46.b": {
+      "e5": 26,
+      "r4a": 20,
+      "r4b": 38
+     },
+     "DORA:46:own": {
+      "e5": 160,
+      "r4a": 89,
+      "r4b": 140
+     },
+     "PSD2:22": {
+      "e5": 179,
+      "r4a": 133,
+      "r4b": 114
+     }
+    },
+    "r4b_concepts": [
+     "Reporting of major ICT-related incidents and voluntary notification of significant cyber threats",
+     "Centralisation of reporting of major ICT-related incidents",
+     "Lead Overseer"
+    ]
+   }
+  ],
+  "N035": [
+   {
+    "query_id": "N035-en-1",
+    "lang": "en",
+    "relevant_ranks": {
+     "DORA:2.1": {
+      "e5": 1,
+      "r4a": 1,
+      "r4b": 3
+     },
+     "DORA:3.37": {
+      "e5": 71,
+      "r4a": 71,
+      "r4b": 76
+     },
+     "PSD2:33": {
+      "e5": 192,
+      "r4a": 192,
+      "r4b": 274
+     },
+     "PSD2:4.16": {
+      "e5": 724,
+      "r4a": 724,
+      "r4b": 243
+     }
+    },
+    "r4b_concepts": [
+     "digital operational resilience",
+     "ICT-related incident",
+     "operational or security payment-related incident"
+    ]
+   },
+   {
+    "query_id": "N035-en-2",
+    "lang": "en",
+    "relevant_ranks": {
+     "DORA:2.1": {
+      "e5": 1,
+      "r4a": 1,
+      "r4b": 1
+     },
+     "DORA:3.37": {
+      "e5": 54,
+      "r4a": 54,
+      "r4b": 48
+     },
+     "PSD2:33": {
+      "e5": 305,
+      "r4a": 305,
+      "r4b": 287
+     },
+     "PSD2:4.16": {
+      "e5": 855,
+      "r4a": 855,
+      "r4b": 233
+     }
+    },
+    "r4b_concepts": [
+     "digital operational resilience",
+     "ICT-related incident",
+     "Identification"
+    ]
+   },
+   {
+    "query_id": "N035-es-1",
+    "lang": "es",
+    "relevant_ranks": {
+     "DORA:2.1": {
+      "e5": 1,
+      "r4a": 1,
+      "r4b": 2
+     },
+     "DORA:3.37": {
+      "e5": 103,
+      "r4a": 25,
+      "r4b": 61
+     },
+     "PSD2:33": {
+      "e5": 363,
+      "r4a": 337,
+      "r4b": 359
+     },
+     "PSD2:4.16": {
+      "e5": 716,
+      "r4a": 65,
+      "r4b": 263
+     }
+    },
+    "r4b_concepts": [
+     "digital operational resilience",
+     "ICT-related incident",
+     "operational or security payment-related incident"
+    ]
+   }
+  ]
+ },
+ "performance": {
+  "generations": 180,
+  "seconds_total": 1713.1803446339036,
+  "seconds_median": 8.369409042003099,
+  "prompt_tokens_median": 1954.5,
+  "reused_prefix_tokens_total": 312309,
+  "versions": {
+   "mlx": "0.32.3",
+   "mlx_lm": "0.32.0",
+   "python": "3.12.14",
+   "machine": "arm64",
+   "model_id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+   "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+   "max_new_tokens": 256,
+   "decoding": "greedy"
+  }
+ }
+}

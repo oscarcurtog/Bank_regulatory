@@ -38,6 +38,12 @@ SYSTEMS = [
     ("rerank-acdr-e5-bridge3-orig", "E3: cross-encoder on R1's top 50, original query"),
     ("rerank-acdr-e5-bridge3-bridgemax", "E3: cross-encoder, bridge maximum"),
     ("quota2-acdr-e5-bridge3", "E4: 2 top-10 places for dependencies"),
+    (
+        "c-functional-qwen3-4b",
+        "C: legal-function set selection, expanded population (Qwen3-4B, 4-bit)",
+    ),
+    ("r4a-facts-rrf60", "R4-A: facts rewrite fused with E5 (RRF, k = 60)"),
+    ("r4b-catalog-rrf60", "R4-B: facts and closed-catalog concepts fused with E5 (RRF, k = 60)"),
 ]
 REFERENCE = "multilingual-e5-large"
 THIRD_MODEL = "qwen3-embedding-0.6b"
@@ -53,6 +59,7 @@ COLUMNS = [
     ("cross_reference R@10", "groups", "cross_reference"),
     ("cross_act R@10", "groups", "cross_act"),
     ("dependent R@10", "dependent_evidence", "Recall@10"),
+    ("Full-evidence@10", "full_evidence", "Full-evidence@10"),
 ]
 SEED = 20261013
 
@@ -212,7 +219,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     lines += [
         "",
-        f"Best by global Recall@10, then nDCG@10: {rows[best]['label']}.",
+        f"Best by global Recall@10, then nDCG@10: {rows[best]['label']}. This is an ordering, "
+        "not a decision: each iteration's protocol fixes its own rules for keeping a system.",
         "",
         "Each system against E5, paired by query (81 queries), with a 95% bootstrap interval over "
         "needs, and the protocol's four tests of an interesting configuration (A to D):",

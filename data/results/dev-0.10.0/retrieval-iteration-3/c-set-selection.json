@@ -1,0 +1,1574 @@
+{
+ "experiment": "C",
+ "benchmark_version": "0.10.0",
+ "population": "first 128 in R1's order",
+ "population_sha256": "8721a1204c1d0bba064f36bb2a6524bbea093e62c3083061c4029d64a6597e77",
+ "prompts_sha256": "54c46ef1ac42fb1ddf01a600a9af343f371907a5141c3397bca2c3e3ed61c94e",
+ "run_sha256": "c5e247479d4ee8f813d133f9c38a1d80002b1d44961a3cb7e269543cac661a8d",
+ "prompt": {
+  "system": "You are a careful analyst of EU financial regulation. You judge which provisions are necessary evidence for answering a question.",
+  "instructions": "Below are candidate provisions, each numbered. Each says how it was found: from the question, or from another provision through a relation, with the number of hops and the clause that creates the relation.\n\nFor each candidate, ask: if this candidate were removed, what legally necessary part of the answer would no longer be supported? Then give its legal function, copying exactly one of these names:\ngoverning rule\nscope or applicability\nlegal category or definition\ncondition\nexception\naddressee or authority\ndeadline or threshold\nresolving cross-reference\nmerely related\n\nA candidate is necessary only if removing it would leave a legally necessary part of the answer unsupported. A related provision that repeats the general subject is not necessary.\n\nAnswer with exactly one line per candidate, in order, and nothing else. Each line is the candidate's number in brackets, one function name from the list, a bar, and yes (necessary) or no. The form, shown on other numbers:\n[4] condition | yes\n[5] merely related | no",
+  "functions": [
+   "governing rule",
+   "scope or applicability",
+   "legal category or definition",
+   "condition",
+   "exception",
+   "addressee or authority",
+   "deadline or threshold",
+   "resolving cross-reference",
+   "merely related"
+  ]
+ },
+ "columns": {
+  "nDCG@10": 0.4603768761356068,
+  "Recall@10": 0.7888888888888889,
+  "Recall@20": 0.8218106995884774,
+  "MRR@10": 0.5757103664511072,
+  "Recall@T=1000": 0.572163467533838,
+  "Recall@T=2000": 0.7941245311615682,
+  "Full-evidence@10": 0.6666666666666666,
+  "multi_provision": 0.5314814814814814,
+  "cross_reference": 0.6939393939393939,
+  "cross_act": 0.4166666666666667,
+  "dependent": 0.42222222222222217
+ },
+ "e5_columns": {
+  "nDCG@10": 0.5275020347424471,
+  "Recall@10": 0.7631687242798354,
+  "Recall@20": 0.8160493827160494,
+  "MRR@10": 0.7464628649813835,
+  "Recall@T=1000": 0.6796737555996815,
+  "Recall@T=2000": 0.7816073843851621,
+  "Full-evidence@10": 0.6419753086419753,
+  "multi_provision": 0.48055555555555557,
+  "cross_reference": 0.6611111111111111,
+  "cross_act": 0.29166666666666663,
+  "dependent": 0.3
+ },
+ "by_language_recall10": {
+  "en": 0.7759259259259259,
+  "es": 0.8148148148148148
+ },
+ "paired_against_e5": {
+  "Recall@10": {
+   "mean": 0.0257201646090535,
+   "ci95_low": -0.016460905349794237,
+   "ci95_high": 0.0668724279835391,
+   "better": 9,
+   "equal": 69,
+   "worse": 3
+  },
+  "nDCG@10": {
+   "mean": -0.06712515860684024,
+   "ci95_low": -0.13869608454440846,
+   "ci95_high": -0.0030494208971959583,
+   "better": 26,
+   "equal": 6,
+   "worse": 49
+  },
+  "Full-evidence@10": {
+   "mean": 0.024691358024691357,
+   "ci95_low": -0.024691358024691357,
+   "ci95_high": 0.07407407407407407,
+   "better": 3,
+   "equal": 77,
+   "worse": 1
+  }
+ },
+ "success": {
+  "useful": false,
+  "strong": false
+ },
+ "selection": {
+  "set_size": {
+   "mean": 10.0,
+   "distribution": {
+    "10": 90
+   }
+  },
+  "functions_judged_necessary": {
+   "governing rule": 1267,
+   "condition": 2134,
+   "resolving cross-reference": 280,
+   "deadline or threshold": 148,
+   "addressee or authority": 378,
+   "legal category or definition": 789,
+   "scope or applicability": 399,
+   "exception": 137,
+   "unparsed": 1
+  },
+  "lines_missing": 115,
+  "judged_necessary_share_of_relevant_members": 0.972027972027972,
+  "judged_necessary_share_of_other_members": 0.5175742314552513,
+  "selected_relevant_share": 0.1259259259259259
+ },
+ "followed_needs": {
+  "N022": [
+   {
+    "query_id": "N022-en-1",
+    "lang": "en",
+    "relevant": [
+     {
+      "chunk": "MiCA:39",
+      "grade": 3,
+      "e5_rank": 1,
+      "in_population": true,
+      "judged": {
+       "function": "governing rule",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 1
+     },
+     {
+      "chunk": "MiCA:46.4",
+      "grade": 2,
+      "e5_rank": 7,
+      "in_population": true,
+      "judged": {
+       "function": "condition",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 4
+     },
+     {
+      "chunk": "MiCA:46.1",
+      "grade": 2,
+      "e5_rank": 13,
+      "in_population": true,
+      "judged": {
+       "function": "condition",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 20
+     },
+     {
+      "chunk": "MiCA:3.1.6",
+      "grade": 2,
+      "e5_rank": 79,
+      "in_population": true,
+      "judged": {
+       "function": "legal category or definition",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 3
+     },
+     {
+      "chunk": "MiCA:46.3",
+      "grade": 2,
+      "e5_rank": 98,
+      "in_population": true,
+      "judged": {
+       "function": "condition",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 104
+     },
+     {
+      "chunk": "MiCA:3.1.7",
+      "grade": 2,
+      "e5_rank": 264,
+      "in_population": true,
+      "judged": {
+       "function": "merely related",
+       "necessary": false
+      },
+      "selected": false,
+      "rank": 270
+     }
+    ],
+    "set": [
+     {
+      "chunk": "MiCA:39",
+      "function": "governing rule",
+      "grade": 3
+     },
+     {
+      "chunk": "MiCA:2.1",
+      "function": "scope or applicability",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:3.1.6",
+      "function": "legal category or definition",
+      "grade": 2
+     },
+     {
+      "chunk": "MiCA:46.4",
+      "function": "condition",
+      "grade": 2
+     },
+     {
+      "chunk": "MiCA:3.1.10",
+      "function": "addressee or authority",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:21.5",
+      "function": "deadline or threshold",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:51.1",
+      "function": "resolving cross-reference",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:49",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:17.8",
+      "function": "scope or applicability",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:3.1.37",
+      "function": "legal category or definition",
+      "grade": 1
+     }
+    ],
+    "recall10": {
+     "e5": 0.3333333333333333,
+     "c": 0.5
+    },
+    "full_evidence10": {
+     "e5": 0.0,
+     "c": 0.0
+    }
+   },
+   {
+    "query_id": "N022-en-2",
+    "lang": "en",
+    "relevant": [
+     {
+      "chunk": "MiCA:39",
+      "grade": 3,
+      "e5_rank": 2,
+      "in_population": true,
+      "judged": {
+       "function": "governing rule",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 9
+     },
+     {
+      "chunk": "MiCA:46.1",
+      "grade": 2,
+      "e5_rank": 8,
+      "in_population": true,
+      "judged": {
+       "function": "condition",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 15
+     },
+     {
+      "chunk": "MiCA:46.4",
+      "grade": 2,
+      "e5_rank": 11,
+      "in_population": true,
+      "judged": {
+       "function": "condition",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 18
+     },
+     {
+      "chunk": "MiCA:46.3",
+      "grade": 2,
+      "e5_rank": 105,
+      "in_population": true,
+      "judged": {
+       "function": "condition",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 111
+     },
+     {
+      "chunk": "MiCA:3.1.6",
+      "grade": 2,
+      "e5_rank": 337,
+      "in_population": true,
+      "judged": {
+       "function": "legal category or definition",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 3
+     },
+     {
+      "chunk": "MiCA:3.1.7",
+      "grade": 2,
+      "e5_rank": 633,
+      "in_population": true,
+      "judged": {
+       "function": "legal category or definition",
+       "necessary": false
+      },
+      "selected": false,
+      "rank": 633
+     }
+    ],
+    "set": [
+     {
+      "chunk": "MiCA:37.10",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:2.1",
+      "function": "scope or applicability",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:3.1.6",
+      "function": "legal category or definition",
+      "grade": 2
+     },
+     {
+      "chunk": "MiCA:37.4",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:130.1.n",
+      "function": "exception",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:59",
+      "function": "addressee or authority",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:56.4",
+      "function": "deadline or threshold",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:75.4",
+      "function": "resolving cross-reference",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:39",
+      "function": "governing rule",
+      "grade": 3
+     },
+     {
+      "chunk": "MiCA:37.6.sub_5",
+      "function": "legal category or definition",
+      "grade": 0
+     }
+    ],
+    "recall10": {
+     "e5": 0.3333333333333333,
+     "c": 0.3333333333333333
+    },
+    "full_evidence10": {
+     "e5": 0.0,
+     "c": 0.0
+    }
+   },
+   {
+    "query_id": "N022-es-1",
+    "lang": "es",
+    "relevant": [
+     {
+      "chunk": "MiCA:39",
+      "grade": 3,
+      "e5_rank": 1,
+      "in_population": true,
+      "judged": {
+       "function": "governing rule",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 1
+     },
+     {
+      "chunk": "MiCA:46.1",
+      "grade": 2,
+      "e5_rank": 17,
+      "in_population": true,
+      "judged": {
+       "function": "governing rule",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 22
+     },
+     {
+      "chunk": "MiCA:46.4",
+      "grade": 2,
+      "e5_rank": 44,
+      "in_population": true,
+      "judged": {
+       "function": "condition",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 48
+     },
+     {
+      "chunk": "MiCA:46.3",
+      "grade": 2,
+      "e5_rank": 74,
+      "in_population": true,
+      "judged": {
+       "function": "governing rule",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 78
+     },
+     {
+      "chunk": "MiCA:3.1.6",
+      "grade": 2,
+      "e5_rank": 345,
+      "in_population": true,
+      "judged": {
+       "function": "legal category or definition",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 348
+     },
+     {
+      "chunk": "MiCA:3.1.7",
+      "grade": 2,
+      "e5_rank": 462,
+      "in_population": true,
+      "judged": {
+       "function": "merely related",
+       "necessary": false
+      },
+      "selected": false,
+      "rank": 463
+     }
+    ],
+    "set": [
+     {
+      "chunk": "MiCA:39",
+      "function": "governing rule",
+      "grade": 3
+     },
+     {
+      "chunk": "MiCA:37.4",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:34.5",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:130.1.l",
+      "function": "exception",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:3.1.39",
+      "function": "addressee or authority",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:37.3",
+      "function": "deadline or threshold",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:75.6",
+      "function": "resolving cross-reference",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:49",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:75.3",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:36.8",
+      "function": "condition",
+      "grade": 1
+     }
+    ],
+    "recall10": {
+     "e5": 0.16666666666666666,
+     "c": 0.16666666666666666
+    },
+    "full_evidence10": {
+     "e5": 0.0,
+     "c": 0.0
+    }
+   }
+  ],
+  "N024": [
+   {
+    "query_id": "N024-en-1",
+    "lang": "en",
+    "relevant": [
+     {
+      "chunk": "MiCA:86",
+      "grade": 2,
+      "e5_rank": 1,
+      "in_population": true,
+      "judged": {
+       "function": "scope or applicability",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 2
+     },
+     {
+      "chunk": "MiCA:87",
+      "grade": 2,
+      "e5_rank": 63,
+      "in_population": false,
+      "judged": null,
+      "selected": false,
+      "rank": 65
+     },
+     {
+      "chunk": "MiCA:89.1",
+      "grade": 3,
+      "e5_rank": 94,
+      "in_population": false,
+      "judged": null,
+      "selected": false,
+      "rank": 95
+     },
+     {
+      "chunk": "MiCA:89.2",
+      "grade": 3,
+      "e5_rank": 138,
+      "in_population": false,
+      "judged": null,
+      "selected": false,
+      "rank": 139
+     },
+     {
+      "chunk": "MiCA:89.5",
+      "grade": 2,
+      "e5_rank": 407,
+      "in_population": false,
+      "judged": null,
+      "selected": false,
+      "rank": 407
+     }
+    ],
+    "set": [
+     {
+      "chunk": "MiCA:92",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:86",
+      "function": "scope or applicability",
+      "grade": 2
+     },
+     {
+      "chunk": "MiCA:91.3",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:76.1",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:8.3",
+      "function": "exception",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:8.1",
+      "function": "addressee or authority",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:12.1",
+      "function": "resolving cross-reference",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:60.3",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:59",
+      "function": "scope or applicability",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:15",
+      "function": "legal category or definition",
+      "grade": 0
+     }
+    ],
+    "recall10": {
+     "e5": 0.2,
+     "c": 0.2
+    },
+    "full_evidence10": {
+     "e5": 0.0,
+     "c": 0.0
+    }
+   },
+   {
+    "query_id": "N024-en-2",
+    "lang": "en",
+    "relevant": [
+     {
+      "chunk": "MiCA:86",
+      "grade": 2,
+      "e5_rank": 4,
+      "in_population": true,
+      "judged": {
+       "function": "scope or applicability",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 2
+     },
+     {
+      "chunk": "MiCA:87",
+      "grade": 2,
+      "e5_rank": 17,
+      "in_population": true,
+      "judged": {
+       "function": "governing rule",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 22
+     },
+     {
+      "chunk": "MiCA:89.1",
+      "grade": 3,
+      "e5_rank": 23,
+      "in_population": false,
+      "judged": null,
+      "selected": false,
+      "rank": 28
+     },
+     {
+      "chunk": "MiCA:89.2",
+      "grade": 3,
+      "e5_rank": 50,
+      "in_population": false,
+      "judged": null,
+      "selected": false,
+      "rank": 55
+     },
+     {
+      "chunk": "MiCA:89.5",
+      "grade": 2,
+      "e5_rank": 363,
+      "in_population": false,
+      "judged": null,
+      "selected": false,
+      "rank": 364
+     }
+    ],
+    "set": [
+     {
+      "chunk": "MiCA:91.3",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:86",
+      "function": "scope or applicability",
+      "grade": 2
+     },
+     {
+      "chunk": "MiCA:3.1.5",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:4.3",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:8.1",
+      "function": "addressee or authority",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:12.2",
+      "function": "deadline or threshold",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:6.7",
+      "function": "resolving cross-reference",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:91.2",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:2.4",
+      "function": "scope or applicability",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:6.5",
+      "function": "legal category or definition",
+      "grade": 0
+     }
+    ],
+    "recall10": {
+     "e5": 0.2,
+     "c": 0.2
+    },
+    "full_evidence10": {
+     "e5": 0.0,
+     "c": 0.0
+    }
+   },
+   {
+    "query_id": "N024-es-1",
+    "lang": "es",
+    "relevant": [
+     {
+      "chunk": "MiCA:87",
+      "grade": 2,
+      "e5_rank": 29,
+      "in_population": false,
+      "judged": null,
+      "selected": false,
+      "rank": 33
+     },
+     {
+      "chunk": "MiCA:86",
+      "grade": 2,
+      "e5_rank": 31,
+      "in_population": false,
+      "judged": null,
+      "selected": false,
+      "rank": 35
+     },
+     {
+      "chunk": "MiCA:89.1",
+      "grade": 3,
+      "e5_rank": 107,
+      "in_population": false,
+      "judged": null,
+      "selected": false,
+      "rank": 111
+     },
+     {
+      "chunk": "MiCA:89.2",
+      "grade": 3,
+      "e5_rank": 150,
+      "in_population": false,
+      "judged": null,
+      "selected": false,
+      "rank": 154
+     },
+     {
+      "chunk": "MiCA:89.5",
+      "grade": 2,
+      "e5_rank": 490,
+      "in_population": false,
+      "judged": null,
+      "selected": false,
+      "rank": 490
+     }
+    ],
+    "set": [
+     {
+      "chunk": "MiCA:91.3",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:8.5",
+      "function": "scope or applicability",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:14",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:7.1",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:4.3",
+      "function": "exception",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:3.1.35",
+      "function": "addressee or authority",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:8.7",
+      "function": "deadline or threshold",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:92",
+      "function": "resolving cross-reference",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:105.2",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:63.12",
+      "function": "scope or applicability",
+      "grade": 0
+     }
+    ],
+    "recall10": {
+     "e5": 0.0,
+     "c": 0.0
+    },
+    "full_evidence10": {
+     "e5": 0.0,
+     "c": 0.0
+    }
+   }
+  ],
+  "N034": [
+   {
+    "query_id": "N034-en-1",
+    "lang": "en",
+    "relevant": [
+     {
+      "chunk": "DORA:19.1",
+      "grade": 3,
+      "e5_rank": 2,
+      "in_population": true,
+      "judged": {
+       "function": "addressee or authority",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 11
+     },
+     {
+      "chunk": "DORA:46.b",
+      "grade": 2,
+      "e5_rank": 10,
+      "in_population": true,
+      "judged": {
+       "function": "addressee or authority",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 18
+     },
+     {
+      "chunk": "DORA:46:own",
+      "grade": 2,
+      "e5_rank": 40,
+      "in_population": true,
+      "judged": {
+       "function": "resolving cross-reference",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 6
+     },
+     {
+      "chunk": "PSD2:22",
+      "grade": 2,
+      "e5_rank": 162,
+      "in_population": true,
+      "judged": {
+       "function": "addressee or authority",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 166
+     }
+    ],
+    "set": [
+     {
+      "chunk": "DORA:31.2",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:23",
+      "function": "scope or applicability",
+      "grade": 1
+     },
+     {
+      "chunk": "DORA:3.10",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:31.12",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:19.4",
+      "function": "addressee or authority",
+      "grade": 1
+     },
+     {
+      "chunk": "DORA:46:own",
+      "function": "resolving cross-reference",
+      "grade": 2
+     },
+     {
+      "chunk": "DORA:15:own",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:2.1",
+      "function": "scope or applicability",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:3.19",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:11.6",
+      "function": "condition",
+      "grade": 0
+     }
+    ],
+    "recall10": {
+     "e5": 0.5,
+     "c": 0.25
+    },
+    "full_evidence10": {
+     "e5": 0.0,
+     "c": 0.0
+    }
+   },
+   {
+    "query_id": "N034-en-2",
+    "lang": "en",
+    "relevant": [
+     {
+      "chunk": "DORA:19.1",
+      "grade": 3,
+      "e5_rank": 1,
+      "in_population": true,
+      "judged": {
+       "function": "addressee or authority",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 5
+     },
+     {
+      "chunk": "DORA:46.b",
+      "grade": 2,
+      "e5_rank": 20,
+      "in_population": true,
+      "judged": {
+       "function": "addressee or authority",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 25
+     },
+     {
+      "chunk": "DORA:46:own",
+      "grade": 2,
+      "e5_rank": 67,
+      "in_population": true,
+      "judged": {
+       "function": "resolving cross-reference",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 6
+     },
+     {
+      "chunk": "PSD2:22",
+      "grade": 2,
+      "e5_rank": 279,
+      "in_population": true,
+      "judged": {
+       "function": "addressee or authority",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 281
+     }
+    ],
+    "set": [
+     {
+      "chunk": "DORA:18.3",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:1",
+      "function": "scope or applicability",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:3.10",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:3.12",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:19.1",
+      "function": "addressee or authority",
+      "grade": 3
+     },
+     {
+      "chunk": "DORA:46:own",
+      "function": "resolving cross-reference",
+      "grade": 2
+     },
+     {
+      "chunk": "DORA:23",
+      "function": "scope or applicability",
+      "grade": 1
+     },
+     {
+      "chunk": "DORA:3.21",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:13.4",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:19.4",
+      "function": "addressee or authority",
+      "grade": 1
+     }
+    ],
+    "recall10": {
+     "e5": 0.25,
+     "c": 0.5
+    },
+    "full_evidence10": {
+     "e5": 0.0,
+     "c": 0.0
+    }
+   },
+   {
+    "query_id": "N034-es-1",
+    "lang": "es",
+    "relevant": [
+     {
+      "chunk": "DORA:19.1",
+      "grade": 3,
+      "e5_rank": 1,
+      "in_population": true,
+      "judged": {
+       "function": "addressee or authority",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 5
+     },
+     {
+      "chunk": "DORA:46.b",
+      "grade": 2,
+      "e5_rank": 26,
+      "in_population": true,
+      "judged": {
+       "function": "addressee or authority",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 30
+     },
+     {
+      "chunk": "DORA:46:own",
+      "grade": 2,
+      "e5_rank": 160,
+      "in_population": true,
+      "judged": {
+       "function": "resolving cross-reference",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 6
+     },
+     {
+      "chunk": "PSD2:22",
+      "grade": 2,
+      "e5_rank": 179,
+      "in_population": true,
+      "judged": {
+       "function": "addressee or authority",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 179
+     }
+    ],
+    "set": [
+     {
+      "chunk": "DORA:1",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:2.1",
+      "function": "scope or applicability",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:18.3",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:19.4",
+      "function": "condition",
+      "grade": 1
+     },
+     {
+      "chunk": "DORA:19.1",
+      "function": "addressee or authority",
+      "grade": 3
+     },
+     {
+      "chunk": "DORA:46:own",
+      "function": "resolving cross-reference",
+      "grade": 2
+     },
+     {
+      "chunk": "DORA:23",
+      "function": "governing rule",
+      "grade": 1
+     },
+     {
+      "chunk": "DORA:3.8",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:13.2",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:19.6",
+      "function": "addressee or authority",
+      "grade": 1
+     }
+    ],
+    "recall10": {
+     "e5": 0.25,
+     "c": 0.5
+    },
+    "full_evidence10": {
+     "e5": 0.0,
+     "c": 0.0
+    }
+   }
+  ],
+  "N035": [
+   {
+    "query_id": "N035-en-1",
+    "lang": "en",
+    "relevant": [
+     {
+      "chunk": "DORA:2.1",
+      "grade": 3,
+      "e5_rank": 1,
+      "in_population": true,
+      "judged": {
+       "function": "scope or applicability",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 2
+     },
+     {
+      "chunk": "DORA:3.37",
+      "grade": 2,
+      "e5_rank": 71,
+      "in_population": true,
+      "judged": {
+       "function": "legal category or definition",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 73
+     },
+     {
+      "chunk": "PSD2:33",
+      "grade": 2,
+      "e5_rank": 192,
+      "in_population": true,
+      "judged": {
+       "function": "governing rule",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 194
+     },
+     {
+      "chunk": "PSD2:4.16",
+      "grade": 2,
+      "e5_rank": 724,
+      "in_population": true,
+      "judged": {
+       "function": "legal category or definition",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 724
+     }
+    ],
+    "set": [
+     {
+      "chunk": "DORA:1",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:2.1",
+      "function": "scope or applicability",
+      "grade": 3
+     },
+     {
+      "chunk": "DORA:28.1",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:4",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:2.3",
+      "function": "exception",
+      "grade": 1
+     },
+     {
+      "chunk": "DORA:3.19",
+      "function": "addressee or authority",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:29",
+      "function": "resolving cross-reference",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:28.4",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:28.2",
+      "function": "scope or applicability",
+      "grade": 0
+     },
+     {
+      "chunk": "PSD2:4.4",
+      "function": "legal category or definition",
+      "grade": 0
+     }
+    ],
+    "recall10": {
+     "e5": 0.25,
+     "c": 0.25
+    },
+    "full_evidence10": {
+     "e5": 0.0,
+     "c": 0.0
+    }
+   },
+   {
+    "query_id": "N035-en-2",
+    "lang": "en",
+    "relevant": [
+     {
+      "chunk": "DORA:2.1",
+      "grade": 3,
+      "e5_rank": 1,
+      "in_population": true,
+      "judged": {
+       "function": "scope or applicability",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 2
+     },
+     {
+      "chunk": "DORA:3.37",
+      "grade": 2,
+      "e5_rank": 54,
+      "in_population": true,
+      "judged": {
+       "function": "governing rule",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 57
+     },
+     {
+      "chunk": "PSD2:33",
+      "grade": 2,
+      "e5_rank": 305,
+      "in_population": true,
+      "judged": {
+       "function": "governing rule",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 307
+     },
+     {
+      "chunk": "PSD2:4.16",
+      "grade": 2,
+      "e5_rank": 855,
+      "in_population": true,
+      "judged": {
+       "function": "governing rule",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 10
+     }
+    ],
+    "set": [
+     {
+      "chunk": "DORA:2.2",
+      "function": "governing rule",
+      "grade": 1
+     },
+     {
+      "chunk": "DORA:2.1",
+      "function": "scope or applicability",
+      "grade": 3
+     },
+     {
+      "chunk": "DORA:46.b",
+      "function": "legal category or definition",
+      "grade": 1
+     },
+     {
+      "chunk": "DORA:28.3",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:6.7",
+      "function": "resolving cross-reference",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:39.4",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:2.3",
+      "function": "scope or applicability",
+      "grade": 1
+     },
+     {
+      "chunk": "MiCA:3.1.15",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:28.1",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "PSD2:4.16",
+      "function": "governing rule",
+      "grade": 2
+     }
+    ],
+    "recall10": {
+     "e5": 0.25,
+     "c": 0.5
+    },
+    "full_evidence10": {
+     "e5": 0.0,
+     "c": 0.0
+    }
+   },
+   {
+    "query_id": "N035-es-1",
+    "lang": "es",
+    "relevant": [
+     {
+      "chunk": "DORA:2.1",
+      "grade": 3,
+      "e5_rank": 1,
+      "in_population": true,
+      "judged": {
+       "function": "scope or applicability",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 2
+     },
+     {
+      "chunk": "DORA:3.37",
+      "grade": 2,
+      "e5_rank": 103,
+      "in_population": true,
+      "judged": {
+       "function": "scope or applicability",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 106
+     },
+     {
+      "chunk": "PSD2:33",
+      "grade": 2,
+      "e5_rank": 363,
+      "in_population": true,
+      "judged": {
+       "function": "resolving cross-reference",
+       "necessary": true
+      },
+      "selected": true,
+      "rank": 7
+     },
+     {
+      "chunk": "PSD2:4.16",
+      "grade": 2,
+      "e5_rank": 716,
+      "in_population": true,
+      "judged": {
+       "function": "scope or applicability",
+       "necessary": true
+      },
+      "selected": false,
+      "rank": 717
+     }
+    ],
+    "set": [
+     {
+      "chunk": "DORA:1",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:2.1",
+      "function": "scope or applicability",
+      "grade": 3
+     },
+     {
+      "chunk": "DORA:8",
+      "function": "legal category or definition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:28.1",
+      "function": "condition",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:31.8",
+      "function": "exception",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:46.b",
+      "function": "addressee or authority",
+      "grade": 1
+     },
+     {
+      "chunk": "PSD2:33",
+      "function": "resolving cross-reference",
+      "grade": 2
+     },
+     {
+      "chunk": "DORA:4",
+      "function": "governing rule",
+      "grade": 0
+     },
+     {
+      "chunk": "DORA:28.6",
+      "function": "scope or applicability",
+      "grade": 0
+     },
+     {
+      "chunk": "MiCA:3.1.15",
+      "function": "legal category or definition",
+      "grade": 0
+     }
+    ],
+    "recall10": {
+     "e5": 0.25,
+     "c": 0.5
+    },
+    "full_evidence10": {
+     "e5": 0.0,
+     "c": 0.0
+    }
+   }
+  ]
+ },
+ "performance": {
+  "windows": 1356,
+  "prompt_tokens_total": 2594751,
+  "reused_prefix_tokens_total": 397193,
+  "new_tokens_total": 87806,
+  "seconds_total": 24068.84975697947,
+  "seconds_per_window_median": 16.973219521009014,
+  "versions": {
+   "mlx": "0.32.3",
+   "mlx_lm": "0.32.0",
+   "python": "3.12.14",
+   "machine": "arm64",
+   "model_id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+   "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+   "max_new_tokens": 160,
+   "decoding": "greedy"
+  }
+ }
+}
