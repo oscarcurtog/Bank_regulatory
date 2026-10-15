@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import random
 import re
+import statistics
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
@@ -185,3 +186,36 @@ def ranking_metrics(
 
 def fingerprint(ids: Sequence[str]) -> str:
     return hashlib.sha256("\n".join(sorted(ids)).encode("utf-8")).hexdigest()
+
+
+def reciprocal_ranks(
+    ranked: Mapping[str, Sequence[str]], correct: Mapping[str, frozenset[str]]
+) -> dict[str, float]:
+    """Each item's reciprocal rank of its first correct chunk (0 when none is ranked)."""
+    out = {}
+    for item_id, order in ranked.items():
+        hit = next((i for i, c in enumerate(order, 1) if c in correct[item_id]), None)
+        out[item_id] = 1 / hit if hit else 0.0
+    return out
+
+
+def cluster_bootstrap(
+    deltas: Mapping[str, float], cluster: Mapping[str, str], reps: int = 10_000
+) -> dict[str, float]:
+    """The mean delta over items, with a 95% interval from resampling clusters (an article's
+    questions are not independent)."""
+    by: dict[str, list[float]] = {}
+    for item_id, d in deltas.items():
+        by.setdefault(cluster[item_id], []).append(d)
+    keys = sorted(by)
+    rng = random.Random(SEED)
+    means = sorted(
+        statistics.fmean(v for k in rng.choices(keys, k=len(keys)) for v in by[k])
+        for _ in range(reps)
+    )
+    return {
+        "mean": statistics.fmean(deltas.values()),
+        "ci95_low": means[int(0.025 * reps)],
+        "ci95_high": means[int(0.975 * reps) - 1],
+        "clusters": len(keys),
+    }

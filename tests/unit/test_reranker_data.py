@@ -80,3 +80,14 @@ def test_ranking_metrics_use_the_first_correct_chunk():
     m = rd.ranking_metrics(ranked, correct)
     assert m["P@1"] == 1 / 3 and abs(m["MRR"] - (0.5 + 1) / 3) < 1e-12
     assert m["Recall@3"] == 2 / 3
+
+
+def test_reciprocal_ranks_and_the_cluster_bootstrap():
+    rr = rd.reciprocal_ranks(
+        {"a": ["x", "p"], "b": ["y"]}, {"a": frozenset({"p"}), "b": frozenset({"p"})}
+    )
+    assert rr == {"a": 0.5, "b": 0.0}
+    deltas = {"a": 0.2, "b": 0.2, "c": -0.1}
+    out = rd.cluster_bootstrap(deltas, {"a": "art1", "b": "art1", "c": "art2"}, reps=200)
+    assert abs(out["mean"] - 0.1) < 1e-12 and out["clusters"] == 2
+    assert out["ci95_low"] <= out["mean"] <= out["ci95_high"]
