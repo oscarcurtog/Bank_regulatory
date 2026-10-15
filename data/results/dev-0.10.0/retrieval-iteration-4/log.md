@@ -38,8 +38,9 @@ outside E5's top 10, 136 of E5's ranks 7 to 10 stayed as corroborated and 217 le
 | dependent evidence Recall@10 | 0.300 | 0.368 | +0.068 |
 
 English / Spanish Recall@10: 0.801 / 0.807 (E5: 0.777 / 0.735). Queries better / equal / worse:
-12 / 66 / 3 in Recall@10, 39 / 34 / 8 in nDCG@10. nDCG@10's interval is the first of iterations 1
-to 4 to exclude zero. **The minimum signal is not reached**: Recall@10 (+0.040) and nDCG@10
+12 / 66 / 3 in Recall@10, 39 / 34 / 8 in nDCG@10. nDCG@10's interval is the first gain over E5 in
+iterations 1 to 4 to exclude zero (the earlier intervals that excluded it were losses: BM25, E2,
+E3 with the bridge, C). **The minimum signal is not reached**: Recall@10 (+0.040) and nDCG@10
 (0.552) pass, full-evidence@10 rises by 0.025, 0.005 short of +0.03. The useful target is not
 reached either (Recall@10 0.85, `multi_provision` 0.60, dependent evidence 0.45, full-evidence
 0.75).

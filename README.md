@@ -370,8 +370,8 @@ four questions about the points of law a complete answer needs. E5 searches each
 whole corpus, and a fixed rule keeps E5's first six and gives places 7 to 10 to what the questions
 find. With Qwen3-4B, Recall@10 rose to 0.803 and nDCG@10 to 0.552. With Qwen3-8B, run without
 thinking as a capacity control, they rose to 0.794 and 0.548, with dependent evidence at 0.460
-(E5: 0.300) and full-evidence at 0.691. For both, nDCG@10's paired interval excludes zero, the
-first of the iterations to do so. The 8B passes the registered minimum signal and the 4B misses it
+(E5: 0.300) and full-evidence at 0.691. For both, nDCG@10's paired interval excludes zero: the
+first gain over E5 of the iterations to do so. The 8B passes the registered minimum signal and the 4B misses it
 by 0.005 of full-evidence; neither reaches the useful target (Recall@10 0.85). The questions reach
 most of the missing evidence in their first 50 results but less than half of it in their first 5.
 
