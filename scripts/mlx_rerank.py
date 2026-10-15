@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 BATCH = 16
+CACHE_LIMIT = 1 << 30  # bytes: MLX's buffer cache, which otherwise grows with every shape
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     from huggingface_hub import snapshot_download
     from mlx_lm.tuner.utils import linear_to_lora_layers  # type: ignore[import-not-found]
 
+    mx.set_cache_limit(CACHE_LIMIT)
     recipe = json.loads(args.recipe.read_text(encoding="utf-8"))
     contract = json.loads(Path(recipe["base"]["contract"]).read_text(encoding="utf-8"))
     base = recipe["base"]

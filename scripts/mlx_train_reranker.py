@@ -29,6 +29,9 @@ import time
 from pathlib import Path
 from typing import Any
 
+CACHE_LIMIT = 1 << 30  # bytes
+LOG_EVERY = 50
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
@@ -48,6 +51,9 @@ def main(argv: list[str] | None = None) -> int:
     from mlx.utils import tree_flatten, tree_map  # type: ignore[import-not-found]
     from mlx_lm.tuner.utils import linear_to_lora_layers  # type: ignore[import-not-found]
 
+    # MLX keeps freed buffers for reuse; with a new shape at every step that cache grew to 11 GB
+    # and the machine swapped (first run, stopped after 32 minutes). The limit changes no number.
+    mx.set_cache_limit(CACHE_LIMIT)
     recipe = json.loads(args.recipe.read_text(encoding="utf-8"))
     contract = json.loads(Path(recipe["base"]["contract"]).read_text(encoding="utf-8"))
     base = recipe["base"]
@@ -181,6 +187,15 @@ def main(argv: list[str] | None = None) -> int:
             mx.eval(model.parameters(), opt.state)
             step += 1
             losses.append(loss_sum / per_step)
+            if step % LOG_EVERY == 0:
+                elapsed = time.perf_counter() - started
+                print(
+                    f"  step {step}: loss {sum(losses[-LOG_EVERY:]) / LOG_EVERY:.4f}, "
+                    f"{elapsed / step:.1f} s per step, active "
+                    f"{mx.get_active_memory() / 2**30:.2f} GiB, cache "
+                    f"{mx.get_cache_memory() / 2**30:.2f} GiB",
+                    flush=True,
+                )
             if args.max_steps and step >= args.max_steps:
                 stopped = "max_steps"
                 break
