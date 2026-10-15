@@ -25,7 +25,7 @@ here reads a label.
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
 MIN_REQUIREMENTS = 2
@@ -161,3 +161,38 @@ def articles_named(text: str) -> set[str]:
     for m in re.finditer(r"\bArticles?\s+((?:\d+[a-z]?(?:\s*(?:,|and|or|to)\s*)?)+)", text):
         out |= set(re.findall(r"\d+[a-z]?", m.group(1)))
     return out
+
+
+def assemble_scored(
+    e5: Sequence[str], hits: Sequence[Sequence[str]], scores: Sequence[Mapping[str, float]]
+) -> Assembly:
+    """G1 (config/retrieval/iteration-5.md): D's rule with one change. After the corroborated E5
+    ranks 7 to 10, the places go to the chunks outside E5's top 10 with the highest score over all
+    requirements (a chunk takes its best score among the requirements that hold it in their first
+    K), instead of in turns. `scores[i]` holds requirement i's comparable score for each of its
+    chunks. Equal scores keep the order of first appearance in turns, then E5's order."""
+    top = list(e5[:DEPTH])
+    in_top = set(top)
+    tail = top[KEEP:]
+    slots = DEPTH - KEEP
+    support = {c for h in hits for c in h[:K]}
+    corroborated = [c for c in tail if c in support]
+    best: dict[str, float] = {}
+    for h, s in zip(hits, scores, strict=True):
+        for c in h[:K]:
+            if c not in in_top and s[c] > best.get(c, float("-inf")):
+                best[c] = s[c]
+    turns = assemble(e5, hits).added  # the order D's turns would give, for ties
+    order = {c: i for i, c in enumerate(turns)}
+    rank = {c: i for i, c in enumerate(e5)}
+    new = sorted(best, key=lambda c: (-best[c], order.get(c, len(order)), rank[c]))
+    rest = [c for c in tail if c not in support]
+    fill = (corroborated + new + rest)[:slots]
+    chosen = sorted(top[:KEEP] + fill, key=rank.__getitem__)
+    placed = set(chosen)
+    return Assembly(
+        tuple(chosen + [c for c in e5 if c not in placed]),
+        tuple(corroborated),
+        tuple(c for c in fill if c not in in_top),
+        tuple(c for c in tail if c not in placed),
+    )

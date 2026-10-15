@@ -83,3 +83,21 @@ def test_named_articles_are_found_in_lists_and_ranges():
     assert dc.articles_named("as Article 59 and Articles 11 and 12 say") == {"59", "11", "12"}
     assert dc.articles_named("Articles 3, 4 or 5a apply") == {"3", "4", "5a"}
     assert dc.articles_named("no article here") == set()
+
+
+def test_g1_fills_the_places_by_the_best_score_after_the_corroborated_ones():
+    # c9 is corroborated; c15, c16, c17 are new; c16 is in both lists and takes its best score
+    hits = [["c15", "c16"], ["c9", "c16", "c17"]]
+    scores = [{"c15": 0.1, "c16": 0.4}, {"c9": 2.0, "c16": 0.9, "c17": 0.5}]
+    a = dc.assemble_scored(E5, hits, scores)
+    assert a.corroborated == ("c9",)
+    assert a.added == ("c16", "c17", "c15")  # by score: 0.9, 0.5, 0.1
+    assert a.ranking[:10] == ("c1", "c2", "c3", "c4", "c5", "c6", "c9", "c15", "c16", "c17")
+    assert a.displaced == ("c7", "c8", "c10")
+
+
+def test_g1_with_no_requirement_is_e5_and_ties_fall_back_to_the_turns():
+    assert dc.assemble_scored(E5, [], []).ranking == tuple(E5)
+    hits = [["c11", "c12"], ["c13"]]
+    tied = [{"c11": 0.0, "c12": 0.0}, {"c13": 0.0}]
+    assert dc.assemble_scored(E5, hits, tied).added == dc.assemble(E5, hits).added
