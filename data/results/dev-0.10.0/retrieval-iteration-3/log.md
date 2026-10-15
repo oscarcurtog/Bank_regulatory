@@ -18,9 +18,16 @@ saved scores). Rebuilt from the stored scores, the diagnosis is identical.
 | A2: + anchor | 0.238 | 0.719 | 0.372 | 0.277 | 0.205 | 0.146 |
 | A3: + relation and citation context | 0.185 | 0.711 | 0.193 | 0.193 | 0.093 | 0.011 |
 
-Paired over needs, average precision of A3 minus A1 is -0.014 [-0.118, +0.065] and A3 minus A2 is
--0.068 [-0.119, -0.013]. The hypothesis A3 > A2 > A1 does not hold: the anchor helps a little, the
+Paired over needs, average precision of A3 minus A1 is -0.053 [-0.177, +0.045], A3 minus A2 is
+-0.053 [-0.100, -0.014] and A2 minus A1 is +0.001 [-0.135, +0.127]. The hypothesis A3 > A2 > A1
+does not hold: the anchor does not raise average precision (it raises P@1 and P@3), and the
 relation and its clause hurt.
+
+*Corrected on 2026-10-15.* The first version of this record gave -0.014 [-0.118, +0.065] and
+-0.068 [-0.119, -0.013]: the bootstrap averaged the deltas over queries, while every metric is a
+macro mean by need, and these 19 queries fall unevenly in 9 needs. It now averages by need, like
+the table above (A3 - A1 = 0.185 - 0.238). The gate's decision does not change. Every other
+interval of iterations 1 to 3 is unchanged, because each evaluable need has exactly 3 queries.
 
 The probability of "yes" shows why. Medians by grade over the 5,204 evaluable (query, candidate)
 pairs (36 of grade 2, 194 of grade 1):

@@ -140,7 +140,7 @@ def test_a_ppr_ranking_puts_reached_chunks_first_and_keeps_the_base_order_for_th
     assert list(ranked.chunk_ids[3:]) == [c for c in base.chunk_ids if c not in reached]
 
 
-def test_the_paired_bootstrap_resamples_needs_and_counts_queries():
+def test_the_paired_bootstrap_averages_by_need_resamples_needs_and_counts_queries():
     from ingest import benchmark as bm
     from ingest import run_report as rr
 
@@ -158,5 +158,7 @@ def test_the_paired_bootstrap_resamples_needs_and_counts_queries():
         for q in ("N001-en-1", "N001-en-2", "N002-en-1")
     ]
     out = rr.paired_bootstrap({"N001-en-1": 0.5, "N001-en-2": 0.0, "N002-en-1": -0.5}, queries)
-    assert out["mean"] == 0.0 and (out["better"], out["equal"], out["worse"]) == (1, 1, 1)
+    # N001 averages 0.25 and N002 -0.5: each need weighs the same, not each query (0.0)
+    assert out["mean"] == -0.125 and (out["better"], out["equal"], out["worse"]) == (1, 1, 1)
     assert out["ci95_low"] <= out["mean"] <= out["ci95_high"]
+    assert {out["ci95_low"], out["ci95_high"]} <= {-0.5, -0.125, 0.25}
