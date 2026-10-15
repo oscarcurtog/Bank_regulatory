@@ -228,6 +228,14 @@ def main(argv: list[str] | None = None) -> int:
             }
         )
 
+    # the 8B's lists checked against D-8B's recorded run, as F's check does for the 4B
+    d8_ranked, _ = rt.load_system_run(D_SYSTEMS["8b"], args.max_tokens, version, args.results)
+    for r in d8_ranked:
+        p = answers["8b"][r.query_id]
+        d8_hits = [full[x][: rq.DEPTH] for x in (p.items if p.readable else ())]
+        if dc.assemble(e5_of[r.query_id].chunk_ids, d8_hits).ranking != r.chunk_ids:
+            raise SystemExit(f"{r.query_id}: D-8B's ranking is not rebuilt from its requirements")
+
     # 3. the working reference rebuilt exactly from the carried scores
     ref_cfg = {k: state[k] for k in ("rule", "decomposers", "depth")}
     missing = [p for p in needed(ref_cfg) if pair_id(*p) not in known]
@@ -277,12 +285,14 @@ def main(argv: list[str] | None = None) -> int:
     }
     ranked, scored_pairs = build(cfg, score)
     system = SYSTEMS[args.experiment]
-    sha = rt.write_run(
-        rt.run_dir(system, args.max_tokens, version) / rt.RUN_FILE, ranked, frozen.evaluable
-    )
+    run_file = rt.run_dir(system, args.max_tokens, version) / rt.RUN_FILE
+    pending = run_file.with_name(run_file.name + ".pending")
+    sha = rt.write_run(pending, ranked, frozen.evaluable)
     started = state.setdefault("started", {})
     if args.experiment in started and started[args.experiment] != sha:
+        pending.unlink()
         raise SystemExit(f"{args.experiment} was started with another ranking: no second version")
+    pending.replace(run_file)
     started[args.experiment] = sha
     state_path.write_text(json.dumps(state, indent=1) + "\n", "utf-8")
 
