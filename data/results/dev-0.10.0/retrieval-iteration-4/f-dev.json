@@ -1,0 +1,135 @@
+{
+ "experiment": "F, DEV run, once",
+ "system_name": "f-d4b-qwen3-reranker-lora-k5",
+ "run_sha256": "cd077fe98710311dbd6f9d96abdc26abccbfb27375941c2908aeaaec31de3a62",
+ "pairs_scored": 15350,
+ "columns": {
+  "e5": {
+   "nDCG@10": 0.5275020347424471,
+   "Recall@10": 0.7631687242798354,
+   "Recall@20": 0.8160493827160494,
+   "MRR@10": 0.7464628649813835,
+   "Full-evidence@10": 0.6419753086419753,
+   "multi_provision": 0.48055555555555557,
+   "cross_reference": 0.6611111111111111,
+   "cross_act": 0.29166666666666663,
+   "dependent": 0.3
+  },
+  "d": {
+   "nDCG@10": 0.5522743339328267,
+   "Recall@10": 0.8030864197530865,
+   "Recall@20": 0.838477366255144,
+   "MRR@10": 0.7495982755242016,
+   "Full-evidence@10": 0.6666666666666666,
+   "multi_provision": 0.5583333333333332,
+   "cross_reference": 0.6984848484848485,
+   "cross_act": 0.45833333333333337,
+   "dependent": 0.36767676767676766
+  },
+  "e": {
+   "nDCG@10": 0.5610819738077187,
+   "Recall@10": 0.8242798353909465,
+   "Recall@20": 0.8633744855967078,
+   "MRR@10": 0.7535175387027239,
+   "Full-evidence@10": 0.6790123456790123,
+   "multi_provision": 0.6166666666666667,
+   "cross_reference": 0.7353535353535353,
+   "cross_act": 0.5,
+   "dependent": 0.4090909090909091
+  },
+  "f": {
+   "nDCG@10": 0.5639244197108134,
+   "Recall@10": 0.8045267489711934,
+   "Recall@20": 0.8353909465020576,
+   "MRR@10": 0.7517538702723888,
+   "Full-evidence@10": 0.6666666666666666,
+   "multi_provision": 0.5833333333333334,
+   "cross_reference": 0.7171717171717171,
+   "cross_act": 0.41666666666666663,
+   "dependent": 0.36666666666666664
+  }
+ },
+ "by_language_recall10": {
+  "en": 0.8157407407407407,
+  "es": 0.7820987654320988
+ },
+ "paired_against_e": {
+  "Recall@10": {
+   "mean": -0.019753086419753086,
+   "ci95_low": -0.046913580246913576,
+   "ci95_high": 0.006172839506172839,
+   "better": 2,
+   "equal": 73,
+   "worse": 6
+  },
+  "nDCG@10": {
+   "mean": 0.0028424459030946497,
+   "ci95_low": -0.010803833669483058,
+   "ci95_high": 0.01576374212282443,
+   "better": 28,
+   "equal": 36,
+   "worse": 17
+  },
+  "Full-evidence@10": {
+   "mean": -0.012345679012345678,
+   "ci95_low": -0.037037037037037035,
+   "ci95_high": 0.0,
+   "better": 0,
+   "equal": 80,
+   "worse": 1
+  }
+ },
+ "paired_against_e5": {
+  "Recall@10": {
+   "mean": 0.04135802469135803,
+   "ci95_low": -0.004115226337448557,
+   "ci95_high": 0.09588477366255145,
+   "better": 11,
+   "equal": 67,
+   "worse": 3
+  },
+  "nDCG@10": {
+   "mean": 0.03642238496836638,
+   "ci95_low": 0.018130108038587344,
+   "ci95_high": 0.0563224771803973,
+   "better": 43,
+   "equal": 27,
+   "worse": 11
+  },
+  "Full-evidence@10": {
+   "mean": 0.024691358024691357,
+   "ci95_low": -0.024691358024691357,
+   "ci95_high": 0.07407407407407407,
+   "better": 3,
+   "equal": 77,
+   "worse": 1
+  }
+ },
+ "requirement_ranking_on_dev": {
+  "e_zero_shot": {
+   "Recall@1": 0.6627572016460905,
+   "Recall@3": 0.7847736625514403,
+   "Recall@5": 0.8246913580246913,
+   "Recall@10": 0.8798353909465021,
+   "Recall@20": 0.9281893004115226,
+   "Recall@50": 0.9477366255144033,
+   "MRR": 0.9148050166568685
+  },
+  "f": {
+   "Recall@1": 0.6290123456790124,
+   "Recall@3": 0.7427983539094649,
+   "Recall@5": 0.8154320987654321,
+   "Recall@10": 0.8808641975308643,
+   "Recall@20": 0.9127572016460905,
+   "Recall@50": 0.9477366255144033,
+   "MRR": 0.8714927048260382
+  }
+ },
+ "system_signal_against_e": {
+  "Recall@10 +0.02 or full-evidence +0.03": false,
+  "nDCG@10 not below E's by more than 0.01": true
+ },
+ "training_success": true,
+ "useful_target": false,
+ "domain_adapted_reranker_success": false
+}

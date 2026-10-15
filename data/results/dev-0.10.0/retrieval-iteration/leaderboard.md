@@ -21,6 +21,7 @@ Every system ranks all 1,354 chunks for the 81 scored queries; one code path mea
 | D: Qwen3-4B requirements, each searched by E5 (K = 5), fixed merge | 0.552 | 0.803 | 0.750 | 0.838 | 0.680 | 0.805 | 0.884 | 0.558 | 0.698 | 0.458 | 0.368 | 0.667 |
 | D: Qwen3-8B requirements (no thinking), searched by E5, fixed merge | 0.548 | 0.794 | 0.745 | 0.858 | 0.680 | 0.802 | 0.887 | 0.566 | 0.692 | 0.375 | 0.460 | 0.691 |
 | E: D-4B with each requirement's 50 reranked (Qwen3-Reranker) | 0.561 | 0.824 | 0.754 | 0.863 | 0.680 | 0.841 | 0.892 | 0.617 | 0.735 | 0.500 | 0.409 | 0.679 |
+| F: as E, the reranker fine-tuned (LoRA, synthetic data) | 0.564 | 0.805 | 0.752 | 0.835 | 0.680 | 0.826 | 0.885 | 0.583 | 0.717 | 0.417 | 0.367 | 0.667 |
 
 Per language (official, D-020), nDCG@10 and Recall@10:
 
@@ -43,6 +44,7 @@ Per language (official, D-020), nDCG@10 and Recall@10:
 | D: Qwen3-4B requirements, each searched by E5 (K = 5), fixed merge | 0.574 | 0.508 | 0.801 | 0.807 |
 | D: Qwen3-8B requirements (no thinking), searched by E5, fixed merge | 0.574 | 0.495 | 0.807 | 0.769 |
 | E: D-4B with each requirement's 50 reranked (Qwen3-Reranker) | 0.584 | 0.516 | 0.844 | 0.785 |
+| F: as E, the reranker fine-tuned (LoRA, synthetic data) | 0.583 | 0.526 | 0.816 | 0.782 |
 
 Best by global Recall@10, then nDCG@10: E: D-4B with each requirement's 50 reranked (Qwen3-Reranker). This is an ordering, not a decision: each iteration's protocol fixes its own rules for keeping a system.
 
@@ -66,7 +68,8 @@ Each system against E5, paired by query (81 queries), with a 95% bootstrap inter
 | D: Qwen3-4B requirements, each searched by E5 (K = 5), fixed merge | +0.040 [-0.008, +0.097] | +0.025 [+0.010, +0.041] | 39 / 34 / 8 | none |
 | D: Qwen3-8B requirements (no thinking), searched by E5, fixed merge | +0.031 [-0.011, +0.083] | +0.020 [+0.007, +0.033] | 39 / 33 / 9 | D |
 | E: D-4B with each requirement's 50 reranked (Qwen3-Reranker) | +0.061 [+0.009, +0.122] | +0.034 [+0.013, +0.057] | 42 / 25 / 14 | A, C, D |
+| F: as E, the reranker fine-tuned (LoRA, synthetic data) | +0.041 [-0.004, +0.096] | +0.036 [+0.018, +0.056] | 43 / 27 / 11 | C |
 
 Decision 5: stop testing dense embedding models: model swapping has diminishing returns (third model -0.033 global Recall@10 against E5; the rule asks for +0.05).
 
-Reranker gate (Recall@50 >= 0.95): dense, E5 (reference) 0.863, dense, BGE-M3 0.886, BM25 0.521, E5 + one-hop references, K = 5 0.801, E5 + one-hop references, K = 10 0.783, dense, Qwen3-Embedding-0.6B 0.894, R1: E5 top 20 + dependency pool (candidate list) 0.893, E2: dense-seeded PageRank, 10 seeds, follow 0.3 0.868, E3: cross-encoder on R1's top 50, original query 0.893, E3: cross-encoder, bridge maximum 0.893, E4: 2 top-10 places for dependencies 0.893, C: legal-function set selection, expanded population (Qwen3-4B, 4-bit) 0.883, R4-A: facts rewrite fused with E5 (RRF, k = 60) 0.869, R4-B: facts and closed-catalog concepts fused with E5 (RRF, k = 60) 0.891, D: Qwen3-4B requirements, each searched by E5 (K = 5), fixed merge 0.884, D: Qwen3-8B requirements (no thinking), searched by E5, fixed merge 0.887, E: D-4B with each requirement's 50 reranked (Qwen3-Reranker) 0.892; met by none.
+Reranker gate (Recall@50 >= 0.95): dense, E5 (reference) 0.863, dense, BGE-M3 0.886, BM25 0.521, E5 + one-hop references, K = 5 0.801, E5 + one-hop references, K = 10 0.783, dense, Qwen3-Embedding-0.6B 0.894, R1: E5 top 20 + dependency pool (candidate list) 0.893, E2: dense-seeded PageRank, 10 seeds, follow 0.3 0.868, E3: cross-encoder on R1's top 50, original query 0.893, E3: cross-encoder, bridge maximum 0.893, E4: 2 top-10 places for dependencies 0.893, C: legal-function set selection, expanded population (Qwen3-4B, 4-bit) 0.883, R4-A: facts rewrite fused with E5 (RRF, k = 60) 0.869, R4-B: facts and closed-catalog concepts fused with E5 (RRF, k = 60) 0.891, D: Qwen3-4B requirements, each searched by E5 (K = 5), fixed merge 0.884, D: Qwen3-8B requirements (no thinking), searched by E5, fixed merge 0.887, E: D-4B with each requirement's 50 reranked (Qwen3-Reranker) 0.892, F: as E, the reranker fine-tuned (LoRA, synthetic data) 0.885; met by none.

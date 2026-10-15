@@ -1,0 +1,10 @@
+{
+ "experiment": "F, parity of the MLX scorer with E's PyTorch scores",
+ "pairs": 500,
+ "max_abs_difference": 5.984306335449219e-05,
+ "median_abs_difference": 8.940696716308594e-06,
+ "requirements_with_all_50": 10,
+ "requirements_ordered_identically": 10,
+ "limit": 0.01,
+ "passes": true
+}

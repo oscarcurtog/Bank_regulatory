@@ -1,0 +1,38 @@
+{
+ "experiment": "F, component on VAL-REPORT",
+ "items": 85,
+ "candidates_per_item": 50,
+ "adapter": "adapter-step00600.safetensors",
+ "metrics": {
+  "e5": {
+   "P@1": 0.8117647058823529,
+   "MRR": 0.85735137411608,
+   "Recall@3": 0.8823529411764706,
+   "Recall@5": 0.9294117647058824,
+   "Recall@10": 0.9411764705882353
+  },
+  "zero_shot": {
+   "P@1": 0.7529411764705882,
+   "MRR": 0.8366227400050928,
+   "Recall@3": 0.9058823529411765,
+   "Recall@5": 0.9529411764705882,
+   "Recall@10": 0.9647058823529412
+  },
+  "fine_tuned": {
+   "P@1": 0.9294117647058824,
+   "MRR": 0.9598039215686274,
+   "Recall@3": 0.9882352941176471,
+   "Recall@5": 1.0,
+   "Recall@10": 1.0
+  }
+ },
+ "mrr_paired_over_articles": {
+  "mean": 0.12318118156353451,
+  "ci95_low": 0.06715277777777778,
+  "ci95_high": 0.17928325969563086,
+  "clusters": 25
+ },
+ "mrr_gain": 0.123,
+ "rule": "fine-tuned MRR +0.03 with the interval above zero",
+ "training_success": true
+}

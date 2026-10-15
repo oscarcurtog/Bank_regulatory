@@ -45,6 +45,7 @@ SYSTEMS = [
     ("d-qwen3-4b-k5", "D: Qwen3-4B requirements, each searched by E5 (K = 5), fixed merge"),
     ("d-qwen3-8b-k5", "D: Qwen3-8B requirements (no thinking), searched by E5, fixed merge"),
     ("e-d4b-qwen3-reranker-k5", "E: D-4B with each requirement's 50 reranked (Qwen3-Reranker)"),
+    ("f-d4b-qwen3-reranker-lora-k5", "F: as E, the reranker fine-tuned (LoRA, synthetic data)"),
 ]
 REFERENCE = "multilingual-e5-large"
 THIRD_MODEL = "qwen3-embedding-0.6b"

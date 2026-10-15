@@ -180,3 +180,49 @@ first 5 is relevant 22 times reranked against 18 in E5's order, and the second 1
 The registered diagnostic measured depth 5; the rule mostly reads depth 1. This explains the
 result and does not change the registered conclusion. These are development numbers: DEV has been
 read by many systems, and E is the best of them on it.
+
+## F: one LoRA recipe for the requirement reranker
+
+Fixed before training ([protocol](../../../../config/retrieval/reranker-finetuning.md), `88f447c`;
+code `00564d1`; a memory fix `821eeef`, after a first run swapped at 11 GB and was stopped before
+its first evaluation).
+
+**Data, from the corpus alone.** The 4B wrote 2 questions from each of the 1,233 chunks with a body
+of 20 words or more. Of 2,466, the filters kept 1,256: 662 dropped for naming an article or
+paragraph, 294 for copying 8 or more words, 232 for not being a question, 20 for leaning on the
+inherited context, 1 for the round trip. The source chunk is E5's first for 993 of the 1,256
+questions and within its first 5 for 1,200. Split by article: TRAIN 1,071 (231 articles), VAL-SELECT
+100 and VAL-REPORT 85 (50 articles); no article on both sides, no validation chunk among the
+training negatives.
+
+**Training.** LoRA (rank 16, the last 8 of 28 layers, 2,883,584 trainable parameters), listwise
+softmax over groups of 4, AdamW 1e-4. 140 minutes, 6.91 GB of peak memory. VAL-SELECT MRR: 0.880
+before training, 0.921 at step 200, 0.937 at 400, 0.942 at 600, 0.933 at 800, 0.937 at 1,000;
+stopped by patience, checkpoint of step 600.
+
+**Component, on VAL-REPORT** (85 questions, E5's 50 each): P@1 0.812 / 0.753 / 0.929 and MRR
+0.857 / 0.837 / 0.960 (E5's order / zero-shot / fine-tuned). The MRR gain is +0.123 [+0.067, +0.179]
+over 25 source articles: **training success**.
+
+**Parity.** The MLX scorer against E's PyTorch scores on 500 DEV pairs: largest difference 6e-05;
+10 of 10 requirements ordered identically.
+
+**DEV, once:**
+
+| | E5 | D-4B | E (zero-shot) | F (fine-tuned) | F against E |
+|---|---|---|---|---|---|
+| Recall@10 | 0.763 | 0.803 | 0.824 | 0.805 | -0.020 [-0.047, +0.006] |
+| nDCG@10 | 0.528 | 0.552 | 0.561 | 0.564 | +0.003 [-0.011, +0.016] |
+| Full-evidence@10 | 0.642 | 0.667 | 0.679 | 0.667 | -0.012 [-0.037, 0.000] |
+| `multi_provision` Recall@10 | 0.481 | 0.558 | 0.617 | 0.583 | -0.033 |
+| dependent evidence Recall@10 | 0.300 | 0.368 | 0.409 | 0.367 | -0.042 |
+| requirements' Recall@1 / MRR | | 0.610 / 0.836 | 0.663 / 0.915 | 0.629 / 0.871 | |
+
+**`DOMAIN-ADAPTED RERANKER SUCCESS: NO`.** Training succeeds on the synthetic questions and the
+adapter is worse than the zero-shot model on D-4B's real requirements, at the requirement level
+(Recall@1 0.629 against 0.663, MRR 0.871 against 0.915) and in the ten. The synthetic gain does not
+transfer. Hypotheses, not tested: the synthetic questions are easy (the source is E5's first for 79%
+of them), so the adapter learns to agree with surface closeness; and the hardest E5 neighbours used
+as negatives often answer too (siblings, parallel provisions), so the adapter learns to push down
+exactly the related provisions that real requirements need. Both are failure modes the literature
+reports for synthetic training and hard-negative mining.

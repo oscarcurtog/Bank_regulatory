@@ -1,0 +1,129 @@
+{
+ "recipe": {
+  "schema_version": "1",
+  "name": "qwen3-reranker-0.6b-lora-requirements",
+  "base": {
+   "model_id": "Qwen/Qwen3-Reranker-0.6B",
+   "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+   "contract": "config/retrieval/qwen3-reranker-0.6b.json",
+   "license": "apache-2.0"
+  },
+  "instruction": "Given a question about EU financial regulation, retrieve the passages of the law that answer it",
+  "runtime": "mlx 0.32.3, mlx-lm 0.32.0, in .cache/mlx-venv; float32",
+  "lora": {
+   "layers": 8,
+   "rank": 16,
+   "scale": 2.0,
+   "dropout": 0.05,
+   "keys": [
+    "self_attn.q_proj",
+    "self_attn.k_proj",
+    "self_attn.v_proj",
+    "self_attn.o_proj",
+    "mlp.gate_proj",
+    "mlp.up_proj",
+    "mlp.down_proj"
+   ]
+  },
+  "loss": "listwise softmax over each group (the positive and 3 negatives) of the score logit(yes) - logit(no) at the last position",
+  "optimizer": {
+   "name": "AdamW",
+   "learning_rate": 0.0001,
+   "weight_decay": 0.01,
+   "warmup_steps": 50,
+   "schedule": "linear warmup from 0, then constant",
+   "grad_clip_norm": 1.0
+  },
+  "groups_per_step": 2,
+  "max_epochs": 2,
+  "eval_every_steps": 200,
+  "patience": 2,
+  "selection": "the checkpoint with the highest val_select MRR; ties go to P@1, then to the earlier step",
+  "seed": 20261015
+ },
+ "data_sha256": {
+  "train": "c977e61b53322656e71684521be686fd45003ffb783c392385d9d0d2cf1b5d46",
+  "val_select": "2ad7f215d6f3fb2dce5d7c481cb3b7b06c301878abfcd2bb194a15d6edbc49cc"
+ },
+ "groups": {
+  "train": 1071,
+  "val_select": 100,
+  "group_size": 4
+ },
+ "parameters": {
+  "trainable": 2883584,
+  "total": 598660096
+ },
+ "steps": 1000,
+ "steps_per_epoch": 535,
+ "stopped": "patience",
+ "curve": [
+  {
+   "step": 0,
+   "epoch": 0,
+   "MRR": 0.8799166666666666,
+   "P@1": 0.8,
+   "seconds": 0.0
+  },
+  {
+   "step": 200,
+   "epoch": 0.37383177570093457,
+   "MRR": 0.9208333333333333,
+   "P@1": 0.86,
+   "train_loss": 0.40113876610994337,
+   "seconds": 2280.892032957985,
+   "peak_memory_gib": 6.907511454075575
+  },
+  {
+   "step": 400,
+   "epoch": 0.7476635514018691,
+   "MRR": 0.9366666666666668,
+   "P@1": 0.89,
+   "train_loss": 0.30431330323219297,
+   "seconds": 3690.2918314579874,
+   "peak_memory_gib": 6.907511454075575
+  },
+  {
+   "step": 600,
+   "epoch": 1.1214953271028036,
+   "MRR": 0.9416666666666668,
+   "P@1": 0.9,
+   "train_loss": 0.2306109595298767,
+   "seconds": 5279.919382833003,
+   "peak_memory_gib": 6.907511454075575
+  },
+  {
+   "step": 800,
+   "epoch": 1.4953271028037383,
+   "MRR": 0.9333333333333332,
+   "P@1": 0.88,
+   "train_loss": 0.22844234228134155,
+   "seconds": 6894.980595665984,
+   "peak_memory_gib": 6.907511454075575
+  },
+  {
+   "step": 1000,
+   "epoch": 1.8691588785046729,
+   "MRR": 0.9366666666666668,
+   "P@1": 0.89,
+   "train_loss": 0.09150840282440185,
+   "seconds": 8416.136184916017,
+   "peak_memory_gib": 6.907511454075575
+  }
+ ],
+ "best": {
+  "step": 600,
+  "MRR": 0.9416666666666668,
+  "P@1": 0.9,
+  "adapter": "adapter-step00600.safetensors"
+ },
+ "seconds": 8416.136672040971,
+ "peak_memory_gib": 6.907511454075575,
+ "versions": {
+  "mlx": "0.32.3",
+  "mlx_lm": "0.32.0",
+  "python": "3.12.14",
+  "machine": "arm64"
+ },
+ "out_dir": "data/runs/ft-reranker-train-layer-500-dev-0.10.0"
+}
