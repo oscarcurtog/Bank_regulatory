@@ -1,0 +1,42 @@
+{
+  "schema_version": "1",
+  "name": "qwen3-reranker-0.6b-lora-requirements",
+  "base": {
+    "model_id": "Qwen/Qwen3-Reranker-0.6B",
+    "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+    "contract": "config/retrieval/qwen3-reranker-0.6b.json",
+    "license": "apache-2.0"
+  },
+  "instruction": "Given a question about EU financial regulation, retrieve the passages of the law that answer it",
+  "runtime": "mlx 0.32.3, mlx-lm 0.32.0, in .cache/mlx-venv; float32",
+  "lora": {
+    "layers": 8,
+    "rank": 16,
+    "scale": 2.0,
+    "dropout": 0.05,
+    "keys": [
+      "self_attn.q_proj",
+      "self_attn.k_proj",
+      "self_attn.v_proj",
+      "self_attn.o_proj",
+      "mlp.gate_proj",
+      "mlp.up_proj",
+      "mlp.down_proj"
+    ]
+  },
+  "loss": "listwise softmax over each group (the positive and 3 negatives) of the score logit(yes) - logit(no) at the last position",
+  "optimizer": {
+    "name": "AdamW",
+    "learning_rate": 0.0001,
+    "weight_decay": 0.01,
+    "warmup_steps": 50,
+    "schedule": "linear warmup from 0, then constant",
+    "grad_clip_norm": 1.0
+  },
+  "groups_per_step": 2,
+  "max_epochs": 2,
+  "eval_every_steps": 200,
+  "patience": 2,
+  "selection": "the checkpoint with the highest val_select MRR; ties go to P@1, then to the earlier step",
+  "seed": 20261015
+}
