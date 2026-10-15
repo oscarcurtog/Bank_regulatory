@@ -1,0 +1,525 @@
+{
+ "experiment": "D, qwen3-4b",
+ "benchmark_version": "0.10.0",
+ "e5_run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+ "model": {
+  "schema_version": "1",
+  "name": "qwen3-4b-instruct-2507-mlx-4bit",
+  "model_id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+  "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+  "base_model": "Qwen/Qwen3-4B-Instruct-2507",
+  "base_revision": "cdbee75f17c01a7cc42f958dc650907174af0554",
+  "license": "apache-2.0",
+  "quantization": "4-bit, as published by mlx-community",
+  "runtime": "mlx 0.32.3, mlx-lm 0.32.0, in .cache/mlx-venv",
+  "max_prompt_tokens": 16384,
+  "decoding": "greedy"
+ },
+ "prompt": {
+  "system": "You plan the search for the legal evidence that a question about EU financial regulation needs.",
+  "necessary_evidence": "A legally correct and complete answer can need, besides the provision that states the rule, figure or deadline asked for:\n- a definition that decides whether a rule applies or how something is classified;\n- a condition that changes the answer;\n- an exception, exemption or derogation that could change it;\n- the introductory wording that gives a listed point its legal effect;\n- a specific provision that another provision refers to and that the answer needs;\n- a provision that would apply under a fact the question does not state but that could reasonably hold.",
+  "task": "Write 2 to 4 questions that a search of the law must answer for the answer to the QUESTION to be correct and complete. Each asks about one point of law (a rule, a definition, a condition, an exception, a deadline or an amount, or a provision that another provision refers to), in English, in one self-contained sentence that names who it concerns and what. Do not answer, do not state what the law says, do not copy the excerpts, and write no article numbers and no dates.",
+  "excerpts": 3,
+  "sha256": "db8276317c6feb85d7c3aa1124e8ce023dedb3b64e56ddc5ac1f40f80a014a4d"
+ },
+ "rule": {
+  "keep": 6,
+  "depth": 10,
+  "k": 5
+ },
+ "system_name": "d-qwen3-4b-k5",
+ "run_sha256": "ccdf3e111731c78c19e2bcd616e6c46896527c0cdf8530547df88d9a3ee15317",
+ "columns": {
+  "nDCG@10": 0.5522743339328267,
+  "Recall@10": 0.8030864197530865,
+  "Recall@20": 0.838477366255144,
+  "MRR@10": 0.7495982755242016,
+  "Recall@T=1000": 0.6796737555996815,
+  "Recall@T=2000": 0.8052605830383608,
+  "Full-evidence@10": 0.6666666666666666,
+  "multi_provision": 0.5583333333333332,
+  "cross_reference": 0.6984848484848485,
+  "cross_act": 0.45833333333333337,
+  "dependent": 0.36767676767676766
+ },
+ "e5_columns": {
+  "nDCG@10": 0.5275020347424471,
+  "Recall@10": 0.7631687242798354,
+  "Recall@20": 0.8160493827160494,
+  "MRR@10": 0.7464628649813835,
+  "Recall@T=1000": 0.6796737555996815,
+  "Recall@T=2000": 0.7816073843851621,
+  "Full-evidence@10": 0.6419753086419753,
+  "multi_provision": 0.48055555555555557,
+  "cross_reference": 0.6611111111111111,
+  "cross_act": 0.29166666666666663,
+  "dependent": 0.3
+ },
+ "by_language_recall10": {
+  "en": 0.8012345679012346,
+  "es": 0.8067901234567901
+ },
+ "paired_against_e5": {
+  "Recall@10": {
+   "mean": 0.039917695473251025,
+   "ci95_low": -0.008230452674897118,
+   "ci95_high": 0.097119341563786,
+   "better": 12,
+   "equal": 66,
+   "worse": 3
+  },
+  "nDCG@10": {
+   "mean": 0.02477229919037965,
+   "ci95_low": 0.009952123969130621,
+   "ci95_high": 0.04075247713506261,
+   "better": 39,
+   "equal": 34,
+   "worse": 8
+  },
+  "Full-evidence@10": {
+   "mean": 0.024691358024691357,
+   "ci95_low": -0.024691358024691357,
+   "ci95_high": 0.07407407407407407,
+   "better": 3,
+   "equal": 77,
+   "worse": 1
+  }
+ },
+ "minimum_signal": {
+  "Recall@10 +0.03": true,
+  "Full-evidence@10 +0.03": false,
+  "nDCG@10 >= 0.518": true
+ },
+ "signal_found": false,
+ "success": {
+  "useful": false,
+  "strong": false
+ },
+ "requirements": {
+  "requirements_per_answer": {
+   "3": 52,
+   "4": 38
+  },
+  "answers_unreadable_kept_e5": [],
+  "items_dropped": 0,
+  "words_per_requirement_median": 30.5,
+  "requirements_not_a_question": 17,
+  "requirements_writing_an_article_number": 11,
+  "requirements_writing_an_article_no_excerpt_names": 0,
+  "requirements_writing_a_year": 15,
+  "requirements_with_spanish_letters": 0
+ },
+ "assembly": {
+  "queries_changed": 85,
+  "chunks_added": 217,
+  "e5_ranks_7_to_10_corroborated": 136,
+  "e5_ranks_7_to_10_displaced": 217
+ },
+ "evidence": {
+  "relevant_pairs_gained": 13,
+  "relevant_pairs_lost": 3,
+  "queries_gaining": [
+   "N018-es-1",
+   "N022-en-1",
+   "N022-es-1",
+   "N024-en-2",
+   "N024-es-1",
+   "N025-es-1",
+   "N026-en-1",
+   "N026-en-2",
+   "N026-es-1",
+   "N035-en-1",
+   "N035-en-2",
+   "N035-es-1"
+  ],
+  "queries_losing": [
+   "N017-en-1",
+   "N021-es-1",
+   "N023-en-2"
+  ],
+  "recall_requirements_top5_pool": 0.8234567901234568,
+  "recall_requirements_top50_pool": 0.9477366255144033,
+  "recall_e5_top10_plus_top5_pool": 0.8588477366255144
+ },
+ "followed_needs": {
+  "N022": [
+   {
+    "query_id": "N022-en-1",
+    "requirements": [
+     "Does a retail holder of a stablecoin referencing a basket of several fiat currencies and gold have a right to redeem her tokens for payment at any time, regardless of market conditions or the issuer’s operational capacity?",
+     "What specific conditions or thresholds must a retail holder meet to exercise the right of redemption under the issuer’s established policies?",
+     "Is the right to redeem tokens for payment at any time applicable if the stablecoin’s reserve assets include gold, which is subject to price volatility and liquidity constraints?",
+     "Does the right of redemption extend to holders who purchased the stablecoin after the issuer had already admitted it to trading, or is it limited to purchases made during a defined subscription period?"
+    ],
+    "relevant_ranks": {
+     "MiCA:3.1.6": {
+      "e5": 79,
+      "d": 79
+     },
+     "MiCA:3.1.7": {
+      "e5": 264,
+      "d": 264
+     },
+     "MiCA:39": {
+      "e5": 1,
+      "d": 1
+     },
+     "MiCA:46.1": {
+      "e5": 13,
+      "d": 10
+     },
+     "MiCA:46.3": {
+      "e5": 98,
+      "d": 98
+     },
+     "MiCA:46.4": {
+      "e5": 7,
+      "d": 7
+     }
+    }
+   },
+   {
+    "query_id": "N022-en-2",
+    "requirements": [
+     "Does the right of redemption apply to stablecoin tokens whose value is tied to a mix of currencies and gold, or is it limited to tokens backed solely by a single reserve asset?",
+     "What specific conditions or thresholds must a holder meet to exercise the right of redemption, and are there timeframes or market conditions under which redemption is prohibited or delayed?",
+     "Is the redemption process subject to any fees, or are there circumstances in which the issuer may withhold or delay settlement of the redemption request?"
+    ],
+    "relevant_ranks": {
+     "MiCA:3.1.6": {
+      "e5": 337,
+      "d": 337
+     },
+     "MiCA:3.1.7": {
+      "e5": 633,
+      "d": 633
+     },
+     "MiCA:39": {
+      "e5": 2,
+      "d": 2
+     },
+     "MiCA:46.1": {
+      "e5": 8,
+      "d": 7
+     },
+     "MiCA:46.3": {
+      "e5": 105,
+      "d": 105
+     },
+     "MiCA:46.4": {
+      "e5": 11,
+      "d": 13
+     }
+    }
+   },
+   {
+    "query_id": "N022-es-1",
+    "requirements": [
+     "Does the right of redemption for asset-referenced tokens, as established under MiCA, apply to stablecoins whose value is linked to a basket of currencies and gold, and is it enforceable in the same way as for e-money tokens?",
+     "What specific conditions or thresholds must a holder meet to exercise the right of redemption, including timeframes and valuation mechanisms, under the MiCA framework for asset-referenced tokens?",
+     "Is the redemption of asset-referenced tokens permitted at any time, or are there restrictions based on market conditions, reserve availability, or the issuer’s operational status?"
+    ],
+    "relevant_ranks": {
+     "MiCA:3.1.6": {
+      "e5": 345,
+      "d": 345
+     },
+     "MiCA:3.1.7": {
+      "e5": 462,
+      "d": 462
+     },
+     "MiCA:39": {
+      "e5": 1,
+      "d": 1
+     },
+     "MiCA:46.1": {
+      "e5": 17,
+      "d": 20
+     },
+     "MiCA:46.3": {
+      "e5": 74,
+      "d": 74
+     },
+     "MiCA:46.4": {
+      "e5": 44,
+      "d": 9
+     }
+    }
+   }
+  ],
+  "N024": [
+   {
+    "query_id": "N024-en-1",
+    "requirements": [
+     "Whether a person who learns non-public information about a forthcoming crypto-asset listing through their employment with a crypto-asset service provider is considered to have engaged in market abuse under MiCA if they purchase the asset on a personal account before the public announcement.",
+     "Whether the act of purchasing a crypto-asset based on non-public, internally obtained information—without directly manipulating trading activity or disseminating the information—constitutes market manipulation under the definition of market abuse in MiCA.",
+     "Whether the prohibition on market manipulation in MiCA extends to insider trading scenarios involving non-public information obtained through employment in a crypto-asset trading platform, even if no orders are placed on the platform to distort trading.",
+     "Whether the rules on market abuse in MiCA, as applied to crypto-assets, include a specific exception or exemption for employees of crypto-asset service providers who use non-public information for personal trading, provided the information is not shared or disclosed to others."
+    ],
+    "relevant_ranks": {
+     "MiCA:86": {
+      "e5": 1,
+      "d": 1
+     },
+     "MiCA:87": {
+      "e5": 63,
+      "d": 64
+     },
+     "MiCA:89.1": {
+      "e5": 94,
+      "d": 94
+     },
+     "MiCA:89.2": {
+      "e5": 138,
+      "d": 138
+     },
+     "MiCA:89.5": {
+      "e5": 407,
+      "d": 407
+     }
+    }
+   },
+   {
+    "query_id": "N024-en-2",
+    "requirements": [
+     "Whether buying a crypto-asset before a public listing announcement, without disclosing the transaction, constitutes market manipulation under the EU rules governing insider trading and market abuse in the context of crypto-assets.",
+     "Whether the act of purchasing a token before a public listing, with no connection to the exchange’s trading activities, falls under the definition of a \"material and non-public piece of information\" that could trigger market abuse obligations.",
+     "Whether the EU rules on market manipulation, as applied to crypto-assets, include a prohibition on using personal trading positions to influence market perception or price movements prior to a public announcement, even if the purchase was made on a different exchange."
+    ],
+    "relevant_ranks": {
+     "MiCA:86": {
+      "e5": 4,
+      "d": 4
+     },
+     "MiCA:87": {
+      "e5": 17,
+      "d": 20
+     },
+     "MiCA:89.1": {
+      "e5": 23,
+      "d": 8
+     },
+     "MiCA:89.2": {
+      "e5": 50,
+      "d": 50
+     },
+     "MiCA:89.5": {
+      "e5": 363,
+      "d": 363
+     }
+    }
+   },
+   {
+    "query_id": "N024-es-1",
+    "requirements": [
+     "Whether a personal, non-public purchase of a crypto-asset by an employee before a public listing, based on non-public information obtained through employment, constitutes market manipulation under the EU regulatory framework for crypto-assets.",
+     "Whether the act of purchasing a crypto-asset in advance of a public announcement, without disclosing a conflict of interest or using the information for trading purposes, falls under the definition of market manipulation as defined in the rules governing insider trading and unfair trading conditions in the context of crypto-asset markets.",
+     "Whether the employee’s actions, while not involving direct order manipulation or disruption of trading platforms, could be considered as creating a false or misleading signal about supply or demand that influences market perception and price movements, as defined in the anti-manipulation provisions applicable to crypto-asset trading."
+    ],
+    "relevant_ranks": {
+     "MiCA:86": {
+      "e5": 31,
+      "d": 33
+     },
+     "MiCA:87": {
+      "e5": 29,
+      "d": 31
+     },
+     "MiCA:89.1": {
+      "e5": 107,
+      "d": 9
+     },
+     "MiCA:89.2": {
+      "e5": 150,
+      "d": 151
+     },
+     "MiCA:89.5": {
+      "e5": 490,
+      "d": 490
+     }
+    }
+   }
+  ],
+  "N034": [
+   {
+    "query_id": "N034-en-1",
+    "requirements": [
+     "Does a payment institution authorised under DORA fall under the scope of Article 46, which designates a single competent authority when supervision is exercised by more than one national authority?",
+     "What is the definition of a \"major ICT-related incident\" as required for reporting under DORA, and does it include incidents that affect only internal systems without cross-border impact?",
+     "Is there an exception or derogation that allows a payment institution to report to a different competent authority than the one that granted its authorisation, for example, if the incident has a cross-border nature or involves a third-party service provider?",
+     "What is the time limit within which a payment institution must submit the initial notification of a major ICT-related incident after the incident is detected, as specified in the relevant reporting obligations?"
+    ],
+    "relevant_ranks": {
+     "DORA:19.1": {
+      "e5": 2,
+      "d": 2
+     },
+     "DORA:46.b": {
+      "e5": 10,
+      "d": 8
+     },
+     "DORA:46:own": {
+      "e5": 40,
+      "d": 41
+     },
+     "PSD2:22": {
+      "e5": 162,
+      "d": 162
+     }
+    }
+   },
+   {
+    "query_id": "N034-en-2",
+    "requirements": [
+     "Who is designated as the relevant competent authority for a financial entity subject to supervision by more than one national competent authority under DORA?",
+     "What specific condition triggers the requirement for a financial entity to notify the European Central Bank instead of the national competent authority?",
+     "Does DORA provide an exception or derogation allowing a payment institution to report directly to the ECB rather than the licensing regulator?",
+     "What is the time frame within which a financial entity must submit the initial notification of a major ICT-related incident under DORA?"
+    ],
+    "relevant_ranks": {
+     "DORA:19.1": {
+      "e5": 1,
+      "d": 1
+     },
+     "DORA:46.b": {
+      "e5": 20,
+      "d": 24
+     },
+     "DORA:46:own": {
+      "e5": 67,
+      "d": 69
+     },
+     "PSD2:22": {
+      "e5": 279,
+      "d": 280
+     }
+    }
+   },
+   {
+    "query_id": "N034-es-1",
+    "requirements": [
+     "Does a financial entity subject to DORA reporting obligations report major ICT-related incidents to the single designated national competent authority under Article 46, or to a different authority if cross-border impacts are suspected?",
+     "What is the specific condition that triggers the requirement for the competent authority to urgently transmit incident details to a host Member State’s competent authority under DORA?",
+     "Is there an exception or derogation that allows a financial entity to report directly to the European Central Bank instead of the designated national competent authority when the incident involves a significant cross-border impact on financial markets?"
+    ],
+    "relevant_ranks": {
+     "DORA:19.1": {
+      "e5": 1,
+      "d": 1
+     },
+     "DORA:46.b": {
+      "e5": 26,
+      "d": 28
+     },
+     "DORA:46:own": {
+      "e5": 160,
+      "d": 161
+     },
+     "PSD2:22": {
+      "e5": 179,
+      "d": 180
+     }
+    }
+   }
+  ],
+  "N035": [
+   {
+    "query_id": "N035-en-1",
+    "requirements": [
+     "Does the definition of account information service providers in DORA's scope include fintechs that aggregate and display account balances and transaction data from multiple banks without holding or transferring funds?",
+     "Under what conditions does DORA's application to account information service providers extend to entities that operate solely on user consent and do not engage in credit or payment processing activities?",
+     "Is there an exemption or derogation in DORA that would exclude fintechs providing account aggregation services from the regulatory obligations if they do not offer financial services or credit facilities?",
+     "Does the provision in DORA that requires account information service providers to maintain ICT risk management and reporting obligations apply to a fintech that collects and displays account data without directly managing funds or providing payment services?"
+    ],
+    "relevant_ranks": {
+     "DORA:2.1": {
+      "e5": 1,
+      "d": 1
+     },
+     "DORA:3.37": {
+      "e5": 71,
+      "d": 72
+     },
+     "PSD2:33": {
+      "e5": 192,
+      "d": 193
+     },
+     "PSD2:4.16": {
+      "e5": 724,
+      "d": 10
+     }
+    }
+   },
+   {
+    "query_id": "N035-en-2",
+    "requirements": [
+     "Does the definition of account information service providers in DORA include entities that aggregate and display account balances and transaction data from multiple banks without holding or transferring funds?",
+     "Under what conditions does DORA require account information service providers to comply with specific obligations, such as data security and customer consent, if they operate in a non-banking, non-payment context?",
+     "Is there an exemption or derogation in DORA that would allow a non-banking, non-payment entity providing account data aggregation services to be excluded from certain regulatory requirements based on the nature of its activities?"
+    ],
+    "relevant_ranks": {
+     "DORA:2.1": {
+      "e5": 1,
+      "d": 1
+     },
+     "DORA:3.37": {
+      "e5": 54,
+      "d": 9
+     },
+     "PSD2:33": {
+      "e5": 305,
+      "d": 306
+     },
+     "PSD2:4.16": {
+      "e5": 855,
+      "d": 10
+     }
+    }
+   },
+   {
+    "query_id": "N035-es-1",
+    "requirements": [
+     "Does the definition of an account information service provider in DORA include a fintech that aggregates and displays account data from multiple banks without altering, transferring, or holding funds?",
+     "Is a fintech that provides a user interface to view bank balances and transaction histories, without possessing or managing funds, considered an account information service provider under DORA’s scope?",
+     "Does the exemption for non-financial entities in DORA’s scope, such as those providing only data aggregation services, apply to a fintech that does not offer payment or lending services and has no direct financial intermediation?"
+    ],
+    "relevant_ranks": {
+     "DORA:2.1": {
+      "e5": 1,
+      "d": 1
+     },
+     "DORA:3.37": {
+      "e5": 103,
+      "d": 10
+     },
+     "PSD2:33": {
+      "e5": 363,
+      "d": 363
+     },
+     "PSD2:4.16": {
+      "e5": 716,
+      "d": 716
+     }
+    }
+   }
+  ]
+ },
+ "performance": {
+  "generations": 90,
+  "seconds_total": 1291.8927724169916,
+  "seconds_median": 14.33113427151693,
+  "prompt_tokens_median": 1076.0,
+  "new_tokens_median": 128.0,
+  "peak_memory_gib": 3.01,
+  "versions": {
+   "mlx": "0.32.3",
+   "mlx_lm": "0.32.0",
+   "python": "3.12.14",
+   "machine": "arm64",
+   "model_id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+   "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+   "max_new_tokens": 256,
+   "decoding": "greedy"
+  }
+ }
+}
