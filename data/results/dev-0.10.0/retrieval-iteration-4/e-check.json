@@ -1,0 +1,48 @@
+{
+ "experiment": "E, check on the fixture queries' requirements (not DEV)",
+ "reranker": {
+  "schema_version": "1",
+  "name": "qwen3-reranker-0.6b",
+  "model_id": "Qwen/Qwen3-Reranker-0.6B",
+  "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+  "tokenizer_file": "tokenizer.json",
+  "prefix": "<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be \"yes\" or \"no\".<|im_end|>\n<|im_start|>user\n",
+  "body": "<Instruct>: {instruction}\n<Query>: {query}\n<Document>: {document}",
+  "suffix": "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "yes_token": "yes",
+  "no_token": "no",
+  "pad_token": "<|endoftext|>",
+  "max_input_tokens": 32768,
+  "truncation": "explicit_document_tail",
+  "score": "logit_yes_minus_no",
+  "batch_size": 8,
+  "device": "mps",
+  "dtype": "float32"
+ },
+ "instruction": "Given a question about EU financial regulation, retrieve the passages of the law that answer it",
+ "requirements": [
+  "When does the full application of MiCA begin, including all provisions, and is there a specific date for the general entry into force?",
+  "Are there any provisions in MiCA that apply to crypto-asset offers or activities that concluded before a certain date, and if so, what is that date and which specific rules are exempted?"
+ ],
+ "inputs": 100,
+ "seconds": 25.745760290999897,
+ "seconds_per_input": 0.257457602909999,
+ "tokens": {
+  "median": 248.5,
+  "max": 645
+ },
+ "truncated": 0,
+ "model_load_seconds": 4.149414292012807,
+ "dev_inputs": 15350,
+ "projected_hours_for_dev": 1.1,
+ "limit_hours": 4.0,
+ "passes": true,
+ "peak_rss_bytes": 3636543488,
+ "environment": {
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "machine": "arm64",
+  "cpu": "Apple M1",
+  "cpu_count": "8",
+  "hf_home": ".cache/huggingface"
+ }
+}
