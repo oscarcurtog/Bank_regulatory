@@ -73,7 +73,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 764 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 768 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -126,7 +126,7 @@ the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`
 need the 4-bit MLX build of Qwen3-4B-Instruct-2507 in its own environment, `.cache/mlx-venv`, on
 Apple silicon (see [config/retrieval/necessity-selection.md](config/retrieval/necessity-selection.md)).
 Without them they fail, unless the environment declares `FUNDAMENTO_EMBEDDING_MODEL=unsupported`, as
-CI does. With that declaration and without the corpus, pytest reports `695 passed, 69 skipped`.
+CI does. With that declaration and without the corpus, pytest reports `699 passed, 69 skipped`.
 
 ## Docker
 
@@ -189,7 +189,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 
-Without the corpus you can run the test suite (695 tests pass and 69 are skipped with
+Without the corpus you can run the test suite (699 tests pass and 69 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported`), the linters and type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files
@@ -374,6 +374,14 @@ thinking as a capacity control, they rose to 0.794 and 0.548, with dependent evi
 first gain over E5 of the iterations to do so. The 8B passes the registered minimum signal and the 4B misses it
 by 0.005 of full-evidence; neither reaches the useful target (Recall@10 0.85). The questions reach
 most of the missing evidence in their first 50 results but less than half of it in their first 5.
+A last experiment, E ([protocol](config/retrieval/requirement-reranking.md)), reranked each of the
+4B's questions' first 50 results with `Qwen3-Reranker-0.6B`, zero-shot, and kept D's rule. Its
+registered diagnostic, the questions' Recall@5, did not move (0.823 to 0.825), so the reranking
+signal is negative by the protocol. The ten still improved: Recall@10 0.824 (+0.061 against E5, the
+first gain in Recall@10 whose interval excludes zero), nDCG@10 0.561, `multi_provision` 0.617,
+because the reranker improves the first place of each list, which is the place the rule takes.
+Against D-4B the gain is inside the noise, and none of these DEV numbers has been checked on new
+needs.
 
 ## Known limitations
 

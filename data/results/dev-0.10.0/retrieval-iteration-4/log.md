@@ -1,7 +1,9 @@
 # Retrieval iteration 4 on DEV 0.10.0: the record
 
-One experiment, D, fixed before any DEV generation ([protocol](../../../../config/retrieval/decomposition.md),
-commit `6f0306a`), at zero additional cost: local open models only. Global values are macro
+Two experiments at zero additional cost, local open models only, each fixed before it read DEV:
+D, question decomposition ([protocol](../../../../config/retrieval/decomposition.md), `6f0306a`),
+and E, the reranking of D's candidates
+([protocol](../../../../config/retrieval/requirement-reranking.md), `2e16281`). Global values are macro
 means by need over the 27 evaluable needs; intervals pair each system with E5 by need (10,000
 resamples), with the bootstrap averaging by need (`22c2294`). Reference, E5 dense: Recall@10
 0.763, nDCG@10 0.528, full-evidence@10 0.642, `multi_provision` Recall@10 0.481, dependent
@@ -119,3 +121,62 @@ their first 50 results (50 and 45 of the 63 pairs) but less than half of it in t
 and 24), and 11 and 12 pairs wait there with no place left among the four. The bottleneck is how
 E5 ranks the candidates of each requirement and the four places, more than the decomposition;
 13 and 18 pairs, all of grade 2, are not reached by any requirement.
+
+## E: zero-shot reranking of each requirement's candidates (D-4B, Qwen3-Reranker-0.6B)
+
+Fixed before any DEV score ([protocol](../../../../config/retrieval/requirement-reranking.md),
+`2e16281`). Before scoring, D-4B's ranking was rebuilt exactly from its recorded requirements.
+15,350 (requirement, chunk) pairs scored in 84.7 minutes (283 tokens at the median, 662 at most,
+none truncated, 5.1 GB of peak memory); the check had projected 1.1 hours.
+
+**The requirements' ranking**, each relevant chunk at its best rank over a query's requirements,
+macro by need:
+
+| | E5's order | reranked |
+|---|---|---|
+| Recall@1 | 0.610 | 0.663 |
+| Recall@3 | 0.774 | 0.785 |
+| Recall@5 | 0.823 | 0.825 |
+| Recall@10 | 0.871 | 0.880 |
+| Recall@20 | 0.923 | 0.928 |
+| Recall@50 | 0.948 | 0.948 (by construction) |
+| MRR | 0.836 | 0.915 |
+
+Requirement Recall@5 changes by +0.001 [-0.058, +0.059], paired by need: **REQUIREMENT RERANKING
+SIGNAL: NO** (the protocol asked for +0.03 with an interval above zero). Of E5's 63 missing pairs,
+10 rise from places 6 to 50 into the first 5, 6 fall out of the first 5, 18 stay in them, 16 stay
+in places 6 to 50 and 13 are outside the 50.
+
+**The ten**:
+
+| | E5 | D-4B | E | E against E5 | E against D-4B |
+|---|---|---|---|---|---|
+| Recall@10 | 0.763 | 0.803 | 0.824 | +0.061 [+0.009, +0.122] | +0.021 [-0.017, +0.062] |
+| nDCG@10 | 0.528 | 0.552 | 0.561 | +0.034 [+0.013, +0.057] | +0.009 [-0.009, +0.027] |
+| MRR@10 | 0.746 | 0.750 | 0.754 | +0.007 | +0.004 |
+| Recall@20 | 0.816 | 0.838 | 0.863 | +0.047 | +0.025 |
+| Full-evidence@10 | 0.642 | 0.667 | 0.679 | +0.037 [-0.012, +0.086] | +0.012 [-0.049, +0.086] |
+| `multi_provision` Recall@10 | 0.481 | 0.558 | 0.617 | +0.136 | +0.058 |
+| `cross_reference` Recall@10 | 0.661 | 0.698 | 0.735 | +0.074 | +0.037 |
+| `cross_act` Recall@10 (2 needs) | 0.292 | 0.458 | 0.500 | +0.208 | +0.042 |
+| dependent evidence Recall@10 | 0.300 | 0.368 | 0.409 | +0.109 | +0.041 |
+
+English / Spanish Recall@10: 0.844 / 0.785. Against E5, 18 relevant pairs enter the ten (8 of
+grade 3, 10 of grade 2) and 4 leave; queries better / equal / worse in Recall@10: 14 / 63 / 4. 10
+relevant pairs wait in a requirement's first 5 without a place (D-4B: 11).
+
+**Conclusion, as registered: `NO RERANKING SIGNAL`.** The reranker does not lift the requirements'
+evidence into their first 5 as a whole. E passes D's minimum signal against E5 (Recall@10 +0.061,
+full-evidence +0.037, nDCG@10 0.561). Its Recall@10 interval against E5 is the first gain in
+Recall@10 of iterations 1 to 4 to exclude zero, and `multi_provision` reaches 0.617, above the
+useful target's 0.60. The useful target as a whole is not reached (Recall@10 0.85, dependent
+evidence 0.45, full-evidence 0.75). Against D-4B, the comparison that isolates the reranker,
+every interval holds zero.
+
+**After the fact: why the ten improve while Recall@5 does not.** The reranker raises the first
+places (Recall@1 +0.053, MRR +0.079) and leaves place 5 where it was, while the rule takes each
+requirement's best new chunk first, in turns. Over the requirements, the first new chunk of the
+first 5 is relevant 22 times reranked against 18 in E5's order, and the second 10 times against 8.
+The registered diagnostic measured depth 5; the rule mostly reads depth 1. This explains the
+result and does not change the registered conclusion. These are development numbers: DEV has been
+read by many systems, and E is the best of them on it.

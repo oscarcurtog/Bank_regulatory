@@ -1,0 +1,206 @@
+{
+ "experiment": "E, zero-shot requirement reranking on D-4B",
+ "benchmark_version": "0.10.0",
+ "reranker": {
+  "schema_version": "1",
+  "name": "qwen3-reranker-0.6b",
+  "model_id": "Qwen/Qwen3-Reranker-0.6B",
+  "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+  "tokenizer_file": "tokenizer.json",
+  "prefix": "<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be \"yes\" or \"no\".<|im_end|>\n<|im_start|>user\n",
+  "body": "<Instruct>: {instruction}\n<Query>: {query}\n<Document>: {document}",
+  "suffix": "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "yes_token": "yes",
+  "no_token": "no",
+  "pad_token": "<|endoftext|>",
+  "max_input_tokens": 32768,
+  "truncation": "explicit_document_tail",
+  "score": "logit_yes_minus_no",
+  "batch_size": 8,
+  "device": "mps",
+  "dtype": "float32"
+ },
+ "reranker_config_hash": "72030d82e1ce0b79fb6c9a9d50c57d4dff0b77344aa9f9884138f5b83bbf9691",
+ "reranker_tokenizer_sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+ "instruction": "Given a question about EU financial regulation, retrieve the passages of the law that answer it",
+ "system_name": "e-d4b-qwen3-reranker-k5",
+ "run_sha256": "8ee79746f75e817320228e004344fb6eb09d5fe97fdcb815891834197b7ef521",
+ "requirement_ranking": {
+  "e5_order": {
+   "Recall@1": 0.6100823045267489,
+   "Recall@3": 0.7738683127572017,
+   "Recall@5": 0.8234567901234568,
+   "Recall@10": 0.8705761316872428,
+   "Recall@20": 0.922633744855967,
+   "Recall@50": 0.9477366255144033,
+   "MRR": 0.8358959970071081
+  },
+  "reranked": {
+   "Recall@1": 0.6627572016460905,
+   "Recall@3": 0.7847736625514403,
+   "Recall@5": 0.8246913580246913,
+   "Recall@10": 0.8798353909465021,
+   "Recall@20": 0.9281893004115226,
+   "Recall@50": 0.9477366255144033,
+   "MRR": 0.9148050166568685
+  },
+  "recall5_paired": {
+   "mean": 0.0012345679012345635,
+   "ci95_low": -0.058436213991769556,
+   "ci95_high": 0.059259259259259255,
+   "better": 12,
+   "equal": 59,
+   "worse": 10
+  },
+  "recall5_gain": 0.002,
+  "signal_rule": "Recall@5 +0.03 and its paired interval above zero",
+  "reranking_signal": false
+ },
+ "migrations_of_e5_missing_pairs": {
+  "1-5 to 1-5": 18,
+  "1-5 to 6-50": 6,
+  "6-50 to 1-5": 10,
+  "6-50 to 6-50": 16,
+  "outside the 50": 13
+ },
+ "blocked_by_the_places": {
+  "d": 11,
+  "e": 10
+ },
+ "columns": {
+  "e5": {
+   "nDCG@10": 0.5275020347424471,
+   "Recall@10": 0.7631687242798354,
+   "Recall@20": 0.8160493827160494,
+   "MRR@10": 0.7464628649813835,
+   "Recall@T=1000": 0.6796737555996815,
+   "Recall@T=2000": 0.7816073843851621,
+   "Full-evidence@10": 0.6419753086419753,
+   "multi_provision": 0.48055555555555557,
+   "cross_reference": 0.6611111111111111,
+   "cross_act": 0.29166666666666663,
+   "dependent": 0.3
+  },
+  "d": {
+   "nDCG@10": 0.5522743339328267,
+   "Recall@10": 0.8030864197530865,
+   "Recall@20": 0.838477366255144,
+   "MRR@10": 0.7495982755242016,
+   "Recall@T=1000": 0.6796737555996815,
+   "Recall@T=2000": 0.8052605830383608,
+   "Full-evidence@10": 0.6666666666666666,
+   "multi_provision": 0.5583333333333332,
+   "cross_reference": 0.6984848484848485,
+   "cross_act": 0.45833333333333337,
+   "dependent": 0.36767676767676766
+  },
+  "e": {
+   "nDCG@10": 0.5610819738077187,
+   "Recall@10": 0.8242798353909465,
+   "Recall@20": 0.8633744855967078,
+   "MRR@10": 0.7535175387027239,
+   "Recall@T=1000": 0.6796737555996815,
+   "Recall@T=2000": 0.8410774410774411,
+   "Full-evidence@10": 0.6790123456790123,
+   "multi_provision": 0.6166666666666667,
+   "cross_reference": 0.7353535353535353,
+   "cross_act": 0.5,
+   "dependent": 0.4090909090909091
+  }
+ },
+ "by_language_recall10": {
+  "en": 0.8441358024691359,
+  "es": 0.7845679012345679
+ },
+ "paired_against_e5": {
+  "Recall@10": {
+   "mean": 0.06111111111111111,
+   "ci95_low": 0.008641975308641974,
+   "ci95_high": 0.12242798353909465,
+   "better": 14,
+   "equal": 63,
+   "worse": 4
+  },
+  "nDCG@10": {
+   "mean": 0.033579939065271736,
+   "ci95_low": 0.013366444267659153,
+   "ci95_high": 0.05682017765461343,
+   "better": 42,
+   "equal": 25,
+   "worse": 14
+  },
+  "Full-evidence@10": {
+   "mean": 0.037037037037037035,
+   "ci95_low": -0.012345679012345678,
+   "ci95_high": 0.08641975308641975,
+   "better": 4,
+   "equal": 76,
+   "worse": 1
+  }
+ },
+ "paired_against_d4b": {
+  "Recall@10": {
+   "mean": 0.02119341563786008,
+   "ci95_low": -0.017283950617283952,
+   "ci95_high": 0.06152263374485597,
+   "better": 9,
+   "equal": 66,
+   "worse": 6
+  },
+  "nDCG@10": {
+   "mean": 0.008807639874892085,
+   "ci95_low": -0.008592335247180524,
+   "ci95_high": 0.02741644015146209,
+   "better": 30,
+   "equal": 32,
+   "worse": 19
+  },
+  "Full-evidence@10": {
+   "mean": 0.012345679012345678,
+   "ci95_low": -0.04938271604938271,
+   "ci95_high": 0.08641975308641975,
+   "better": 3,
+   "equal": 76,
+   "worse": 2
+  }
+ },
+ "evidence": {
+  "relevant_pairs_gained_against_e5": 18,
+  "relevant_pairs_lost_against_e5": 4,
+  "gained_by_grade": {
+   "3": 8,
+   "2": 10
+  }
+ },
+ "minimum_signal": {
+  "Recall@10 +0.03": true,
+  "Full-evidence@10 +0.03": true,
+  "nDCG@10 >= 0.518": true
+ },
+ "signal_found": true,
+ "success": {
+  "useful": false,
+  "strong": false
+ },
+ "conclusion": "NO RERANKING SIGNAL",
+ "performance": {
+  "inputs": 15350,
+  "inputs_scored_this_run": 15350,
+  "tokens": {
+   "total": 4804392,
+   "median": 283.0,
+   "max": 662
+  },
+  "truncated": 0,
+  "model_load_seconds": 3.521987124986481,
+  "scoring_seconds_this_run": 5082.019454625028,
+  "peak_rss_bytes": 5096882176,
+  "environment": {
+   "platform": "macOS-27.0.1-arm64-arm-64bit",
+   "machine": "arm64",
+   "cpu": "Apple M1",
+   "cpu_count": "8",
+   "hf_home": ".cache/huggingface"
+  }
+ }
+}
