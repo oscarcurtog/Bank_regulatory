@@ -170,7 +170,8 @@ def assemble_scored(
     ranks 7 to 10, the places go to the chunks outside E5's top 10 with the highest score over all
     requirements (a chunk takes its best score among the requirements that hold it in their first
     K), instead of in turns. `scores[i]` holds requirement i's comparable score for each of its
-    chunks. Equal scores keep the order of first appearance in turns, then E5's order."""
+    chunks. Equal scores go first to the chunks D's turns would place, in that order, then by
+    E5's order."""
     top = list(e5[:DEPTH])
     in_top = set(top)
     tail = top[KEEP:]
