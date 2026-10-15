@@ -1,0 +1,14 @@
+{
+ "reference": "f-d4b-qwen3-reranker-lora-k5",
+ "rule": "turns",
+ "decomposers": [
+  "4b"
+ ],
+ "depth": 50,
+ "done": [
+  "g1"
+ ],
+ "started": {
+  "g1": "671c5bd9c5aaca521ae520d0c7d98230757ce929b3409b29648a51da85310494"
+ }
+}
