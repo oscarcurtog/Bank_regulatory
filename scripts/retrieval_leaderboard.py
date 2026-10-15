@@ -16,8 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import random
-import statistics
 import sys
 from pathlib import Path
 from typing import Any
@@ -44,6 +42,8 @@ SYSTEMS = [
     ),
     ("r4a-facts-rrf60", "R4-A: facts rewrite fused with E5 (RRF, k = 60)"),
     ("r4b-catalog-rrf60", "R4-B: facts and closed-catalog concepts fused with E5 (RRF, k = 60)"),
+    ("d-qwen3-4b-k5", "D: Qwen3-4B requirements, each searched by E5 (K = 5), fixed merge"),
+    ("d-qwen3-8b-k5", "D: Qwen3-8B requirements (no thinking), searched by E5, fixed merge"),
 ]
 REFERENCE = "multilingual-e5-large"
 THIRD_MODEL = "qwen3-embedding-0.6b"
@@ -61,37 +61,12 @@ COLUMNS = [
     ("dependent R@10", "dependent_evidence", "Recall@10"),
     ("Full-evidence@10", "full_evidence", "Full-evidence@10"),
 ]
-SEED = 20261013
 
 
 def value(diag: dict[str, Any], where: str, key: str) -> float:
     if where == "groups":
         return float(diag["groups"][key]["Recall@10"])
     return float(diag[where][key])
-
-
-def bootstrap(
-    deltas: dict[str, float], queries: list[bm.Query], reps: int = 10_000
-) -> dict[str, float]:
-    """Mean per-query delta, with a 95% interval from resampling needs (a need's queries
-    are not independent)."""
-    by_need: dict[str, list[float]] = {}
-    for q in queries:
-        by_need.setdefault(q.need_id, []).append(deltas[q.query_id])
-    needs = sorted(by_need)
-    rng = random.Random(SEED)
-    means = sorted(
-        statistics.fmean(v for n in rng.choices(needs, k=len(needs)) for v in by_need[n])
-        for _ in range(reps)
-    )
-    return {
-        "mean": statistics.fmean(v for n in needs for v in by_need[n]),
-        "ci95_low": means[int(0.025 * reps)],
-        "ci95_high": means[int(0.975 * reps) - 1],
-        "better": sum(d > 1e-9 for d in deltas.values()),
-        "equal": sum(abs(d) <= 1e-9 for d in deltas.values()),
-        "worse": sum(d < -1e-9 for d in deltas.values()),
-    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -162,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
                 q.query_id: per_query[system][m][q.query_id] - per_query[REFERENCE][m][q.query_id]
                 for q in queries
             }
-            paired[system][m] = bootstrap(deltas, queries)
+            paired[system][m] = rr.paired_bootstrap(deltas, queries)
         c = rows[system]["columns"]
 
         def d(name: str, c: dict[str, float] = c) -> float:

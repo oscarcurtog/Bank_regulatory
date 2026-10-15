@@ -73,7 +73,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 755 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 764 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -126,7 +126,7 @@ the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`
 need the 4-bit MLX build of Qwen3-4B-Instruct-2507 in its own environment, `.cache/mlx-venv`, on
 Apple silicon (see [config/retrieval/necessity-selection.md](config/retrieval/necessity-selection.md)).
 Without them they fail, unless the environment declares `FUNDAMENTO_EMBEDDING_MODEL=unsupported`, as
-CI does. With that declaration and without the corpus, pytest reports `686 passed, 69 skipped`.
+CI does. With that declaration and without the corpus, pytest reports `695 passed, 69 skipped`.
 
 ## Docker
 
@@ -189,7 +189,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 
-Without the corpus you can run the test suite (686 tests pass and 69 are skipped with
+Without the corpus you can run the test suite (695 tests pass and 69 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported`), the linters and type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files
@@ -363,6 +363,18 @@ a closed catalog of the corpus's own headings and defined terms, and fusing it w
 Recall@10 to 0.729 and 0.701. E5 stays the reference and, by the iteration's registered stop
 rule, optimization on DEV stops.
 
+A fourth round, D ([protocol](config/retrieval/decomposition.md),
+[record](data/results/dev-0.10.0/retrieval-iteration-4/log.md)), reopened DEV once at zero
+additional cost. A local model reads the question and E5's first three results and writes two to
+four questions about the points of law a complete answer needs. E5 searches each one over the
+whole corpus, and a fixed rule keeps E5's first six and gives places 7 to 10 to what the questions
+find. With Qwen3-4B, Recall@10 rose to 0.803 and nDCG@10 to 0.552. With Qwen3-8B, run without
+thinking as a capacity control, they rose to 0.794 and 0.548, with dependent evidence at 0.460
+(E5: 0.300) and full-evidence at 0.691. For both, nDCG@10's paired interval excludes zero, the
+first of the iterations to do so. The 8B passes the registered minimum signal and the 4B misses it
+by 0.005 of full-evidence; neither reaches the useful target (Recall@10 0.85). The questions reach
+most of the missing evidence in their first 50 results but less than half of it in their first 5.
+
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
@@ -371,7 +383,8 @@ rule, optimization on DEV stops.
   between two retrievers needs to be large to be told apart from noise (about 0.08 of nDCG@10).
   The retrieval iterations selected on DEV, so their numbers are development numbers; an
   independent TEST set has not been built. No index or hybrid search has been measured, and
-  neither the cross-encoder rerankers nor the local language model measured improved on E5. The benchmark evaluator is not in the Docker images (no Linux ARM64 wheel for its
+  neither the cross-encoder rerankers nor a local language model judging candidates improved on
+  E5; the decomposition of round D improves nDCG@10 on DEV, and has not been tested on new needs. The benchmark evaluator is not in the Docker images (no Linux ARM64 wheel for its
   backend).
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
