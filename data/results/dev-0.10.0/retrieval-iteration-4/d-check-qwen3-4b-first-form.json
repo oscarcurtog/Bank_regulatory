@@ -1,0 +1,75 @@
+{
+ "experiment": "D, check on the fixture queries (not DEV)",
+ "model": {
+  "schema_version": "1",
+  "name": "qwen3-4b-instruct-2507-mlx-4bit",
+  "model_id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+  "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+  "base_model": "Qwen/Qwen3-4B-Instruct-2507",
+  "base_revision": "cdbee75f17c01a7cc42f958dc650907174af0554",
+  "license": "apache-2.0",
+  "quantization": "4-bit, as published by mlx-community",
+  "runtime": "mlx 0.32.3, mlx-lm 0.32.0, in .cache/mlx-venv",
+  "max_prompt_tokens": 16384,
+  "decoding": "greedy"
+ },
+ "prompts_sha256": "7a2b5faa7ca42f7a9bdb3fc8ebd1929396f1b0002205a4348c2352625a103e8a",
+ "readable": {
+  "N001-en-1": true,
+  "N001-es-1": true,
+  "N002-en-1": true,
+  "N002-es-1": true,
+  "N003-en-1": true,
+  "N003-es-1": true
+ },
+ "quality": {
+  "requirements_per_answer": {
+   "3": 6
+  },
+  "answers_unreadable_kept_e5": [],
+  "items_dropped": 0,
+  "words_per_requirement_median": 37.5,
+  "requirements_naming_an_article": 18,
+  "requirements_naming_an_article_no_excerpt_names": 0,
+  "requirements_with_spanish_letters": 0
+ },
+ "seconds": [
+  17.180618042009883,
+  14.036254208011087,
+  15.082549832994118,
+  14.557102458027657,
+  14.011956291971728,
+  14.878279750002548
+ ],
+ "prompt_tokens": [
+  859,
+  958,
+  1037,
+  1215,
+  1176,
+  1159
+ ],
+ "new_tokens": [
+  256,
+  183,
+  196,
+  155,
+  151,
+  160
+ ],
+ "peak_memory_gib": 2.88,
+ "projected_hours_for_dev": 0.43,
+ "projection": "the slowest fixture prompt times the DEV queries",
+ "swap_before": "total = 7168.00M  used = 5919.38M  free = 1248.62M  (encrypted)",
+ "swap_after": "total = 7168.00M  used = 5911.38M  free = 1256.62M  (encrypted)",
+ "versions": {
+  "mlx": "0.32.3",
+  "mlx_lm": "0.32.0",
+  "python": "3.12.14",
+  "machine": "arm64",
+  "model_id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+  "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+  "max_new_tokens": 256,
+  "decoding": "greedy"
+ }
+}

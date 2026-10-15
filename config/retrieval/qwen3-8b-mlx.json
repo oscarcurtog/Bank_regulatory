@@ -1,0 +1,15 @@
+{
+  "schema_version": "1",
+  "name": "qwen3-8b-mlx-4bit-no-thinking",
+  "model_id": "mlx-community/Qwen3-8B-4bit",
+  "revision": "545dc4251c05440727734bcd94334791f6ab0192",
+  "base_model": "Qwen/Qwen3-8B",
+  "base_revision": "not recorded by mlx-community (converted on 2025-04-28)",
+  "license": "apache-2.0",
+  "quantization": "4-bit, as published by mlx-community",
+  "runtime": "mlx 0.32.3, mlx-lm 0.32.0, in .cache/mlx-venv",
+  "max_prompt_tokens": 16384,
+  "decoding": "greedy",
+  "chat_template_kwargs": {"enable_thinking": false},
+  "role": "local capacity control for D: a hybrid model of the first Qwen3 release, run without thinking; not the 4B-Instruct-2507 at a larger size"
+}

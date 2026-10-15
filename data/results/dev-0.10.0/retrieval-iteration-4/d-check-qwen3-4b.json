@@ -1,0 +1,78 @@
+{
+ "experiment": "D, check on the fixture queries (not DEV)",
+ "model": {
+  "schema_version": "1",
+  "name": "qwen3-4b-instruct-2507-mlx-4bit",
+  "model_id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+  "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+  "base_model": "Qwen/Qwen3-4B-Instruct-2507",
+  "base_revision": "cdbee75f17c01a7cc42f958dc650907174af0554",
+  "license": "apache-2.0",
+  "quantization": "4-bit, as published by mlx-community",
+  "runtime": "mlx 0.32.3, mlx-lm 0.32.0, in .cache/mlx-venv",
+  "max_prompt_tokens": 16384,
+  "decoding": "greedy"
+ },
+ "prompts_sha256": "449d39751a5ee43991d71ab1790a5054967548e003421b2c48a1258c4ee99b2e",
+ "readable": {
+  "N001-en-1": true,
+  "N001-es-1": true,
+  "N002-en-1": true,
+  "N002-es-1": true,
+  "N003-en-1": true,
+  "N003-es-1": true
+ },
+ "quality": {
+  "requirements_per_answer": {
+   "3": 2,
+   "4": 4
+  },
+  "answers_unreadable_kept_e5": [],
+  "items_dropped": 0,
+  "words_per_requirement_median": 27.0,
+  "requirements_not_a_question": 0,
+  "requirements_writing_an_article_number": 0,
+  "requirements_writing_an_article_no_excerpt_names": 0,
+  "requirements_writing_a_year": 1,
+  "requirements_with_spanish_letters": 0
+ },
+ "seconds": [
+  10.820450208033435,
+  10.8442742920015,
+  13.948353540967219,
+  15.115186624985654,
+  12.584808374987915,
+  13.232878041977528
+ ],
+ "prompt_tokens": [
+  903,
+  1002,
+  1081,
+  1259,
+  1220,
+  1203
+ ],
+ "new_tokens": [
+  108,
+  106,
+  164,
+  160,
+  110,
+  130
+ ],
+ "peak_memory_gib": 2.9,
+ "projected_hours_for_dev": 0.38,
+ "projection": "the slowest fixture prompt times the DEV queries",
+ "swap_before": "total = 7168.00M  used = 5903.38M  free = 1264.62M  (encrypted)",
+ "swap_after": "total = 7168.00M  used = 5879.38M  free = 1288.62M  (encrypted)",
+ "versions": {
+  "mlx": "0.32.3",
+  "mlx_lm": "0.32.0",
+  "python": "3.12.14",
+  "machine": "arm64",
+  "model_id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+  "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+  "max_new_tokens": 256,
+  "decoding": "greedy"
+ }
+}

@@ -8,9 +8,13 @@ MLX runs only on Apple silicon and lives in its own virtual environment (.cache/
 versioned), so this script imports nothing from `ingest` and the project's environment, locks and
 CI never see it. It reads prompts (JSONL: id, messages), renders each with the model's own chat
 template, decodes greedily and appends one line per prompt to the outputs (JSONL: id,
-prompt_sha256, prompt_tokens, output, new_tokens, seconds, and the versions that produced it).
-A rerun generates only what is missing; an output whose prompt, model or limits changed is
-refused, never reused.
+prompt_sha256, prompt_tokens, output, new_tokens, seconds, peak_memory_bytes, and the versions
+that produced it). A rerun generates only what is missing; an output whose prompt, model, limits
+or template arguments changed is refused, never reused.
+
+A config may set `chat_template_kwargs`, passed to the chat template as they are. MLX-LM turns a
+model's thinking on by default when its template has one, so a hybrid model such as Qwen3-8B
+runs without thinking only if its config says `{"enable_thinking": false}`.
 
 Prompts that share an id prefix up to `--group-separator` (one query's windows) and open with
 the same tokens are generated with that shared opening computed once: its key-value cache is
@@ -65,6 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     start = time.perf_counter()
     model, tokenizer = mlx_lm.load(path)
     load_seconds = time.perf_counter() - start
+    template_kwargs = config.get("chat_template_kwargs", {})
     versions = {
         "mlx": mx.__version__,
         "mlx_lm": mlx_lm.__version__,
@@ -75,6 +80,8 @@ def main(argv: list[str] | None = None) -> int:
         "max_new_tokens": args.max_new_tokens,
         "decoding": "greedy",
     }
+    if template_kwargs:
+        versions["chat_template_kwargs"] = template_kwargs
     rows = [json.loads(line) for line in args.prompts.read_text(encoding="utf-8").splitlines()]
     done: dict[str, dict[str, Any]] = {}
     if args.out.exists():
@@ -85,8 +92,8 @@ def main(argv: list[str] | None = None) -> int:
     for rid, row in done.items():
         if wanted.get(rid) != row["prompt_sha256"]:
             raise SystemExit(f"{args.out}: {rid} was generated from another prompt")
-        keep = {k: row["versions"][k] for k in ("model_id", "revision", "max_new_tokens")}
-        if keep != {k: versions[k] for k in keep}:
+        keys = ("model_id", "revision", "max_new_tokens", "chat_template_kwargs")
+        if any(row["versions"].get(k) != versions.get(k) for k in keys):
             raise SystemExit(f"{args.out}: {rid} was generated with another model or limit")
     sampler = make_sampler(temp=0.0)
     pending = [row for row in rows if row["id"] not in done]
@@ -99,9 +106,14 @@ def main(argv: list[str] | None = None) -> int:
     group = None
     started = time.perf_counter()
     for i, row in enumerate(pending, start=1):
-        ids = list(tokenizer.apply_chat_template(row["messages"], add_generation_prompt=True))
+        ids = list(
+            tokenizer.apply_chat_template(
+                row["messages"], add_generation_prompt=True, **template_kwargs
+            )
+        )
         if len(ids) > config["max_prompt_tokens"]:
             raise SystemExit(f"{row['id']}: {len(ids)} prompt tokens, over the limit")
+        mx.reset_peak_memory()
         t0 = time.perf_counter()
         this_group = row["id"].split(args.group_separator)[0]
         if args.no_prefix_cache or this_group != group or cache is None:
@@ -136,6 +148,7 @@ def main(argv: list[str] | None = None) -> int:
             "output": text,
             "new_tokens": new_tokens,
             "seconds": seconds,
+            "peak_memory_bytes": mx.get_peak_memory(),
             "versions": versions,
         }
         with args.out.open("a", encoding="utf-8") as f:
