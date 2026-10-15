@@ -81,6 +81,15 @@ The items after `REQUIREMENTS:` (or, without that heading, every line that opens
 a bullet or a number); a repeated item counts once; the form's placeholder is not an item; the
 first 4 are kept. An answer with fewer than 2 items keeps E5's ranking, and is counted.
 
+**Second amendment, to the reading only, before the 8B's DEV run.** The 8B's pilot on the
+fixture queries wrapped each question in the placeholder, as if it were a tag
+(`- <question>What is ...?</question>`), and the first parser dropped every item that held the
+placeholder: 2 of its 6 fixture answers read as empty. The parser now removes `<question>` and
+`</question>` and drops only what is left empty, the bare placeholder. It was applied after the
+4B's DEV run, and it reads the 4B's 90 DEV answers exactly as the first parser did (the same items
+and the same dropped counts for all 90), so the 4B's result does not change; the 8B's pilot,
+read again with it, gives 6 readable answers of 6. Nothing else changed.
+
 ## Retrieval and the merge rule, without a model
 
 E5 ranks each requirement over the 1,354 chunks, encoded as E5 encodes a query. **K = 5**, fixed,

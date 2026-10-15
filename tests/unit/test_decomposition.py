@@ -35,6 +35,12 @@ def test_requirements_are_read_after_the_heading_once_each_and_at_most_four():
     assert r.readable and r.dropped == 3  # a repeat, the placeholder and the sixth
 
 
+def test_a_question_wrapped_in_the_placeholder_tag_is_read_and_the_bare_tag_is_not():
+    out = "- <question>What is a payment account?</question>\n- <question>\n- <question>Who?"
+    r = dc.parse(out)
+    assert r.items == ("What is a payment account?", "Who?") and r.dropped == 1
+
+
 def test_without_the_heading_every_listed_line_counts_and_one_item_is_not_readable():
     assert dc.parse("- One thing.\n- Another thing.").items == ("One thing.", "Another thing.")
     assert not dc.parse("REQUIREMENTS:\n- Only one.").readable

@@ -1,0 +1,103 @@
+{
+ "experiment": "D, check on the fixture queries (not DEV)",
+ "model": {
+  "schema_version": "1",
+  "name": "qwen3-8b-mlx-4bit-no-thinking",
+  "model_id": "mlx-community/Qwen3-8B-4bit",
+  "revision": "545dc4251c05440727734bcd94334791f6ab0192",
+  "base_model": "Qwen/Qwen3-8B",
+  "base_revision": "not recorded by mlx-community (converted on 2025-04-28)",
+  "license": "apache-2.0",
+  "quantization": "4-bit, as published by mlx-community",
+  "runtime": "mlx 0.32.3, mlx-lm 0.32.0, in .cache/mlx-venv",
+  "max_prompt_tokens": 16384,
+  "decoding": "greedy",
+  "chat_template_kwargs": {
+   "enable_thinking": false
+  },
+  "role": "local capacity control for D: a hybrid model of the first Qwen3 release, run without thinking; not the 4B-Instruct-2507 at a larger size"
+ },
+ "prompts_sha256": "449d39751a5ee43991d71ab1790a5054967548e003421b2c48a1258c4ee99b2e",
+ "readable": {
+  "N001-en-1": true,
+  "N001-es-1": true,
+  "N002-en-1": true,
+  "N002-es-1": true,
+  "N003-en-1": true,
+  "N003-es-1": true
+ },
+ "quality": {
+  "requirements_per_answer": {
+   "3": 1,
+   "4": 5
+  },
+  "answers_unreadable_kept_e5": [],
+  "items_dropped": 0,
+  "words_per_requirement_median": 17,
+  "requirements_not_a_question": 0,
+  "requirements_writing_an_article_number": 1,
+  "requirements_writing_an_article_no_excerpt_names": 0,
+  "requirements_writing_a_year": 1,
+  "requirements_with_spanish_letters": 0
+ },
+ "seconds": [
+  18.334660792024806,
+  17.63682912499644,
+  23.333551209012512,
+  22.723153416998684,
+  22.537272959016263,
+  22.233109582972247
+ ],
+ "prompt_tokens": [
+  907,
+  1006,
+  1085,
+  1263,
+  1224,
+  1207
+ ],
+ "new_tokens": [
+  84,
+  83,
+  141,
+  91,
+  88,
+  87
+ ],
+ "peak_memory_gib": 5.01,
+ "projected_hours_for_dev": 0.58,
+ "projection": "the slowest fixture prompt times the DEV queries",
+ "swap_before": "total = 8192.00M  used = 6802.25M  free = 1389.75M  (encrypted)",
+ "swap_after": "total = 8192.00M  used = 6642.12M  free = 1549.88M  (encrypted)",
+ "versions": {
+  "mlx": "0.32.3",
+  "mlx_lm": "0.32.0",
+  "python": "3.12.14",
+  "machine": "arm64",
+  "model_id": "mlx-community/Qwen3-8B-4bit",
+  "revision": "545dc4251c05440727734bcd94334791f6ab0192",
+  "max_new_tokens": 256,
+  "decoding": "greedy",
+  "chat_template_kwargs": {
+   "enable_thinking": false
+  }
+ },
+ "pilot_limits": {
+  "peak_memory_gib": 10.0,
+  "projected_hours": 3.0
+ },
+ "gate": {
+  "peak memory <= 10.0 GiB": true,
+  "projected <= 3.0 h": true
+ },
+ "passes": true,
+ "readable_with_the_first_parser": {
+  "N001-en-1": false,
+  "N001-es-1": true,
+  "N002-en-1": false,
+  "N002-es-1": true,
+  "N003-en-1": true,
+  "N003-es-1": true
+ },
+ "note": "answers generated once; read again with the parser amended on 2026-10-15 (the placeholder <question> read as a tag); swap use is the pilot's own"
+}

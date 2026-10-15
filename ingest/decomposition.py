@@ -91,13 +91,17 @@ _ITEM = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s*(.+?)\s*$", re.MULTILINE)
 
 def parse(output: str) -> Requirements:
     """The items listed after "REQUIREMENTS:" or, without that heading, every line that opens
-    with "-", "*", a bullet or a number. An item repeated (ignoring case and spacing) counts once;
-    the form's own placeholder is not an item."""
+    with "-", "*", a bullet or a number. The form's placeholder is read as a tag: `<question>`
+    and `</question>` are removed, and what is left empty (the bare placeholder) is not an item.
+    An item repeated (ignoring case and spacing) counts once."""
     m = re.search(r"REQUIREMENTS:\s*(.*)\Z", output, re.DOTALL | re.IGNORECASE)
-    found = [normalize(x) for x in _ITEM.findall(m.group(1) if m else output)]
+    found = [
+        normalize(re.sub(r"</?question>", " ", x, flags=re.IGNORECASE))
+        for x in _ITEM.findall(m.group(1) if m else output)
+    ]
     items: list[str] = []
     for x in found:
-        if x and "<question>" not in x.lower() and x.lower() not in {i.lower() for i in items}:
+        if x and x.lower() not in {i.lower() for i in items}:
             items.append(x)
     kept = tuple(items[:MAX_REQUIREMENTS])
     return Requirements(kept, len(found) - len(kept))
