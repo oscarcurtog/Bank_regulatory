@@ -25,10 +25,13 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
 - **Chunking:** implemented (structural, v1)
 - **Retrieval benchmark:** implemented; DEV holds 30 judged questions, reviewed and sealed under
   protocol v1.4
-- **Indexing and retrieval:** three retrieval iterations on DEV are done (three dense models,
-  BM25, cross-reference expansion, dependency retrieval, graph propagation, two rerankers, a
-  local language model as set selector, closed-catalog query reformulation); no configuration
-  beat `multilingual-e5-large` by the protocols' margin
+- **Indexing and retrieval:** five retrieval iterations on DEV are done (three dense models,
+  BM25, cross-reference expansion, dependency retrieval, graph propagation, cross-encoder
+  rerankers, a local language model as set selector, closed-catalog query reformulation, question
+  decomposition with a zero-shot and a fine-tuned reranker). The best measured, question
+  decomposition with a zero-shot reranker, reaches Recall@10 0.824 against
+  `multilingual-e5-large`'s 0.763; no configuration reaches the useful target, and none has been
+  checked on new needs. No index has been built yet
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -73,7 +76,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 768 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 779 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -126,7 +129,7 @@ the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`
 need the 4-bit MLX build of Qwen3-4B-Instruct-2507 in its own environment, `.cache/mlx-venv`, on
 Apple silicon (see [config/retrieval/necessity-selection.md](config/retrieval/necessity-selection.md)).
 Without them they fail, unless the environment declares `FUNDAMENTO_EMBEDDING_MODEL=unsupported`, as
-CI does. With that declaration and without the corpus, pytest reports `699 passed, 69 skipped`.
+CI does. With that declaration and without the corpus, pytest reports `710 passed, 69 skipped`.
 
 ## Docker
 
@@ -189,7 +192,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 
-Without the corpus you can run the test suite (699 tests pass and 69 are skipped with
+Without the corpus you can run the test suite (710 tests pass and 69 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported`), the linters and type checks, and both Docker images.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files
@@ -382,6 +385,24 @@ first gain in Recall@10 whose interval excludes zero), nDCG@10 0.561, `multi_pro
 because the reranker improves the first place of each list, which is the place the rule takes.
 Against D-4B the gain is inside the noise, and none of these DEV numbers has been checked on new
 needs.
+F ([protocol](config/retrieval/reranker-finetuning.md)) then fine-tuned that reranker once, with
+LoRA on its last 8 of 28 layers, on 1,071 questions the 4B wrote from the corpus's own chunks (no
+DEV data), split by article from 185 validation questions. Training succeeded on the held-out
+synthetic questions (MRR 0.837 to 0.960, +0.123 [+0.067, +0.179]) and did not transfer: on DEV the
+adapter is worse than the zero-shot model, both on the decomposed questions (Recall@1 0.629
+against 0.663) and in the ten (Recall@10 0.805 against 0.824). The validation questions came from
+the same generator as the training ones and counted only their source chunk (and its near-copies)
+as correct, so they measured how well the adapter learned synthetic questions, not real ones. By
+its rule, no second recipe runs on DEV.
+A fifth iteration ([protocol](config/retrieval/iteration-5.md),
+[record](data/results/dev-0.10.0/retrieval-iteration-5/log.md)) ran unattended overnight, under
+rules fixed before F's DEV result was read and audited by an independent reviewer: three changes
+to the merge, each evaluated once with F's adapter. Filling places 7 to 10 by the best normalized
+score (G1) reached Recall@10 0.815; interleaving the questions of the 4B and the 8B (G2), 0.814,
+with full-evidence 0.691 and dependent evidence 0.427; reranking each question's first 100
+results instead of 50 (G3), 0.801. None met the iteration's rule for replacing its reference,
+none beats E's Recall@10 and none reaches the useful target. By F's stop rule, E stays the
+retrieval candidate.
 
 ## Known limitations
 
@@ -392,8 +413,10 @@ needs.
   The retrieval iterations selected on DEV, so their numbers are development numbers; an
   independent TEST set has not been built. No index or hybrid search has been measured, and
   neither the cross-encoder rerankers nor a local language model judging candidates improved on
-  E5; the decomposition of round D improves nDCG@10 on DEV, and has not been tested on new needs. The benchmark evaluator is not in the Docker images (no Linux ARM64 wheel for its
-  backend).
+  E5; the decomposition of round D improves nDCG@10 on DEV, and has not been tested on new needs;
+  fine-tuning the reranker on synthetic questions from the corpus improved on held-out synthetic
+  questions and not on DEV. The benchmark evaluator is not in the Docker images (no Linux ARM64
+  wheel for its backend).
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4

@@ -7,10 +7,12 @@
  "depth": 50,
  "done": [
   "g1",
-  "g2"
+  "g2",
+  "g3"
  ],
  "started": {
   "g1": "671c5bd9c5aaca521ae520d0c7d98230757ce929b3409b29648a51da85310494",
-  "g2": "159374066ec8daaf7563aa007be685115bbbade055b4e8ce1883b9cc627cfe1d"
+  "g2": "159374066ec8daaf7563aa007be685115bbbade055b4e8ce1883b9cc627cfe1d",
+  "g3": "ff6eab28b1821f86b5d51ab9a48667d4214476e9db0aa0d0769330edfb472824"
  }
 }

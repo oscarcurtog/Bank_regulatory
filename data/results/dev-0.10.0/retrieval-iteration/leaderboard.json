@@ -1188,6 +1188,204 @@
      "Recall@20": 0.7973856209150326
     }
    }
+  },
+  "g1-global-score": {
+   "label": "G1: as F, the four places by the best normalized score",
+   "run_sha256": "671c5bd9c5aaca521ae520d0c7d98230757ce929b3409b29648a51da85310494",
+   "columns": {
+    "nDCG@10": 0.563983210656054,
+    "Recall@10": 0.8148148148148148,
+    "MRR@10": 0.7539094650205761,
+    "Recall@20": 0.845679012345679,
+    "Recall@T=1000": 0.6796737555996815,
+    "Recall@T=2000": 0.840478862701085,
+    "Recall@50": 0.8915637860082305,
+    "multi_provision R@10": 0.5740740740740741,
+    "cross_reference R@10": 0.712121212121212,
+    "cross_act R@10": 0.41666666666666663,
+    "dependent R@10": 0.3909090909090909,
+    "Full-evidence@10": 0.6790123456790123
+   },
+   "Recall@100": 0.9082304526748971,
+   "by_language": {
+    "nDCG@10": {
+     "en": 0.5830448605954794,
+     "es": 0.5258599107772031
+    },
+    "Recall@10": {
+     "en": 0.8212962962962963,
+     "es": 0.8018518518518518
+    },
+    "Recall@T=1000": {
+     "en": 0.7422828714495381,
+     "es": 0.5544555238999683
+    }
+   },
+   "dependent_evidence": {
+    "needs": 11,
+    "queries": 33,
+    "Recall@10": 0.3909090909090909,
+    "Recall@20": 0.49090909090909096,
+    "anchor_in_top10": 0.9393939393939394
+   },
+   "groups": {
+    "multi_provision": {
+     "needs": 6,
+     "Recall@10": 0.5740740740740741,
+     "nDCG@10": 0.5591293834452028,
+     "Recall@20": 0.611111111111111
+    },
+    "cross_reference": {
+     "needs": 11,
+     "Recall@10": 0.712121212121212,
+     "nDCG@10": 0.5722024411594365,
+     "Recall@20": 0.7424242424242423
+    },
+    "cross_act": {
+     "needs": 2,
+     "Recall@10": 0.41666666666666663,
+     "nDCG@10": 0.5409324193934928,
+     "Recall@20": 0.41666666666666663
+    },
+    "lexical_twin": {
+     "needs": 17,
+     "Recall@10": 0.7745098039215685,
+     "nDCG@10": 0.5161669646810204,
+     "Recall@20": 0.8137254901960784
+    }
+   }
+  },
+  "g2-two-decomposers": {
+   "label": "G2: as F, the 4B and 8B requirements interleaved",
+   "run_sha256": "159374066ec8daaf7563aa007be685115bbbade055b4e8ce1883b9cc627cfe1d",
+   "columns": {
+    "nDCG@10": 0.5654048030818036,
+    "Recall@10": 0.8144032921810699,
+    "MRR@10": 0.7511904761904762,
+    "Recall@20": 0.8477366255144033,
+    "Recall@T=1000": 0.6796737555996815,
+    "Recall@T=2000": 0.8152493596938042,
+    "Recall@50": 0.8911522633744856,
+    "multi_provision R@10": 0.5722222222222222,
+    "cross_reference R@10": 0.7111111111111111,
+    "cross_act R@10": 0.41666666666666663,
+    "dependent R@10": 0.4272727272727273,
+    "Full-evidence@10": 0.6913580246913581
+   },
+   "Recall@100": 0.9078189300411523,
+   "by_language": {
+    "nDCG@10": {
+     "en": 0.5872089078852046,
+     "es": 0.5217965934750016
+    },
+    "Recall@10": {
+     "en": 0.8151234567901234,
+     "es": 0.8129629629629629
+    },
+    "Recall@T=1000": {
+     "en": 0.7422828714495381,
+     "es": 0.5544555238999683
+    }
+   },
+   "dependent_evidence": {
+    "needs": 11,
+    "queries": 33,
+    "Recall@10": 0.4272727272727273,
+    "Recall@20": 0.5373737373737373,
+    "anchor_in_top10": 0.9393939393939394
+   },
+   "groups": {
+    "multi_provision": {
+     "needs": 6,
+     "Recall@10": 0.5722222222222222,
+     "nDCG@10": 0.5594828521858771,
+     "Recall@20": 0.6203703703703703
+    },
+    "cross_reference": {
+     "needs": 11,
+     "Recall@10": 0.7111111111111111,
+     "nDCG@10": 0.5745925095215484,
+     "Recall@20": 0.7474747474747474
+    },
+    "cross_act": {
+     "needs": 2,
+     "Recall@10": 0.41666666666666663,
+     "nDCG@10": 0.5291657183750071,
+     "Recall@20": 0.41666666666666663
+    },
+    "lexical_twin": {
+     "needs": 17,
+     "Recall@10": 0.7679738562091503,
+     "nDCG@10": 0.5181954125454986,
+     "Recall@20": 0.8169934640522876
+    }
+   }
+  },
+  "g3-depth100": {
+   "label": "G3: as F, each requirement's first 100 reranked",
+   "run_sha256": "ff6eab28b1821f86b5d51ab9a48667d4214476e9db0aa0d0769330edfb472824",
+   "columns": {
+    "nDCG@10": 0.5659016460964789,
+    "Recall@10": 0.801440329218107,
+    "MRR@10": 0.7498187340779934,
+    "Recall@20": 0.838477366255144,
+    "Recall@T=1000": 0.6796737555996815,
+    "Recall@T=2000": 0.8178451178451178,
+    "Recall@50": 0.8823045267489712,
+    "multi_provision R@10": 0.5972222222222222,
+    "cross_reference R@10": 0.7247474747474748,
+    "cross_act R@10": 0.45833333333333337,
+    "dependent R@10": 0.3767676767676768,
+    "Full-evidence@10": 0.6666666666666666
+   },
+   "Recall@100": 0.9026748971193416,
+   "by_language": {
+    "nDCG@10": {
+     "en": 0.5859814896335807,
+     "es": 0.5257419590222754
+    },
+    "Recall@10": {
+     "en": 0.8157407407407407,
+     "es": 0.7728395061728395
+    },
+    "Recall@T=1000": {
+     "en": 0.7422828714495381,
+     "es": 0.5544555238999683
+    }
+   },
+   "dependent_evidence": {
+    "needs": 11,
+    "queries": 33,
+    "Recall@10": 0.3767676767676768,
+    "Recall@20": 0.4767676767676768,
+    "anchor_in_top10": 0.9393939393939394
+   },
+   "groups": {
+    "multi_provision": {
+     "needs": 6,
+     "Recall@10": 0.5972222222222222,
+     "nDCG@10": 0.5744104004767299,
+     "Recall@20": 0.6342592592592592
+    },
+    "cross_reference": {
+     "needs": 11,
+     "Recall@10": 0.7247474747474748,
+     "nDCG@10": 0.5825416792878654,
+     "Recall@20": 0.7550505050505051
+    },
+    "cross_act": {
+     "needs": 2,
+     "Recall@10": 0.45833333333333337,
+     "nDCG@10": 0.5665440574750928,
+     "Recall@20": 0.45833333333333337
+    },
+    "lexical_twin": {
+     "needs": 17,
+     "Recall@10": 0.7532679738562091,
+     "nDCG@10": 0.5189815065579728,
+     "Recall@20": 0.8022875816993464
+    }
+   }
   }
  },
  "best_by_global_recall10_then_ndcg10": "e-d4b-qwen3-reranker-k5",
@@ -1497,6 +1695,60 @@
     "equal": 27,
     "worse": 11
    }
+  },
+  "g1-global-score": {
+   "Recall@10": {
+    "mean": 0.05164609053497942,
+    "ci95_low": 0.0,
+    "ci95_high": 0.1176954732510288,
+    "better": 12,
+    "equal": 66,
+    "worse": 3
+   },
+   "nDCG@10": {
+    "mean": 0.036481175913606896,
+    "ci95_low": 0.01805023504061656,
+    "ci95_high": 0.056514884688540906,
+    "better": 43,
+    "equal": 27,
+    "worse": 11
+   }
+  },
+  "g2-two-decomposers": {
+   "Recall@10": {
+    "mean": 0.05123456790123457,
+    "ci95_low": 0.002880658436213993,
+    "ci95_high": 0.11419753086419752,
+    "better": 12,
+    "equal": 67,
+    "worse": 2
+   },
+   "nDCG@10": {
+    "mean": 0.03790276833935652,
+    "ci95_low": 0.020469416008971536,
+    "ci95_high": 0.05598319593555744,
+    "better": 45,
+    "equal": 28,
+    "worse": 8
+   }
+  },
+  "g3-depth100": {
+   "Recall@10": {
+    "mean": 0.03827160493827161,
+    "ci95_low": -0.010082304526748971,
+    "ci95_high": 0.09465020576131687,
+    "better": 12,
+    "equal": 65,
+    "worse": 4
+   },
+   "nDCG@10": {
+    "mean": 0.03839961135403187,
+    "ci95_low": 0.020582164202571803,
+    "ci95_high": 0.057836510958473135,
+    "better": 43,
+    "equal": 26,
+    "worse": 12
+   }
   }
  },
  "interesting_against_e5": {
@@ -1601,6 +1853,24 @@
    "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
    "C: multi_provision Recall@10 +0.10": true,
    "D: dependent evidence Recall@10 +0.10": false
+  },
+  "g1-global-score": {
+   "A: Recall@10 +0.05": true,
+   "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+   "C: multi_provision Recall@10 +0.10": false,
+   "D: dependent evidence Recall@10 +0.10": false
+  },
+  "g2-two-decomposers": {
+   "A: Recall@10 +0.05": true,
+   "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+   "C: multi_provision Recall@10 +0.10": false,
+   "D: dependent evidence Recall@10 +0.10": true
+  },
+  "g3-depth100": {
+   "A: Recall@10 +0.05": false,
+   "B: nDCG@10 +0.05, Recall@10 down at most 0.02": false,
+   "C: multi_provision Recall@10 +0.10": true,
+   "D: dependent evidence Recall@10 +0.10": false
   }
  },
  "decision_5": {
@@ -1628,7 +1898,10 @@
   "d-qwen3-4b-k5": 0.884,
   "d-qwen3-8b-k5": 0.887,
   "e-d4b-qwen3-reranker-k5": 0.892,
-  "f-d4b-qwen3-reranker-lora-k5": 0.885
+  "f-d4b-qwen3-reranker-lora-k5": 0.885,
+  "g1-global-score": 0.892,
+  "g2-two-decomposers": 0.891,
+  "g3-depth100": 0.882
  },
  "reranker_gate_met_by": []
 }
