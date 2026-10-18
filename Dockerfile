@@ -104,6 +104,9 @@ ENV FUNDAMENTO_EVALUATOR=unsupported
 # Same rule for the tests marked "embedding_model": the images install neither torch nor
 # the embedding model (the optional 'embed' extra), and this line is what skips them.
 ENV FUNDAMENTO_EMBEDDING_MODEL=unsupported
+# And for the tests marked "postgres": the image starts no database (compose.yaml does, on
+# the host), and this line is what skips them.
+ENV FUNDAMENTO_POSTGRES=unsupported
 CMD ["python", "-m", "pytest", "-q", "-rs"]
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,375 @@
+{
+ "what": "T3: the E5 baseline moved into PostgreSQL with pgvector; a migration, not an experiment",
+ "benchmark_version": "0.10.0",
+ "contract": {
+  "name": "multilingual-e5-large",
+  "config_hash": "2183ee7eedd919664cd579f55d99def7586854615b900dfe31d7713eee152745",
+  "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3"
+ },
+ "index": {
+  "layer_id": 1,
+  "set_id": 1,
+  "vectors": 1354,
+  "dimension": 1024,
+  "search": "exact: no HNSW or IVFFlat index; ORDER BY embedding <#> query, chunk_id",
+  "operator": "<#> (negative inner product); score = -(embedding <#> query)",
+  "approximate_indexes": [],
+  "load_and_verify_seconds": 1.1839130419975845,
+  "server": {
+   "server": "PostgreSQL 18.6 (Debian 18.6-1.pgdg12+2) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit",
+   "pgvector": "0.8.7",
+   "shared_buffers": "128MB",
+   "collation": "en_US.utf8",
+   "chunk_embedding_bytes": "7749632"
+  }
+ },
+ "inputs": {
+  "documents_sha256": "eae637821e3e1fb29034a62e6841a7f7651a71482f4f7591f79c4b42f65d3be8",
+  "queries_sha256": "4adade7adcf7c5bd389e73fad854ba9bf244bc794b3f47e6ad7a1b88c5203413",
+  "stored_run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+  "moved_run_sha256": "2fa9a1f42cfe65e816e1aa0a1d049468f5c18ff5728c8943bd857feeab0ebc2e"
+ },
+ "comparison": {
+  "inversions": {
+   "inverted_pairs": 518,
+   "from_stored_exact_ties": 26,
+   "not_explained_by_float_differences": 0,
+   "largest_stored_gap_of_an_inverted_pair": 1.7881393432617188e-06,
+   "max_displacement_positions": 2,
+   "first_differing_position_1based": {
+    "min": 25,
+    "median": 263.0,
+    "max": 783
+   }
+  },
+  "queries": 90,
+  "evaluated_queries": 81,
+  "identical_full_rankings": 0,
+  "identical_top10_of_evaluated": 81,
+  "first_differing_position": {
+   "N004-en-1": 50,
+   "N004-en-2": 491,
+   "N004-es-1": 53,
+   "N006-en-3": 782,
+   "N006-en-4": 135,
+   "N006-es-2": 143,
+   "N008-en-1": 184,
+   "N008-en-2": 315,
+   "N008-es-1": 258,
+   "N009-en-1": 384,
+   "N009-en-2": 319,
+   "N009-es-1": 45,
+   "N010-en-3": 221,
+   "N010-en-4": 285,
+   "N010-es-2": 237,
+   "N011-en-3": 97,
+   "N011-en-4": 231,
+   "N011-es-2": 71,
+   "N012-en-1": 382,
+   "N012-en-2": 157,
+   "N012-es-1": 153,
+   "N013-en-3": 181,
+   "N013-en-4": 114,
+   "N013-es-2": 162,
+   "N014-en-1": 336,
+   "N014-en-2": 83,
+   "N014-es-1": 374,
+   "N015-en-1": 235,
+   "N015-en-2": 263,
+   "N015-es-1": 261,
+   "N016-en-1": 369,
+   "N016-en-2": 399,
+   "N016-es-1": 59,
+   "N017-en-1": 359,
+   "N017-en-2": 125,
+   "N017-es-1": 221,
+   "N018-en-1": 483,
+   "N018-en-2": 587,
+   "N018-es-1": 245,
+   "N019-en-1": 214,
+   "N019-en-2": 519,
+   "N019-es-1": 86,
+   "N020-en-1": 553,
+   "N020-en-2": 48,
+   "N020-es-1": 79,
+   "N021-en-1": 116,
+   "N021-en-2": 763,
+   "N021-es-1": 380,
+   "N022-en-1": 546,
+   "N022-en-2": 766,
+   "N022-es-1": 453,
+   "N023-en-1": 531,
+   "N023-en-2": 506,
+   "N023-es-1": 246,
+   "N024-en-1": 109,
+   "N024-en-2": 403,
+   "N024-es-1": 355,
+   "N025-en-1": 146,
+   "N025-en-2": 393,
+   "N025-es-1": 292,
+   "N026-en-1": 766,
+   "N026-en-2": 347,
+   "N026-es-1": 277,
+   "N027-en-1": 203,
+   "N027-en-2": 46,
+   "N027-es-1": 174,
+   "N028-en-1": 298,
+   "N028-en-2": 670,
+   "N028-es-1": 146,
+   "N029-en-1": 214,
+   "N029-en-2": 302,
+   "N029-es-1": 420,
+   "N030-en-1": 271,
+   "N030-en-2": 298,
+   "N030-es-1": 194,
+   "N031-en-1": 435,
+   "N031-en-2": 253,
+   "N031-es-1": 474,
+   "N032-en-1": 443,
+   "N032-en-2": 329,
+   "N032-es-1": 383,
+   "N033-en-1": 297,
+   "N033-en-2": 24,
+   "N033-es-1": 144,
+   "N034-en-1": 115,
+   "N034-en-2": 123,
+   "N034-es-1": 159,
+   "N035-en-1": 107,
+   "N035-en-2": 584,
+   "N035-es-1": 441
+  },
+  "scores_compared": 121860,
+  "scores_bit_identical": 7199,
+  "abs_score_difference": {
+   "max": 1.9073486328125e-06,
+   "p99": 1.0132789611816406e-06,
+   "mean": 3.2066183686549885e-07
+  },
+  "float32_ulps": {
+   "max": 32.0,
+   "p99": 17.0
+  }
+ },
+ "ties_and_margins": {
+  "adjacent_exact_ties": 56,
+  "ties_with_bit_identical_vectors": 0,
+  "ties_with_identical_text": 0,
+  "duplicate_vector_groups": 0,
+  "chunks_in_duplicate_groups": 0,
+  "duplicate_examples": [],
+  "smallest_positive_gap_full_depth": 5.960464477539063e-08,
+  "smallest_gap_top11_evaluated": 1.430511474609375e-06,
+  "gaps_top11_evaluated": 810,
+  "fragile_top11_pairs_under_twice_max_difference": [
+   {
+    "query_id": "N008-es-1",
+    "positions": [
+     10,
+     11
+    ],
+    "stored_gap": 1.430511474609375e-06,
+    "moved_gap": 2.980232238769531e-07
+   },
+   {
+    "query_id": "N022-en-1",
+    "positions": [
+     5,
+     6
+    ],
+    "stored_gap": 3.3974647521972656e-06,
+    "moved_gap": 3.814697265625e-06
+   },
+   {
+    "query_id": "N023-en-1",
+    "positions": [
+     2,
+     3
+    ],
+    "stored_gap": 2.562999725341797e-06,
+    "moved_gap": 1.3709068298339844e-06
+   }
+  ]
+ },
+ "score_tolerance": {
+  "tau": 1e-05,
+  "all_scores_within": true,
+  "top11_gap_above_two_tau": false,
+  "fragile_top11_pairs_under_two_tau": [
+   {
+    "query_id": "N008-es-1",
+    "positions": [
+     10,
+     11
+    ],
+    "stored_gap": 1.430511474609375e-06,
+    "moved_gap": 2.980232238769531e-07
+   },
+   {
+    "query_id": "N014-es-1",
+    "positions": [
+     3,
+     4
+    ],
+    "stored_gap": 6.67572021484375e-06,
+    "moved_gap": 7.152557373046875e-06
+   },
+   {
+    "query_id": "N015-en-1",
+    "positions": [
+     9,
+     10
+    ],
+    "stored_gap": 5.0067901611328125e-06,
+    "moved_gap": 5.364418029785156e-06
+   },
+   {
+    "query_id": "N022-en-1",
+    "positions": [
+     5,
+     6
+    ],
+    "stored_gap": 3.3974647521972656e-06,
+    "moved_gap": 3.814697265625e-06
+   },
+   {
+    "query_id": "N023-en-1",
+    "positions": [
+     2,
+     3
+    ],
+    "stored_gap": 2.562999725341797e-06,
+    "moved_gap": 1.3709068298339844e-06
+   },
+   {
+    "query_id": "N023-es-1",
+    "positions": [
+     10,
+     11
+    ],
+    "stored_gap": 4.887580871582031e-06,
+    "moved_gap": 5.245208740234375e-06
+   },
+   {
+    "query_id": "N025-es-1",
+    "positions": [
+     8,
+     9
+    ],
+    "stored_gap": 1.3589859008789062e-05,
+    "moved_gap": 1.4007091522216797e-05
+   },
+   {
+    "query_id": "N028-en-1",
+    "positions": [
+     3,
+     4
+    ],
+    "stored_gap": 1.6987323760986328e-05,
+    "moved_gap": 1.5974044799804688e-05
+   },
+   {
+    "query_id": "N028-es-1",
+    "positions": [
+     3,
+     4
+    ],
+    "stored_gap": 1.233816146850586e-05,
+    "moved_gap": 1.3232231140136719e-05
+   },
+   {
+    "query_id": "N031-en-2",
+    "positions": [
+     10,
+     11
+    ],
+    "stored_gap": 5.7220458984375e-06,
+    "moved_gap": 4.708766937255859e-06
+   },
+   {
+    "query_id": "N035-es-1",
+    "positions": [
+     9,
+     10
+    ],
+    "stored_gap": 1.2218952178955078e-05,
+    "moved_gap": 1.2755393981933594e-05
+   }
+  ]
+ },
+ "metrics": {
+  "official_differences": {
+   "nDCG@10": 0.0,
+   "Recall@10": 0.0,
+   "MRR@10": 0.0,
+   "Recall@5": 0.0,
+   "Recall@20": 0.0,
+   "Recall@T=1000": 0.0,
+   "Recall@T=2000": 0.0
+  },
+  "all_diagnostic_blocks_identical": true
+ },
+ "provenance": {
+  "resolved": 810,
+  "expected": 810
+ },
+ "latency": {
+  "what": "one top-10 search, the query vector already computed",
+  "queries": 90,
+  "repetitions": 5,
+  "cache": "warm: one untimed pass first (statement prepared, table in shared buffers)",
+  "warm_up_pass_seconds": 0.47903191699879244,
+  "client_round_trip": {
+   "n": 450,
+   "method": "nearest rank",
+   "unit": "ms",
+   "p50": 5.600541997409891,
+   "max": 25.037958002940286,
+   "mean": 5.75994964465887,
+   "p95": 6.815792003180832
+  },
+  "server": {
+   "execution": {
+    "n": 90,
+    "method": "nearest rank",
+    "unit": "ms",
+    "p50": 3.9639999999999995,
+    "max": 5.165,
+    "mean": 3.925211111111111
+   },
+   "planning": {
+    "n": 90,
+    "method": "nearest rank",
+    "unit": "ms",
+    "p50": 0.029,
+    "max": 0.135,
+    "mean": 0.0339
+   },
+   "shared_blocks_hit": 408240,
+   "shared_blocks_read": 0
+  },
+  "plan": [
+   "Limit",
+   "Sort",
+   "Bitmap Heap Scan",
+   "Bitmap Index Scan"
+  ],
+  "in_memory_baseline_numpy": {
+   "n": 450,
+   "method": "nearest rank",
+   "unit": "ms",
+   "p50": 0.05179100116947666,
+   "max": 2.3810419952496886,
+   "mean": 0.057965473275140136,
+   "p95": 0.060083002608735114
+  }
+ },
+ "machine": {
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "cpu": "Apple M1",
+  "cpu_count": "8",
+  "memory_bytes": "17179869184",
+  "python": "3.12.14",
+  "psycopg": "3.3.6",
+  "libpq": "180006"
+ }
+}

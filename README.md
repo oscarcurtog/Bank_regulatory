@@ -31,7 +31,8 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   decomposition with a zero-shot and a fine-tuned reranker). The best measured, question
   decomposition with a zero-shot reranker, reaches Recall@10 0.824 against
   `multilingual-e5-large`'s 0.763; no configuration reaches the useful target, and none has been
-  checked on new needs. No index has been built yet
+  checked on new needs. The dense baseline also runs as an exact search in PostgreSQL with
+  pgvector (T3), with the same top 10 for every evaluated query and the same metrics
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -69,6 +70,9 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   exact search under a per-model contract, BM25, explicit cross-reference expansion, rank fusion,
   and one report that measures every retriever the same way. See
   [Retrieval iteration](#retrieval-iteration).
+- **Vector index** (`ingest/vector_index.py`, `scripts/pgvector_baseline.py`, `compose.yaml`):
+  the chunk layer, its provenance and the E5 vectors in PostgreSQL with pgvector, searched
+  exactly, with the integrity rules enforced by the database. See [Vector index](#vector-index-t3).
 - **Data contracts** (Pydantic): the manifest, the processed layer (`data/processed/{act}.json`),
   the chunk layer (`data/chunks/{act}.json`) and the benchmark files are validated when they are
   written and when they are read. Loading aborts instead of returning partly checked data.
@@ -76,7 +80,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 779 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 797 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -92,6 +96,7 @@ scripts/             pipeline and measurement entry points
 tests/unit/          isolated tests, no files involved
 tests/integration/   tests on real EUR-Lex excerpts (tests/fixtures/, see PROVENANCE.md)
 ci/                  runtime image contract, run by CI
+compose.yaml         the local PostgreSQL with pgvector of the vector index (T3)
 data/                manifest, measurement reports and the benchmark (the corpus is not versioned)
 ```
 
@@ -129,7 +134,11 @@ the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`
 need the 4-bit MLX build of Qwen3-4B-Instruct-2507 in its own environment, `.cache/mlx-venv`, on
 Apple silicon (see [config/retrieval/necessity-selection.md](config/retrieval/necessity-selection.md)).
 Without them they fail, unless the environment declares `FUNDAMENTO_EMBEDDING_MODEL=unsupported`, as
-CI does. With that declaration and without the corpus, pytest reports `710 passed, 69 skipped`.
+CI does. The 16 tests marked `postgres` need the PostgreSQL of `compose.yaml`, reached through the
+libpq variables (see [Vector index](#vector-index-t3)); without it they fail, unless the
+environment declares `FUNDAMENTO_POSTGRES=unsupported`, as the test image does. CI runs them
+against a service container of the same pinned image. In CI (no corpus, no model, PostgreSQL up)
+pytest reports `728 passed, 69 skipped`.
 
 ## Docker
 
@@ -158,7 +167,8 @@ The test image does not install the benchmark evaluator (`ir_measures`): its bac
 `FUNDAMENTO_EVALUATOR=unsupported`, which is the only thing that skips the 17 tests marked
 `evaluator`, and pytest prints the reason. Those tests run in the project venv and in CI. In the
 same way, neither image installs torch or the embedding model, and the test image declares
-`FUNDAMENTO_EMBEDDING_MODEL=unsupported` for the 31 tests marked `embedding_model`.
+`FUNDAMENTO_EMBEDDING_MODEL=unsupported` for the 31 tests marked `embedding_model`, and
+`FUNDAMENTO_POSTGRES=unsupported` for the 16 tests marked `postgres`: no image starts a database.
 
 ## Continuous integration
 
@@ -167,7 +177,9 @@ same way, neither image installs torch or the embedding model, and the test imag
 - `quality`: installs `requirements-dev.lock.txt` with hash checking, then runs Ruff,
   `ruff format --check`, mypy and pytest. Before pytest it restores `.cache/tiktoken` from the
   GitHub Actions cache, keyed by runner OS, tiktoken version and encoding, and loads the
-  tokenizer, so only a run with a cold cache downloads it.
+  tokenizer, so only a run with a cold cache downloads it. A service container runs the same
+  pinned pgvector image as `compose.yaml`, so the `postgres` tests check the index's schema and
+  integrity rules on every push.
 - `runtime-image`: builds the runtime image and runs `ci/check_runtime_image.py` inside it.
 
 The runner does not have the corpus, so the 38 `corpus` tests are skipped there. A green run does
@@ -192,8 +204,10 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 
-Without the corpus you can run the test suite (710 tests pass and 69 are skipped with
-`FUNDAMENTO_EMBEDDING_MODEL=unsupported`), the linters and type checks, and both Docker images.
+Without the corpus you can run the test suite (728 tests pass and 69 are skipped with
+`FUNDAMENTO_EMBEDDING_MODEL=unsupported` and the PostgreSQL of `compose.yaml` up), the linters and
+type checks, and both Docker images. The vector index is derived data too: it lives in a Docker
+volume and is rebuilt from `data/chunks/` and `data/embeddings/`.
 
 With the source documents listed in `data/manifest.json` placed in `data/raw/`, the derived files
 can be rebuilt from the repository root:
@@ -309,6 +323,52 @@ The main failure, where the chunk that answers ranks first and the evidence it
 depends on (definitions, conditions, the other act) ranks far below, is the same for both models.
 Both are reproduced bit for bit by a new process.
 
+### Vector index (T3)
+
+```bash
+echo "FUNDAMENTO_PG_PASSWORD=$(openssl rand -hex 24)" >> .env   # once; .env is git-ignored
+docker compose up -d --wait postgres
+export PGHOST=127.0.0.1 PGPORT=5432 PGUSER=fundamento PGDATABASE=fundamento
+export PGPASSWORD="$(sed -n 's/^FUNDAMENTO_PG_PASSWORD=//p' .env)"
+PYTHONPATH=. .venv/bin/python scripts/pgvector_baseline.py --expect-version 0.10.0 \
+    --score-tolerance 1e-5
+```
+
+The E5 baseline, moved into PostgreSQL 18.6 with pgvector 0.8.7 (`compose.yaml`: the image pinned
+by tag and digest, the port bound to 127.0.0.1, no cloud service). It is an infrastructure
+migration, not an experiment: the cached vectors are moved and never recomputed, and every number
+has to stay the same.
+
+`ingest/vector_index.py` keeps the chunk layer, the provenance of each act, the chunks, the
+embedding sets with their full identity (D-028) and one `vector(1024)` per set and chunk. The
+database itself refuses a vector of another dimension, a vector that is not unit-norm, two vectors
+for one chunk of a set, a vector for a chunk outside its set's own layer, an orphan vector, and
+the deletion of a chunk that still has one. Loading rebuilds the stored layer into the same
+Pydantic models and compares it with the files, and hashes the matrix read back against the one
+`meta.json` records. The search is exact (no HNSW or IVFFlat index): `<#>`, pgvector's negative
+inner product, is the contract's dot product, and ties fall back to the chunk id under `COLLATE
+"C"`. The default collation of the image, `en_US.utf8`, would put `DORA:10` before `DORA:1.2`,
+the opposite of Python's order.
+
+Against the stored E5 run ([report](data/results/dev-0.10.0/t3-pgvector/report.md)):
+
+- the top 10 is identical, in the same order, for all 81 evaluated queries, and the official
+  metrics and every diagnostic block are identical;
+- all 810 of those results resolve to act, path, text and source document;
+- the scores are not bit-identical: pgvector adds the 1,024 products in float32 one after the
+  other and numpy's BLAS in blocks. The largest difference is 1.9e-6 (32 float32 ulps, median 5),
+  the size that √n·u predicts for n = 1,024; the proposed tolerance is 1e-5;
+- the full rankings differ only from position 25 on, always between neighbours whose stored gap
+  is within their own two score differences, and no chunk moves more than two places;
+- three top-11 neighbour pairs had gaps under twice the largest difference and kept their order.
+  One is positions 10 and 11 of N008-es-1, so the identical top 10 is observed on this machine,
+  not guaranteed by the margins.
+
+One warm top-10 search takes 5.6 ms at the median and 6.8 ms at p95 as a client round trip (90
+queries × 5 passes), of which about 4.0 ms is server execution. The in-memory search of the
+baseline on the same vectors takes 0.05 ms. pgvector stores each 4,100-byte vector out of line
+(TOAST). Approximate indexes are deferred to a separate experiment.
+
 ### Retrieval iteration
 
 ```bash
@@ -411,7 +471,8 @@ retrieval candidate.
 - The DEV benchmark holds 30 judged questions in two batches (27 evaluable), so a difference
   between two retrievers needs to be large to be told apart from noise (about 0.08 of nDCG@10).
   The retrieval iterations selected on DEV, so their numbers are development numbers; an
-  independent TEST set has not been built. No index or hybrid search has been measured, and
+  independent TEST set has not been built. No approximate index (HNSW, IVFFlat) or hybrid
+  search has been measured (the pgvector index is exact), and
   neither the cross-encoder rerankers nor a local language model judging candidates improved on
   E5; the decomposition of round D improves nDCG@10 on DEV, and has not been tested on new needs;
   fine-tuning the reranker on synthetic questions from the corpus improved on held-out synthetic

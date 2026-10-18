@@ -27,6 +27,11 @@ dependencies = [
     "numpy>=2.5,<3",
     "bm25s>=0.3.11,<0.4",
     "PyStemmer>=3.1,<4",
+    # T3 (D-052): the PostgreSQL driver for the pgvector index of the chunk layer. The
+    # binary extra ships libpq in the wheel, so nothing is compiled. Vectors travel as
+    # pgvector's text form, and the load proves the round trip bit for bit, so no
+    # vector adapter package is needed.
+    "psycopg[binary]>=3.3,<4",
 ]
 
 # Development dependencies, not production ones. They are installed with
@@ -67,6 +72,7 @@ markers = [
     "corpus: needs the full corpus downloaded into data/raw/",
     "evaluator: needs ir_measures (requirements-dev.lock.txt); skipped only where FUNDAMENTO_EVALUATOR=unsupported",
     "embedding_model: needs torch, transformers and the embedding model (requirements-embed.lock.txt); skipped only where FUNDAMENTO_EMBEDDING_MODEL=unsupported",
+    "postgres: needs PostgreSQL with pgvector (compose.yaml) through the libpq variables; skipped only where FUNDAMENTO_POSTGRES=unsupported",
 ]
 
 # ---------------------------------------------------------------------------

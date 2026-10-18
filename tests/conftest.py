@@ -69,6 +69,10 @@ EVALUATOR_ENV = "FUNDAMENTO_EVALUATOR"
 # model (requirements-embed.lock.txt and one download). CI and the dev image install
 # neither, and say so with this variable. Anywhere else a missing model fails them.
 EMBEDDING_MODEL_ENV = "FUNDAMENTO_EMBEDDING_MODEL"
+# The "postgres" tests need a PostgreSQL server with pgvector (compose.yaml locally, a
+# service container in CI), reached through the standard libpq variables. The dev image
+# has none and says so with this variable. Anywhere else an unreachable server fails them.
+POSTGRES_ENV = "FUNDAMENTO_POSTGRES"
 
 
 def pytest_collection_modifyitems(config, items):
@@ -88,6 +92,14 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "embedding_model" in item.keywords:
                 item.add_marker(skip_model)
+    if os.environ.get(POSTGRES_ENV) == "unsupported":
+        skip_postgres = pytest.mark.skip(
+            reason=f"{POSTGRES_ENV}=unsupported: this environment runs no PostgreSQL by design; "
+            f"these tests run against compose.yaml's server and in CI"
+        )
+        for item in items:
+            if "postgres" in item.keywords:
+                item.add_marker(skip_postgres)
     if RAW_DIR.exists() and any(RAW_DIR.iterdir()):
         return
     skip = pytest.mark.skip(reason="data/raw/ is missing in this checkout (D-002: not versioned)")

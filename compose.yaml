@@ -1,0 +1,37 @@
+# Local PostgreSQL with pgvector: the index of the chunk layer (T3, D-052).
+#
+#   docker compose up -d --wait postgres
+#
+# Local only and free: the port is bound to 127.0.0.1, the data lives in a named Docker
+# volume, and no cloud service is involved. The image is pinned by tag AND digest, so
+# every machine runs the same build: pgvector 0.8.7 on PostgreSQL 18.6, Debian bookworm.
+# The digest is the multi-architecture index (arm64 and amd64), the same one CI uses.
+#
+# The password is never in the repository. Compose reads FUNDAMENTO_PG_PASSWORD from the
+# environment or from .env (git-ignored) and refuses to start without it. The scripts and
+# tests connect with the standard libpq variables: PGHOST, PGPORT, PGUSER, PGDATABASE and
+# PGPASSWORD (see the README).
+name: fundamento
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg18-bookworm@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11
+    environment:
+      POSTGRES_USER: fundamento
+      POSTGRES_DB: fundamento
+      POSTGRES_PASSWORD: ${FUNDAMENTO_PG_PASSWORD:?set FUNDAMENTO_PG_PASSWORD in the environment or in .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      # PostgreSQL 18 images keep the cluster under /var/lib/postgresql/18/docker and
+      # declare /var/lib/postgresql as the volume. Mounting /var/lib/postgresql/data, as
+      # recipes for older versions do, would leave the cluster outside the volume.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fundamento -d fundamento"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:
