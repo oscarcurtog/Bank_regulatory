@@ -127,3 +127,34 @@ def test_an_index_refuses_repeated_ids_and_documents_without_terms():
         lx.build_index(CONFIG, [("X:1", "plan"), ("X:1", "plan")])
     with pytest.raises(lx.LexicalError, match="no index term"):
         lx.build_index(CONFIG, [("X:1", "plan"), ("X:2", "the of")])
+
+
+# ---------------------------------------------------------------------------
+# the Italian contract of T4 (D-053)
+# ---------------------------------------------------------------------------
+
+ITALIAN = lx.load_config(CONFIG_PATH.with_name("bm25-italian.json"))
+# config_hash of bm25.json as data/results/dev-0.10.0/bm25-layer-500/summary.json records it
+DEV_CONFIG_HASH = "e086bdb4511feae4796c639cd0450c732840f00e1da81e5c859d6960ee9b293b"
+
+
+def test_the_italian_contract_changes_only_the_analysis():
+    assert ITALIAN.model_dump(exclude={"name", "analyzer"}) == CONFIG.model_dump(
+        exclude={"name", "analyzer"}
+    )
+    a = ITALIAN.analyzer
+    assert (a.stopwords, a.stemmer, a.strip_possessive) == (
+        "bm25s_italian",
+        "snowball_italian",
+        False,
+    )
+
+
+def test_adding_the_italian_options_left_the_dev_contract_hash_as_recorded():
+    assert CONFIG.config_hash() == DEV_CONFIG_HASH
+
+
+def test_the_italian_analyzer_drops_elided_articles_and_stems():
+    analyze = lx.Analyzer(ITALIAN.analyzer)
+    tokens = analyze("L'obbligo di adeguata verifica della clientela si applica all'operazione.")
+    assert tokens == ["obblig", "adegu", "verif", "clientel", "applic", "oper"]

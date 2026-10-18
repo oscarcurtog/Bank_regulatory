@@ -30,7 +30,7 @@ module never imports ir_measures; computing a metric without it fails.
 from __future__ import annotations
 
 import importlib.metadata
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from types import ModuleType
 from typing import Any
@@ -134,6 +134,68 @@ def standard_scores(
         collect(provider, named, run)
 
     names = [*recall, *mrr, *ndcg, *judged]
+    for query_id, scores in values.items():
+        for name in names:
+            if name not in scores:
+                if rankings.get(query_id):
+                    raise MetricError(f"{query_id}: {name} was not computed")
+                scores[name] = 0.0  # absent or empty ranking: 0, and it still counts
+    return values
+
+
+def binary_scores(
+    relevant: Mapping[str, Collection[str]],
+    rankings: Mapping[str, Sequence[str]],
+    recall: Sequence[int],
+    ndcg: Sequence[int],
+    rr: Sequence[int],
+    ap: Sequence[int],
+) -> dict[str, dict[str, float]]:
+    """query_id -> metric -> value, for an external benchmark with binary, positive-only
+    judgments (T4, D-053): every listed document is relevant with gain 1, every other one is
+    not, so there is no Judged@k. The names are Recall@k, nDCG@k, MRR@k and mAP@k.
+
+    The integration rules of standard_scores hold: the provider is chosen here, ranks become
+    strictly decreasing scores, and MRR@k is RR on the ranking cut at k. AP@k is trec_eval's
+    map_cut_k, which divides by all of the query's relevant documents, as JuriFindIT defines
+    it (paper, appendix F); a relevant document the corpus does not hold still counts there."""
+    irm = _ir_measures()
+    unknown = sorted(set(rankings) - set(relevant))
+    if unknown:
+        raise MetricError(f"rankings for queries without qrels: {unknown}")
+    if any(not docs for docs in relevant.values()):
+        raise MetricError("a query without any relevant document cannot be scored")
+    for query_id, ranking in rankings.items():
+        if len(set(ranking)) != len(ranking):
+            raise MetricError(f"{query_id}: a document ranked twice")
+
+    plain = {q: dict.fromkeys(docs, 1) for q, docs in relevant.items()}
+    full = {q: strict_scores(r) for q, r in rankings.items() if r}
+    values: dict[str, dict[str, float]] = {q: {} for q in relevant}
+
+    def collect(named: Mapping[str, Any], run: Mapping[str, Mapping[str, float]]) -> None:
+        _require_support(irm.pytrec_eval, list(named.values()))
+        name_of: dict[Any, str] = {m: n for n, m in named.items()}
+        for metric in irm.pytrec_eval.evaluator(list(named.values()), plain).iter_calc(run):
+            scores = values.get(metric.query_id)
+            name = name_of.get(metric.measure)
+            if scores is None or name is None or name in scores:
+                raise MetricError(f"unexpected result {metric.query_id} {metric.measure}")
+            scores[name] = float(metric.value)
+
+    collect({f"Recall@{k}": irm.R(rel=1) @ k for k in recall}, full)
+    collect({f"nDCG@{k}": irm.nDCG @ k for k in ndcg}, full)
+    collect({f"mAP@{k}": irm.AP(rel=1) @ k for k in ap}, full)
+    for k in rr:
+        cut = {q: strict_scores(list(r)[:k]) for q, r in rankings.items() if r}
+        collect({f"MRR@{k}": irm.RR(rel=1)}, cut)
+
+    names = [
+        *(f"Recall@{k}" for k in recall),
+        *(f"nDCG@{k}" for k in ndcg),
+        *(f"mAP@{k}" for k in ap),
+        *(f"MRR@{k}" for k in rr),
+    ]
     for query_id, scores in values.items():
         for name in names:
             if name not in scores:

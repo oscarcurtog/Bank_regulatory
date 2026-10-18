@@ -45,6 +45,10 @@ dev = [
     # only. Its backend, pytrec-eval-terrier, publishes no Linux ARM64 wheel, so the
     # evaluator runs in the venv and in CI, not in the Docker images.
     "ir-measures>=0.4.3,<0.5",
+    # T4 (D-053): reads the external benchmark's parquet files (ingest/external.py). An
+    # evaluation tool, not part of the runtime image. 25.0.1, not the newer 26.0.0, which
+    # was nine days old when it was pinned.
+    "pyarrow>=25.0.1,<26",
 ]
 # The model side of the dense baseline (ingest/encoder.py): the transformer that turns
 # token ids into vectors. Locked apart in requirements-embed.lock.txt and installed only
@@ -166,6 +170,11 @@ ignore_missing_imports = true
 # bm25s and PyStemmer (the "Stemmer" module) publish no py.typed marker either.
 [[tool.mypy.overrides]]
 module = ["bm25s.*", "Stemmer.*"]
+ignore_missing_imports = true
+
+# pyarrow (T4, D-053) publishes no py.typed marker either; only ingest/external.py imports it.
+[[tool.mypy.overrides]]
+module = ["pyarrow.*"]
 ignore_missing_imports = true
 
 # torch and transformers are the optional "embed" extra, absent from CI and the images.

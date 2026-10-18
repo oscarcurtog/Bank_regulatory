@@ -109,3 +109,34 @@ def test_the_known_ranking_of_fixture_n002():
     assert scores["nDCG@10"] == pytest.approx(dcg / idcg, abs=1e-9)
     assert round(scores["nDCG@10"], 4) == 0.6267
     assert scores["Judged@10"] == pytest.approx(4 / 6, abs=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# binary, positive-only judgments of the external benchmark (T4, D-053)
+# ---------------------------------------------------------------------------
+
+
+def test_binary_scores_follow_the_published_definitions():
+    """q1 has three relevant documents, one ("z") not in any ranking: it still counts in the
+    denominators of Recall and AP and in the ideal DCG, as trec_eval and JuriFindIT count it."""
+    relevant = {"q1": {"a", "c", "z"}, "q2": {"d"}}
+    rankings = {"q1": ["a", "b", "c", "d"], "q2": ["a", "b", "c", "d"]}
+    v = im.binary_scores(relevant, rankings, recall=(1, 3), ndcg=(3,), rr=(1, 3), ap=(3,))
+    q1 = v["q1"]
+    assert q1["Recall@1"] == pytest.approx(1 / 3) and q1["Recall@3"] == pytest.approx(2 / 3)
+    assert q1["mAP@3"] == pytest.approx((1 + 2 / 3) / 3)
+    ideal = 1 + 1 / math.log2(3) + 1 / math.log2(4)
+    assert q1["nDCG@3"] == pytest.approx((1 + 1 / math.log2(4)) / ideal)
+    assert q1["MRR@1"] == 1.0
+    # q2's only relevant document is at rank 4: everything at cutoff 3 or less is 0
+    assert all(value == 0.0 for value in v["q2"].values())
+
+
+def test_binary_mrr_is_cut_at_its_cutoff():
+    v = im.binary_scores({"q": {"c"}}, {"q": ["a", "b", "c"]}, recall=(), ndcg=(), rr=(2, 3), ap=())
+    assert v["q"]["MRR@2"] == 0.0 and v["q"]["MRR@3"] == pytest.approx(1 / 3)
+
+
+def test_binary_scores_refuse_a_query_without_relevant_documents():
+    with pytest.raises(im.MetricError, match="without any relevant"):
+        im.binary_scores({"q": set()}, {"q": ["a"]}, recall=(1,), ndcg=(), rr=(), ap=())

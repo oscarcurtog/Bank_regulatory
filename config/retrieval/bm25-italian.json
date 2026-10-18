@@ -1,0 +1,20 @@
+{
+  "schema_version": "1",
+  "name": "bm25-italian",
+  "library": "bm25s",
+  "library_version": "0.3.11",
+  "method": "lucene",
+  "k1": 1.2,
+  "b": 0.75,
+  "text": "chunk_text",
+  "analyzer": {
+    "lowercase": true,
+    "strip_possessive": false,
+    "token_pattern": "[^\\W_]+",
+    "stopwords": "bm25s_italian",
+    "stemmer": "snowball_italian",
+    "stem_min_length": 3,
+    "stemmer_library": "PyStemmer",
+    "stemmer_library_version": "3.1.0"
+  }
+}

@@ -18,6 +18,13 @@ The choices, each fixed in the contract before the first run:
 - The same analyzer runs on the English and the Spanish queries. The corpus is English and
   BM25 has no way across languages: that is measured, not corrected.
 
+An Italian corpus (the external benchmark of T4, D-053) has its own contract,
+config/retrieval/bm25-italian.json: the same scores and parameters, and the standard Italian
+analysis in place of the English one, an approximation of Lucene's ItalianAnalyzer: the
+Snowball Italian stop words as bm25s ships them (279 words, elided articles such as "l" and
+"dell" included, which stand in for Lucene's elision filter once the apostrophe splits them
+off) and PyStemmer's Snowball Italian stemmer, where Lucene uses its light Italian stemmer.
+
 bm25s and PyStemmer are pinned by the contract; a different installed version fails
 explicitly instead of producing other scores.
 """
@@ -57,8 +64,8 @@ class AnalyzerConfig(BaseModel):
     lowercase: bool
     strip_possessive: bool
     token_pattern: str = Field(min_length=1)
-    stopwords: Literal["lucene_english", "none"]
-    stemmer: Literal["porter", "none"]
+    stopwords: Literal["lucene_english", "bm25s_italian", "none"]
+    stemmer: Literal["porter", "snowball_italian", "none"]
     # Porter's reference implementation and Lucene's PorterStemmer leave words of one or
     # two letters unstemmed (Porter's own "DEPARTURE" from the published algorithm).
     stem_min_length: int = Field(ge=1)
@@ -119,12 +126,19 @@ class Analyzer:
     def __init__(self, config: AnalyzerConfig) -> None:
         self.config = config
         self._token = re.compile(config.token_pattern)
-        self._stop = LUCENE_ENGLISH_STOP_WORDS if config.stopwords == "lucene_english" else None
+        self._stop: frozenset[str] | None = None
+        if config.stopwords == "lucene_english":
+            self._stop = LUCENE_ENGLISH_STOP_WORDS
+        elif config.stopwords == "bm25s_italian":
+            from bm25s.stopwords import STOPWORDS_ITALIAN
+
+            self._stop = frozenset(STOPWORDS_ITALIAN)
         self._stemmer: Any = None
-        if config.stemmer == "porter":
+        if config.stemmer != "none":
             import Stemmer
 
-            self._stemmer = Stemmer.Stemmer("porter")
+            algorithm = {"porter": "porter", "snowball_italian": "italian"}[config.stemmer]
+            self._stemmer = Stemmer.Stemmer(algorithm)
 
     def __call__(self, text: str) -> list[str]:
         if self.config.lowercase:

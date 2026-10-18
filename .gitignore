@@ -35,6 +35,10 @@ data/runs/
 # (scripts/build_psd2_exclusions.py). Never parsed or indexed, and never in the
 # ingestion manifest; their SHA-256 is recorded in the derived list.
 data/reference/
+# The external benchmark of T4 (D-053): third-party data under CC BY-NC-SA 4.0, never
+# redistributed, and everything derived from it (adapted files, vectors, runs). Its results,
+# numbers and ids without dataset text, ARE versioned, in data/results/external/.
+data/external/
 
 # Local Claude Code config: it belongs to this machine, not to the project.
 # .claude/settings.json (without "local") IS shared and can be versioned.
