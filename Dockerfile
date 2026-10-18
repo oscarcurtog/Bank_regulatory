@@ -90,6 +90,9 @@ USER fundamento
 FROM base AS dev
 USER root
 RUN pip install --no-cache-dir "pytest>=8" "ruff>=0.16" "mypy>=2"
+# pyarrow reads the external benchmark's parquet files (T4, D-053) and one test reads a
+# parquet file it writes: the version of requirements-dev.lock.txt, so that it never skips.
+RUN pip install --no-cache-dir "pyarrow==25.0.1"
 COPY pyproject.toml ./
 COPY tests/ ./tests/
 # Here the chown IS recursive, on purpose: pytest, ruff and mypy write their

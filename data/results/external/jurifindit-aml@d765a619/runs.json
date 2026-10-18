@@ -1,0 +1,56 @@
+{
+ "frozen_at": "2026-10-18T22:47:34+00:00",
+ "dataset": {
+  "id": "jurifindit/JuriFindIT",
+  "revision": "d765a61998a0dc962a9c06394ab546b5a5ee0aa5",
+  "license": "cc-by-nc-sa-4.0",
+  "inputs": {
+   "corpus/corpus.parquet": {
+    "bytes": 18544036,
+    "sha256": "33632b14e48cd75b106112c9771f30e1c471f364c57fe95a76bbb641f0f3c524"
+   },
+   "questions/train.parquet": {
+    "bytes": 115021,
+    "sha256": "6c31d10b680b58ac95d91ef6bb5a7b4faf9a1927c32b2d579b6f6d8e9c8345d9"
+   },
+   "questions/validation.parquet": {
+    "bytes": 33219,
+    "sha256": "4c64549f76143411e555ee30bb787cf7ac2899ee4f6479cd6b855441e4adf8c6"
+   }
+  },
+  "adapter_version": "1",
+  "adapted_outputs": {
+   "corpus.jsonl": "98ca55348658347ab72b63ec663e322b35fc4cbcfcb751c76b89cd95addd6f65",
+   "documents.jsonl": "6bcdf1333c71bca2adc2d232bd67deb808712837e7210098dcba4ac40cdb284c",
+   "queries/aml-train.jsonl": "066df5659d60e5902ec36d781d8349c333cb19d90f1b968505b1dbace0107804",
+   "qrels/aml-train.jsonl": "110449b3e00ade055580aa90e85609452e439d462df11d4d869c573ff519dd82",
+   "queries/aml-validation.jsonl": "076c063228c89424902fb043200f2cdde9d7e86caf146cbb1c13503cca3731e1",
+   "qrels/aml-validation.jsonl": "5ed9d95179e3ff732e005394baa7381a82ca7aba4356fea3fc8afdb380e835d8",
+   "queries/estimate.jsonl": "8fe8b3ccdfd0d85062ff19fb3a9cdbd785b50d638f18d58ee47fc124cd53c40b"
+  }
+ },
+ "configs": {
+  "bm25-italian": "d76a72fefcef8696601e5ba63039540e596a80826f2c3f64dd498993f5b2b421",
+  "multilingual-e5-large": "2183ee7eedd919664cd579f55d99def7586854615b900dfe31d7713eee152745",
+  "qwen3-reranker-0.6b": "8e1b4cd43eb106055166b3320e9550d81adcba4e078dc13bb4a09a7f08c20bc6",
+  "qwen3-4b-instruct-mlx": "9f8b638720508a169ae5d23edf35db9dc5e4005831ca4162a34c69cb02a747c5"
+ },
+ "e_gate": {
+  "prompts": 108,
+  "limit": 16384,
+  "over_limit": [],
+  "passes": true
+ },
+ "e_completed": false,
+ "runs": {
+  "bm25-italian": {
+   "sha256": "e8fffb8f16593c9189c2299e0f0f0833d5431b5760715f7efdc93f391a5c62d3",
+   "depth": 1000
+  },
+  "multilingual-e5-large": {
+   "sha256": "f5122e2881a4da0e4b114a17bd3fbd733c7224c44468274ed2647eaf637627ef",
+   "depth": 1000
+  }
+ },
+ "qrels_read_before": false
+}

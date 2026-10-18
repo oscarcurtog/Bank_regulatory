@@ -126,7 +126,8 @@ def test_raw_files_other_than_the_pinned_ones_are_refused(tmp_path, monkeypatch)
 
 
 def test_parquet_rows_are_read_as_written(tmp_path):
-    pa = pytest.importorskip("pyarrow")
+    # pyarrow is in requirements-dev.lock.txt and in the test image: never a skip
+    import pyarrow as pa
     import pyarrow.parquet as pq
 
     rows = _corpus()
