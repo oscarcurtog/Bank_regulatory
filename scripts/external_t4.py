@@ -578,13 +578,31 @@ def score_jobs(
     start = time.perf_counter()
     reranker = nc.NecessityReranker(nc.load_config(RERANKER))
     load_seconds = time.perf_counter() - start
+    # every prompt built before any score, only to record their lengths first: a long pair
+    # is what can exhaust the device's memory. The same prompts, scored in the same order.
+    built = {g: [reranker.prompt(*jobs[k]) for k in part] for g, part in groups.items()}
+    lengths = [len(p.ids) for prompts in built.values() for p in prompts]
+    if lengths:
+        write_json(
+            scores_path.with_name(scores_path.stem + "-inputs.json"),
+            {
+                "pending_pairs": len(lengths),
+                "tokens": quantiles(lengths),
+                "over": {str(n): sum(x > n for x in lengths) for n in (1024, 2048, 4096, 8192)},
+                "truncated": sum(p.truncated for prompts in built.values() for p in prompts),
+                "groups": len(built),
+                "groups_with_a_pair_over_4096": sum(
+                    any(len(p.ids) > 4096 for p in prompts) for prompts in built.values()
+                ),
+            },
+        )
     scored, stopped, mps_peak = 0, False, 0
     torch = reranker._torch
-    for g, part in enumerate(groups.values(), start=1):
+    for g, (group, part) in enumerate(groups.items(), start=1):
         if deadline is not None and time.perf_counter() > deadline:
             stopped = True
             break
-        prompts = [reranker.prompt(*jobs[k]) for k in part]
+        prompts = built.pop(group)
         values = reranker.score_shared(prompts)
         if torch.backends.mps.is_available():
             mps_peak = max(mps_peak, int(torch.mps.driver_allocated_memory()))
@@ -856,6 +874,15 @@ def paired(diffs: Sequence[float]) -> dict[str, Any]:
     }
 
 
+def verdict(p: Mapping[str, Any]) -> str:
+    """The protocol's reading of a primary difference, fixed in advance."""
+    if p["ci95_low"] > 0:
+        return "holds"
+    if p["ci95_high"] < 0:
+        return "reverses"
+    return "inconclusive"
+
+
 def stratum_of(n: int) -> str:
     return next(label for lo, hi, label in STRATA if lo <= n <= hi)
 
@@ -910,6 +937,10 @@ def step_evaluate(args: argparse.Namespace) -> int:
                 m: paired([per_query[a][q][m] - per_query[b][q][m] for q in ids])
                 for m in (*PRIMARY, "MRR@10", "Recall@20")
             }
+            for m in PRIMARY:
+                block["paired"][f"{a} - {b}"][m]["verdict"] = verdict(
+                    block["paired"][f"{a} - {b}"][m]
+                )
         for _, _, label_s in STRATA:
             members = [q for q in ids if stratum_of(len(relevant[q])) == label_s]
             if not members:
@@ -942,8 +973,83 @@ def step_evaluate(args: argparse.Namespace) -> int:
     report["backend"] = im.backend().__dict__
     report["evaluated_at"] = now()
     write_json(RESULTS / "report.json", report)
+    (RESULTS / "report.md").write_text(render(report, systems), encoding="utf-8")
     print(json.dumps({k: v["means"] for k, v in report["sets"].items()}, indent=1)[:4000])
     return 0
+
+
+NAMES = {"bm25-italian": "BM25 (Italian)", "multilingual-e5-large": "E5", "e": "E"}
+
+
+def render(report: Mapping[str, Any], systems: Sequence[str]) -> str:
+    """The report as Markdown: numbers and question ids only, never a text of the dataset."""
+    lines = [
+        "# T4: the frozen retrieval on JuriFindIT's anti-money-laundering questions",
+        "",
+        f"Protocol: `config/external/jurifindit-aml.md`. Dataset `{ex.DATASET}` at "
+        f"`{ex.REVISION[:12]}`. One run per system, frozen before any qrel was read "
+        "(`runs.json`). **validation-27 is the external result; pooled-108 is a secondary "
+        "analysis, not an official validation score.** JuriFindIT's numbers are not comparable "
+        "with Fundamento's: different corpus, questions, labels and units.",
+        "",
+    ]
+    for label, block in report["sets"].items():
+        lines += [f"## {label} ({block['questions']} questions)", ""]
+        lines += ["Official metrics (JuriFindIT):", ""]
+        head = "| System | " + " | ".join(OFFICIAL) + " |"
+        lines += [head, "|---" * (len(OFFICIAL) + 1) + "|"]
+        for s in systems:
+            row = " | ".join(f"{block['means'][s][m]:.3f}" for m in OFFICIAL)
+            lines.append(f"| {NAMES[s]} | {row} |")
+        lines += ["", "Our compatible metrics:", ""]
+        lines += ["| System | " + " | ".join(OURS) + " |", "|---" * (len(OURS) + 1) + "|"]
+        for s in systems:
+            row = " | ".join(f"{block['means'][s][m]:.3f}" for m in OURS)
+            lines.append(f"| {NAMES[s]} | {row} |")
+        lines += [
+            "",
+            "Paired differences (mean, 95% bootstrap interval over questions, better / equal / "
+            "worse):",
+            "",
+            "| Comparison | Metric | Mean | 95% interval | Better / equal / worse |",
+            "|---|---|---|---|---|",
+        ]
+        for comparison, by_metric in block["paired"].items():
+            a, b = comparison.split(" - ")
+            for m, p in by_metric.items():
+                primary = f" (primary: {p['verdict']})" if m in PRIMARY else ""
+                lines.append(
+                    f"| {NAMES[a]} − {NAMES[b]} | {m}{primary} | {p['mean']:+.3f} | "
+                    f"[{p['ci95_low']:+.3f}, {p['ci95_high']:+.3f}] | "
+                    f"{p['better']} / {p['equal']} / {p['worse']} |"
+                )
+        lines += ["", "By number of relevant articles (descriptive):", ""]
+        lines += [
+            "| Relevant | Questions | "
+            + " | ".join(f"{NAMES[s]} R@10 / nDCG@10" for s in systems)
+            + " |"
+        ]
+        lines += ["|---" * (len(systems) + 2) + "|"]
+        for stratum, sb in block["strata"].items():
+            cells = " | ".join(
+                f"{sb['means'][s]['Recall@10']:.3f} / {sb['means'][s]['nDCG@10']:.3f}"
+                for s in systems
+            )
+            lines.append(f"| {stratum} | {sb['questions']} | {cells} |")
+        lines.append("")
+    outside = report["relevant_outside_corpus"]
+    lines += [
+        "## Notes",
+        "",
+        f"- Relevant ids outside the 23,458 articles: {sum(len(v) for v in outside.values())} "
+        f"in {len(outside)} questions (kept in the qrels; they count in the denominators).",
+        f"- Questions without any relevant article: {len(report['questions_without_relevant'])}.",
+        "- E keeps E5's first 6 results: every @5 metric of E equals E5's, checked per question.",
+        f"- Metrics computed by ir-measures {report['backend']['ir_measures']} with "
+        f"pytrec-eval-terrier {report['backend']['pytrec_eval_terrier']}.",
+        "",
+    ]
+    return "\n".join(lines)
 
 
 def step_analyse(args: argparse.Namespace) -> int:
