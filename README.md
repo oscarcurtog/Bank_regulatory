@@ -33,6 +33,10 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   `multilingual-e5-large`'s 0.763; no configuration reaches the useful target, and none has been
   checked on new needs. The dense baseline also runs as an exact search in PostgreSQL with
   pgvector (T3), with the same top 10 for every evaluated query and the same metrics
+- **External validation:** the frozen retrieval, run once on a task it took no part in (T4:
+  JuriFindIT's anti-money-laundering questions over Italian statute articles). E5 and an Italian
+  BM25 come out level there, and E could not complete: its frozen reranker ran out of memory on
+  long articles
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -73,6 +77,11 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
 - **Vector index** (`ingest/vector_index.py`, `scripts/pgvector_baseline.py`, `compose.yaml`):
   the chunk layer, its provenance and the E5 vectors in PostgreSQL with pgvector, searched
   exactly, with the integrity rules enforced by the database. See [Vector index](#vector-index-t3).
+- **External validation** (`ingest/external.py`, `scripts/external_t4.py`,
+  `config/external/jurifindit-aml.md`): an adapter that keeps the corpus, the questions and the
+  relevance judgments in separate files, and a protocol fixed before any download: one run per
+  system, and the rankings frozen by hash before any judgment is read. See
+  [External validation](#external-validation-t4).
 - **Data contracts** (Pydantic): the manifest, the processed layer (`data/processed/{act}.json`),
   the chunk layer (`data/chunks/{act}.json`) and the benchmark files are validated when they are
   written and when they are read. Loading aborts instead of returning partly checked data.
@@ -80,7 +89,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 797 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 812 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -92,6 +101,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
 ingest/              library: download, parser, processed and chunk layers, benchmark, retrieval
 config/embeddings/   the contract of each embedding model, and the model comparison policy
 config/retrieval/    the retrieval iterations' protocols and the contracts of BM25, fusion, rerankers
+config/external/     the protocol of the external validation (T4)
 scripts/             pipeline and measurement entry points
 tests/unit/          isolated tests, no files involved
 tests/integration/   tests on real EUR-Lex excerpts (tests/fixtures/, see PROVENANCE.md)
@@ -138,7 +148,7 @@ CI does. The 16 tests marked `postgres` need the PostgreSQL of `compose.yaml`, r
 libpq variables (see [Vector index](#vector-index-t3)); without it they fail, unless the
 environment declares `FUNDAMENTO_POSTGRES=unsupported`, as the test image does. CI runs them
 against a service container of the same pinned image. In CI (no corpus, no model, PostgreSQL up)
-pytest reports `728 passed, 69 skipped`.
+pytest reports `743 passed, 69 skipped`.
 
 ## Docker
 
@@ -164,7 +174,7 @@ docker run --rm -v "$PWD/data:/app/data" -v "$PWD/.cache/tiktoken:/app/.cache/ti
 
 The test image does not install the benchmark evaluator (`ir_measures`): its backend,
 `pytrec-eval-terrier`, publishes no Linux ARM64 wheel. The image declares
-`FUNDAMENTO_EVALUATOR=unsupported`, which is the only thing that skips the 17 tests marked
+`FUNDAMENTO_EVALUATOR=unsupported`, which is the only thing that skips the 21 tests marked
 `evaluator`, and pytest prints the reason. Those tests run in the project venv and in CI. In the
 same way, neither image installs torch or the embedding model, and the test image declares
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported` for the 31 tests marked `embedding_model`, and
@@ -203,8 +213,9 @@ as annotations on the check run, which the public API serves to anyone.
 | `.cache/tiktoken/` | no | the tokenizer file, downloaded the first time (see [Tokenizer file](#tokenizer-file)) |
 | `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
+| `data/external/` | no | the external benchmark of T4 (third-party data, CC BY-NC-SA 4.0) and everything derived from it |
 
-Without the corpus you can run the test suite (728 tests pass and 69 are skipped with
+Without the corpus you can run the test suite (743 tests pass and 69 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported` and the PostgreSQL of `compose.yaml` up), the linters and
 type checks, and both Docker images. The vector index is derived data too: it lives in a Docker
 volume and is rebuilt from `data/chunks/` and `data/embeddings/`.
@@ -369,6 +380,45 @@ queries × 5 passes), of which about 4.0 ms is server execution. The in-memory s
 baseline on the same vectors takes 0.05 ms. pgvector stores each 4,100-byte vector out of line
 (TOAST). Approximate indexes are deferred to a separate experiment.
 
+### External validation (T4)
+
+```bash
+PYTHONPATH=. .venv/bin/python scripts/external_t4.py download   # then, in this order: adapt,
+# audit, bm25, e5-embed, e5-run, e-gate, e-estimate, e-run, freeze, evaluate, analyse
+```
+
+The frozen retrieval, run once on an external task that took no part in its development: the
+anti-money-laundering and counter-terrorism questions of JuriFindIT (Dalla Noce et al., Findings
+of EACL 2026). An expert of the area wrote them and judged every relevant article, 14.5 per
+question on average and up to 292, over 23,458 Italian and EU statute articles in Italian. The
+protocol (`config/external/jurifindit-aml.md`) was committed before the download, the rankings
+were frozen by hash before any judgment was read, and nothing was tuned. The dataset, under CC
+BY-NC-SA 4.0, is not redistributed: `data/external/` is not versioned, and the results hold
+numbers and question ids only ([report](data/results/external/jurifindit-aml@d765a619/report.md)).
+
+The 27 validation questions are the external result; the 108 pooled with train are a secondary
+analysis. These numbers are not comparable with DEV's (another corpus, language, labels and
+unit): the comparison lives inside the benchmark.
+
+| validation-27 | Recall@10 | nDCG@10 | MRR@10 |
+|---|---|---|---|
+| BM25, standard Italian analysis | 0.093 | 0.150 | 0.212 |
+| E5, the frozen contract | 0.123 | 0.159 | 0.271 |
+
+- E5 − BM25 is +0.030 of Recall@10 [-0.019, +0.087] and +0.009 of nDCG@10 [-0.064, +0.085]
+  (95% bootstrap over questions): inconclusive, and so on the 108 (+0.014 and -0.012). On DEV,
+  E5 led BM25 by 0.397 of Recall@10, and by 0.131 on formal English queries alone; that lead does
+  not show here.
+- By relevance density, E5 does better on the questions with one to four relevant articles and
+  BM25 on those with more: on the 108, nDCG@10 0.127 against 0.063 with one to four, and 0.180
+  against 0.313 with sixteen or more.
+- 46% of the relevant articles are longer than E5's 512 tokens and reach it truncated, while BM25
+  reads them whole; 80% of them are Italian national law, not EU acts.
+- E passed its prompt gate and decomposed all 108 questions, then stopped: its frozen reranker
+  (batches of 8 on Apple's GPU, pairs of up to 32,768 tokens) ran out of memory on the long
+  articles, which DEV's chunks (662 tokens at most per pair) never exercised. E is reported as
+  not completed, with no variant.
+
 ### Retrieval iteration
 
 ```bash
@@ -478,6 +528,11 @@ retrieval candidate.
   fine-tuning the reranker on synthetic questions from the corpus improved on held-out synthetic
   questions and not on DEV. The benchmark evaluator is not in the Docker images (no Linux ARM64
   wheel for its backend).
+- The external validation (T4) rests on 27 validation questions (108 with train) of one
+  benchmark, whose judgments come from one expert per area, drawn from candidate pools built by
+  keyword search; its intervals are wide. E could not be evaluated there on this machine. The
+  internal TEST set, which would measure the selection bias of DEV on the same task, has not
+  been built.
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4
@@ -485,8 +540,8 @@ retrieval candidate.
 - The node `kind` and markup `family` fields use five legacy serialized schema codes, documented in
   `ingest/processed.py`; the two node kinds added for subparagraphs are English. Renaming the
   legacy codes is a deliberate schema migration that has not been done.
-- The test image installs pytest, Ruff and mypy without pinning their versions. CI uses the hashed
-  lock.
+- The test image installs pytest, Ruff and mypy without pinning their versions, and pyarrow by
+  version without its hash. CI uses the hashed lock.
 - The images have been built and run with Docker Desktop on macOS, and CI builds and checks the
   runtime image on Linux. On native Linux, a bind-mounted `data/` or `.cache/tiktoken` keeps its
   host ownership, so it needs to be writable by UID 10001; this has not been tested.

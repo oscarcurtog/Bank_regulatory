@@ -95,6 +95,9 @@ RUN pip install --no-cache-dir "pytest>=8" "ruff>=0.16" "mypy>=2"
 RUN pip install --no-cache-dir "pyarrow==25.0.1"
 COPY pyproject.toml ./
 COPY tests/ ./tests/
+# Several tests load the versioned contracts (config/embeddings/*.json, config/retrieval/*.json)
+# when they are imported; without them the suite stopped at collection with 9 errors.
+COPY config/ ./config/
 # Here the chown IS recursive, on purpose: pytest, ruff and mypy write their
 # caches in /app. It is the price of a development image.
 RUN chown -R fundamento:fundamento /app

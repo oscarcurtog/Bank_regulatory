@@ -874,6 +874,47 @@ def paired(diffs: Sequence[float]) -> dict[str, Any]:
     }
 
 
+def e_status(frozen: Mapping[str, Any]) -> dict[str, Any]:
+    """E's state for the public report: numbers only, from its own records."""
+    record = read_json(WORK / "e" / "e-record.json")
+    out: dict[str, Any] = {"gate": frozen["e_gate"], "completed": record["completed"]}
+    if not record["completed"]:
+        pairs = record["pairs"]
+        out |= {
+            "reason": "technical failure: the reranker ran out of MPS memory",
+            "questions_decomposed": record["questions"],
+            "readable_answers": record["readable_answers"],
+            "requirements": record["requirements"],
+            "pairs": pairs["pending_pairs"],
+            "pairs_scored_before_the_failure": 50,
+            "requirement_groups": pairs["groups"],
+            "failed_in_group": 2,
+            "pair_tokens": pairs["tokens"],
+            "pairs_over": pairs["over"],
+            "groups_with_a_pair_over_4096": pairs["groups_with_a_pair_over_4096"],
+            "longest_pair_tokens_in_dev": record["dev_longest_pair_tokens"],
+            "rerun": "none: the failure is not transient (see the protocol's record)",
+        }
+    return out
+
+
+def performance() -> dict[str, Any]:
+    """Speed and memory, apart from quality, from each step's own record."""
+    perf_dir = WORK / "perf"
+    out: dict[str, Any] = {}
+    for step in ("bm25", "e5-embed", "e5-run"):
+        record = read_json(perf_dir / f"{step}.json")
+        out[step] = {k: v for k, v in record.items() if k not in ("environment", "encoder")}
+    estimate = read_json(WORK / "e-estimate" / "estimate.json")
+    out["e-estimate"] = {
+        k: estimate[k]
+        for k in ("seconds_per_question", "projected_hours_for_108", "limit_hours", "passes")
+    }
+    out["e-decompose"] = read_json(WORK / "e" / "e-record.json").get("decompose")
+    out["environment"] = read_json(perf_dir / "e5-embed.json")["environment"]
+    return out
+
+
 def verdict(p: Mapping[str, Any]) -> str:
     """The protocol's reading of a primary difference, fixed in advance."""
     if p["ci95_low"] > 0:
@@ -970,6 +1011,8 @@ def step_evaluate(args: argparse.Namespace) -> int:
         }
         for q in relevant
     }
+    report["e"] = e_status(frozen)
+    report["performance"] = performance()
     report["backend"] = im.backend().__dict__
     report["evaluated_at"] = now()
     write_json(RESULTS / "report.json", report)
@@ -979,6 +1022,21 @@ def step_evaluate(args: argparse.Namespace) -> int:
 
 
 NAMES = {"bm25-italian": "BM25 (Italian)", "multilingual-e5-large": "E5", "e": "E"}
+
+
+def e_line(e: Mapping[str, Any]) -> str:
+    if e["completed"]:
+        return "- E keeps E5's first 6 results: every @5 metric of E equals E5's, checked."
+    return (
+        f"- E passed its prompt gate ({e['gate']['prompts']} prompts within "
+        f"{e['gate']['limit']:,} tokens) and decomposed all {e['questions_decomposed']} "
+        f"questions, then stopped on a technical failure: the reranker ran out of MPS memory in "
+        f"its group {e['failed_in_group']} of {e['requirement_groups']}, after "
+        f"{e['pairs_scored_before_the_failure']} of {e['pairs']:,} pairs. Its frozen contract "
+        f"(batches of 8 on MPS, pairs of up to 32,768 tokens; {e['pairs_over']['8192']} pairs "
+        f"here pass 8,192, against {e['longest_pair_tokens_in_dev']} at most in DEV) needs far "
+        "more memory than this machine has. E is not completed; no rerun, no variant."
+    )
 
 
 def render(report: Mapping[str, Any], systems: Sequence[str]) -> str:
@@ -1037,6 +1095,41 @@ def render(report: Mapping[str, Any], systems: Sequence[str]) -> str:
             )
             lines.append(f"| {stratum} | {sb['questions']} | {cells} |")
         lines.append("")
+    perf_ = report["performance"]
+    embed, run, bm = perf_["e5-embed"], perf_["e5-run"], perf_["bm25"]
+    corpus = embed["corpus"]
+    rate = corpus["items"] / corpus["seconds"]
+    latency = run["warm_single_question_seconds"]
+    p50, p95 = latency["p50"] * 1000, latency["p95"] * 1000
+    gib = 2**30
+    env = perf_["environment"]
+    decompose = perf_["e-decompose"]
+    estimate = perf_["e-estimate"]
+    lines += [
+        "## Performance (apart from quality)",
+        "",
+        f"Hardware: {env['cpu']}, {env['cpu_count']} cores, {env['platform']}.",
+        "",
+        "| Step | Measure |",
+        "|---|---|",
+        f"| E5, corpus embedding | {corpus['items']:,} articles in "
+        f"{corpus['seconds'] / 60:.1f} min ({rate:.1f} per s), {corpus['truncated']:,} "
+        f"truncated; model load {embed['model_load_seconds']:.1f} s; peak RSS "
+        f"{embed['peak_rss_bytes'] / gib:.2f} GiB |",
+        f"| E5, one question (warm: encoding, exact search over {run['documents']:,}, sort) "
+        f"| p50 {p50:.0f} ms, p95 {p95:.0f} ms (n = {latency['n']}) |",
+        f"| E5, all 108 from the stored vectors "
+        f"| {run['rank_all_seconds_from_stored_vectors']:.1f} s |",
+        f"| BM25 | index {bm['index_seconds']:.1f} s; {bm['seconds_per_query'] * 1000:.0f} ms "
+        f"per question; peak RSS {bm['peak_rss_bytes'] / gib:.2f} GiB |",
+        f"| E, runtime estimate (3 civil-law questions) | "
+        f"{estimate['seconds_per_question']:.0f} s per question, "
+        f"{estimate['projected_hours_for_108']:.2f} h projected for 108 |",
+        f"| E, decomposition (108 questions, MLX) | {decompose['seconds_total'] / 60:.1f} min, "
+        f"median {decompose['seconds_median']:.1f} s per question, peak "
+        f"{decompose['peak_memory_bytes'] / gib:.2f} GiB |",
+        "",
+    ]
     outside = report["relevant_outside_corpus"]
     lines += [
         "## Notes",
@@ -1044,7 +1137,7 @@ def render(report: Mapping[str, Any], systems: Sequence[str]) -> str:
         f"- Relevant ids outside the 23,458 articles: {sum(len(v) for v in outside.values())} "
         f"in {len(outside)} questions (kept in the qrels; they count in the denominators).",
         f"- Questions without any relevant article: {len(report['questions_without_relevant'])}.",
-        "- E keeps E5's first 6 results: every @5 metric of E equals E5's, checked per question.",
+        e_line(report["e"]),
         f"- Metrics computed by ir-measures {report['backend']['ir_measures']} with "
         f"pytrec-eval-terrier {report['backend']['pytrec_eval_terrier']}.",
         "",
@@ -1063,13 +1156,17 @@ def step_analyse(args: argparse.Namespace) -> int:
     texts = text_of()
     documents = ex.load_documents(ADAPTED)
     relevant = {q: docs for n in AML_SETS for q, docs in ex.load_qrels(ADAPTED, n).items()}
-    answers = parsed_answers(WORK / "e" / "outputs.jsonl") if "e" in systems else {}
+    # E's intermediate outputs, when E got that far without completing: diagnosis of the
+    # decomposition only, never a ranking of a system
+    outputs = WORK / "e" / "outputs.jsonl"
+    answers = parsed_answers(outputs) if outputs.exists() else {}
     assembly = read_json(WORK / "e" / "assembly.json") if "e" in systems else {}
-    hits = read_json(WORK / "e" / "hits.json") if "e" in systems else {}
+    hits = read_json(WORK / "e" / "hits.json") if (WORK / "e" / "hits.json").exists() else {}
     config = em.load_config(E5)
     loaded = em.load_tokenizer(config)
     _, _, records = load_vectors(config, loaded, "corpus", "corpus.jsonl")
     truncated = {r["item_id"] for r in records if r["truncated"]}
+    tokens_of = {r["item_id"]: r["original_model_tokens"] for r in records}
     out = {}
     for q, text in queries.items():
         rel = relevant[q]
@@ -1100,6 +1197,23 @@ def step_analyse(args: argparse.Namespace) -> int:
                 {"top5_e5": sum(d in rel for d in h[:5]), "top50_e5": sum(d in rel for d in h)}
                 for h in hits.get(q, [])
             ],
+            # relevant articles outside E5's top 10 that a requirement holds in its first 5
+            # (the places D's rule reads) or 50 (the reranker's candidates): what E could reach
+            "beyond_e5_top10": {
+                "in_a_requirement_top5": len(
+                    {d for h in hits.get(q, []) for d in h[:5] if d in rel}
+                    - set(runs["multilingual-e5-large"][q][:10])
+                ),
+                "in_a_requirement_top50": len(
+                    {d for h in hits.get(q, []) for d in h if d in rel}
+                    - set(runs["multilingual-e5-large"][q][:10])
+                ),
+            },
+            "relevant_e5_tokens_median": statistics.median(
+                tokens_of[d] for d in rel if d in tokens_of
+            )
+            if any(d in tokens_of for d in rel)
+            else None,
         }
     write_json(WORK / "analysis.json", out)
     print(f"analysis material for {len(out)} questions in {WORK / 'analysis.json'}")
