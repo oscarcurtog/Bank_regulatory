@@ -163,3 +163,12 @@ versioned: the raw and adapted files, the vectors, the runs and the intermediate
 The results (numbers and ids, no text of the dataset) go to
 `data/results/external/jurifindit-aml@d765a619/`. Nothing is written to Fundamento's
 `data/benchmark/`, `data/embeddings/` or `data/runs/`, and T3's pgvector index is not used.
+
+## Amendment 1, 2026-10-18, before any run
+
+The adapter refused the published corpus, as designed: its 159 rows with path "/" hold the
+marker `<< file root node >>`, in ASCII, where this protocol, copying the paper's typesetting,
+wrote "«file root node»". Exactly those 159 rows have the path "/", and no other row holds the
+marker. R1 is unchanged in substance: the 159 synthetic root nodes, identified by their path,
+leave the corpus. Only the spelling of the marker in `ingest/external.py` was corrected. No
+system had run and no qrel had been read.

@@ -4,7 +4,7 @@ without touching what a retriever does.
 
 Adapt the interface, not the algorithm. The adapter only renames, converts and separates:
 - corpus.jsonl holds doc_id and text, and it is the only thing a retriever reads. The 159
-  synthetic root nodes of the published file (content "«file root node»", path "/") are
+  synthetic root nodes of the published file (content "<< file root node >>", path "/") are
   left out, as the paper counts its 23,458 articles; nothing else is removed or rewritten.
 - documents.jsonl keeps each article's file_name and path, for the failure analysis only.
 - queries/<name>.jsonl holds query_id and text, nothing else: never the topics, the area or
@@ -57,7 +57,8 @@ AREA = "Antiriciclaggio e Antiterrorismo"
 ESTIMATE_AREA = "Codice civile"
 ESTIMATE_QUESTIONS = 3
 ROOT_PATH = "/"
-ROOT_CONTENT = "«file root node»"
+# The published file's spelling; the paper typesets it as "«file root node»".
+ROOT_CONTENT = "<< file root node >>"
 EXPECTED = {
     "corpus_rows": 23_617,
     "root_nodes": 159,
