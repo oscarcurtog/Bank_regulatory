@@ -95,8 +95,12 @@ CONSTRUCTION_FILES = (
 # What else decides how TEST is built, read by that code: the protocol (the judges' rules,
 # the rubric, the areas), the diagnostic judge's config, and DEV and the fixtures (the
 # gatekeeper's comparisons, the authors' forbidden wording)
+# A documented amendment of the construction, public and frozen with the rest: what it
+# changes, from which point of the durable state's log, and why (CONSTRUCTION_AMENDMENT_1)
+AMENDMENT_PATH = Path("config/holdout/construction-amendment-1.json")
 CONSTRUCTION_INPUTS = (
     "data/benchmark/PROTOCOL.md",
+    AMENDMENT_PATH.as_posix(),
     "config/retrieval/qwen3-8b-mlx.json",
     *(
         f"data/benchmark/{split}/{name}"
@@ -400,6 +404,21 @@ ABORTED_RUNS = (
 )
 
 
+def amends(path: Path = AMENDMENT_PATH) -> dict[str, Any]:
+    """What an amended contract carries of its amendment: the base it amends, the point of the
+    log where it applies, the identities it may change, the first transition the amended code
+    must make on replay, and the amendment file's hash."""
+    record = json.loads(path.read_text(encoding="utf-8"))
+    keys = ("base_contract_sha256", "base_public_commit", "after_event", "identity_changes")
+    return {
+        "amendment": record["id"],
+        "amendment_file": path.as_posix(),
+        "amendment_sha256": _sha(path),
+        **{k: record[k] for k in keys},
+        "first_transition": record["first_transition"],
+    }
+
+
 def build(
     repo: Path = Path("."), construction_record: Mapping[str, Any] | None = None
 ) -> dict[str, Any]:
@@ -415,6 +434,7 @@ def build(
         "evaluation": evaluation(),
         "analysis": analysis(),
         "aborted_runs": [dict(r) for r in ABORTED_RUNS],
+        "amends": amends(),
         "derived_at_freeze_only": [
             "dataset hashes",
             "final counts",

@@ -57,8 +57,12 @@ def test_at_the_diagnostic_only_the_process_and_its_runtime_are_technical():
     answer is diagnostic_admissible's, never retried; only the role audit of the run and the
     runtime it ran under are technical there (the first START, aborted on 2026-10-20)."""
     at = {n: c for n, c in hk.CHECKS.items() if "diagnostic" in c.stages}
-    technical = {n for n, c in at.items() if c.kind == "technical_integrity"}
-    assert technical == {"role_audit", "runtime_identity"}
+    retried = {n for n, c in at.items() if c.retriable}
+    assert retried == {"role_audit", "runtime_identity"}
+    # what the code builds before the model runs is an integrity stop, never a retry
+    assert {n for n, c in at.items() if c.kind == "technical_integrity"} - retried == {
+        "packet_construction"
+    }
     admissible = hk.check("diagnostic_admissible")
     assert (admissible.kind, admissible.consequence) == ("diagnostic_only", "recorded")
     assert not admissible.retriable

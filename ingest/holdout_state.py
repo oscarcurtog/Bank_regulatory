@@ -251,6 +251,24 @@ def _set_meta(db: sqlite3.Connection, key: str, value: str) -> None:
     )
 
 
+def _get_meta(db: sqlite3.Connection, key: str) -> str | None:
+    row = db.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+    return None if row is None else str(row[0])
+
+
+# what the state keeps of each amendment (CONSTRUCTION_AMENDMENT_1 and any later one)
+AMENDMENT_FIELDS = (
+    "amendment",
+    "amendment_sha256",
+    "base_contract_sha256",
+    "contract_sha256",
+    "public_commit",
+    "after_event",
+    "changed_identities",
+    "first_transition",
+)
+
+
 def _set_cell(db: sqlite3.Connection, e: Event, state: str, stage: str | None) -> None:
     _one(
         db.execute(
@@ -409,6 +427,18 @@ def _apply(db: sqlite3.Connection, e: Event) -> None:
             _set_cell(db, e, p["cell_state"], e.stage)
     elif e.kind == "resumed":
         _set_meta(db, "last_resumed_at", at)
+    elif e.kind == "construction_amended":
+        # a documented amendment, at this exact point of the log: from the identities the state
+        # holds to the amended ones, never on a stopped or frozen construction
+        status = _get_meta(db, "status")
+        if status in ("stopped", "frozen"):
+            raise IntegrityError(f"an amendment of a {status} construction")
+        if canonical(p["from_identities"]) != _get_meta(db, "identities"):
+            raise IntegrityError("an amendment from identities the state does not hold")
+        _set_meta(db, "identities", canonical(p["to_identities"]))
+        amendments = json.loads(_get_meta(db, "amendments") or "[]")
+        amendments.append({k: p[k] for k in AMENDMENT_FIELDS} | {"at": at, "seq": e.seq})
+        _set_meta(db, "amendments", canonical(amendments))
     elif e.kind == "checkpoint":
         _set_meta(db, "last_checkpoint", str(p["position"]))
     elif e.kind == "frozen":
@@ -909,7 +939,19 @@ class Store:
             "waiting": waiting,
             "stop": None if stop is None else json.loads(stop),
             "last_checkpoint": self.meta("last_checkpoint"),
+            "amendments": self.amendments(),
         }
+
+    def amendments(self) -> list[dict[str, Any]]:
+        """The amendments the log records, in order, each with the point where it applies."""
+        found: list[dict[str, Any]] = json.loads(self.meta("amendments") or "[]")
+        return found
+
+    def amend(self, record: Mapping[str, Any]) -> bool:
+        """A documented amendment of the frozen identities, as one event at the log's current
+        point: everything before it was built under from_identities, everything after under
+        to_identities. The launcher checks what it may change (ingest/holdout_launcher.py)."""
+        return self.record("construction_amended", f"amendment/{record['amendment']}", dict(record))
 
 
 # ---------------------------------------------------------------------------

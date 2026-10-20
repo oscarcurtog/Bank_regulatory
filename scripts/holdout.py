@@ -15,6 +15,8 @@
     PYTHONPATH=. .venv/bin/python scripts/holdout.py start --contract <pinned sha256>
     PYTHONPATH=. .venv/bin/python scripts/holdout.py resume --contract <pinned sha256>
     PYTHONPATH=. .venv/bin/python scripts/holdout.py freeze --contract <pinned sha256>
+    PYTHONPATH=. .venv/bin/python scripts/holdout.py record-amendment-commit <sha>
+    PYTHONPATH=. .venv/bin/python scripts/holdout.py amend --contract <amended sha256>
 
 init creates data/benchmark/test/, which git ignores, with a local git history of its own
 that refuses to push. grid writes the coverage grid and refuses to overwrite a different
@@ -34,7 +36,9 @@ typed again; start also needs the public pre-authoring commit recorded (record-p
 after the push). validate runs every check of the launcher and builds nothing. freeze replays
 the state with every write refused, so it runs no model, then exports, seals and writes
 freeze.json and the public commitment. isolation-test and broker-test run the pinned binary on
-synthetic packets only, never on TEST.
+synthetic packets only, never on TEST. An amended contract (CONSTRUCTION_AMENDMENT_1) has its
+public commit recorded with record-amendment-commit, and amend records the amendment in the
+durable state at the point it names, after a replay under the amended code that runs no model.
 
 Nothing here runs a retriever, a reranker or an embedding model.
 """
@@ -577,12 +581,15 @@ def main(argv: list[str] | None = None) -> int:
         ("start", "START a new construction of TEST with real models"),
         ("resume", "RESUME the construction of TEST from its durable state"),
         ("freeze", "freeze TEST 1.0.0 from its state, running no model"),
+        ("amend", "record the amended contract's amendment in the state, running no model"),
     ):
         action = sub.add_parser(name, help=text)
         action.add_argument("--contract", required=True, help="the pinned contract's SHA-256")
     sub.add_parser("validate", help="every check of the launcher, building nothing")
     pub = sub.add_parser("record-public-commit", help="the pushed pre-authoring commit's SHA")
     pub.add_argument("commit")
+    apub = sub.add_parser("record-amendment-commit", help="the pushed amended contract's SHA")
+    apub.add_argument("commit")
     bak = sub.add_parser("backup", help="a verified and restored bundle outside the repository")
     bak.add_argument("--folder", type=Path, default=ho.BACKUP_DIR)
     sub.add_parser("state", help="the construction's durable state, verified, as counts")
@@ -627,6 +634,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if report["problems"] else 0
     elif args.command == "record-public-commit":
         print(json.dumps(hla.record_public_commit(paths, args.commit), indent=1))
+    elif args.command == "record-amendment-commit":
+        print(json.dumps(hla.record_amendment_commit(paths, args.commit), indent=1))
+    elif args.command == "amend":
+        print(json.dumps(hla.amend(paths, args.contract), indent=1))
     elif args.command == "backup":
         if (directory / hs.STATE_DIR / hs.DB_FILE).exists():
             with hs.Store.open(directory, args.raw_dir) as store:

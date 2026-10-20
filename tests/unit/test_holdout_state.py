@@ -347,3 +347,59 @@ def test_a_replay_that_only_reads_writes_nothing(tmp_path):
             with pytest.raises(hs.StateError, match="writes nothing"):
                 store.record("resumed", None, {})
         assert store.writable and len(store.events()) == events
+
+
+# ---------------------------------------------------------------------------
+# a documented amendment (CONSTRUCTION_AMENDMENT_1)
+# ---------------------------------------------------------------------------
+
+
+def amendment(store: hs.Store, **changes: object) -> dict[str, object]:
+    summary = store.verify()
+    record: dict[str, object] = {
+        "amendment": "CONSTRUCTION_AMENDMENT_1",
+        "amendment_sha256": "c" * 64,
+        "base_contract_sha256": IDENTITIES["pre_authoring_contract"],
+        "contract_sha256": "d" * 64,
+        "public_commit": "e" * 40,
+        "after_event": {"seq": summary["events"], "sha256": summary["head_sha256"]},
+        "changed_identities": ["pre_authoring_contract"],
+        "first_transition": {"refused_write": "attempt_closed"},
+        "from_identities": dict(IDENTITIES),
+        "to_identities": {**IDENTITIES, "pre_authoring_contract": "d" * 64},
+    }
+    return record | changes
+
+
+def test_an_amendment_moves_the_identities_at_one_point_of_the_log(tmp_path):
+    store = new(tmp_path)
+    open_attempt(store)
+    before = store.verify()
+    record = amendment(store)
+    assert store.amend(record) is True
+    assert store.amend(record) is False  # recorded once
+    store.check_identities(record["to_identities"])  # type: ignore[arg-type]
+    with pytest.raises(hs.IncompatibleState):
+        store.check_identities(IDENTITIES)
+    (found,) = store.verify()["amendments"]
+    assert found["seq"] == before["events"] + 1 and found["after_event"] == record["after_event"]
+    assert found["amendment"] == "CONSTRUCTION_AMENDMENT_1"
+    assert "from_identities" not in found  # the log keeps them, the summary names the change
+    store.close()
+    with hs.Store.open(tmp_path / "test", tmp_path / "raw", readonly=True) as again:
+        assert again.verify()["amendments"] == [found]  # the tables are what the log rebuilds
+
+
+def test_an_amendment_from_identities_the_state_does_not_hold_is_refused(tmp_path):
+    store = new(tmp_path)
+    record = amendment(store, from_identities={**IDENTITIES, "binary": "0" * 64})
+    with pytest.raises(hs.IntegrityError, match="does not hold"):
+        store.amend(record)
+    assert store.verify()["amendments"] == []
+
+
+def test_a_stopped_construction_is_never_amended(tmp_path):
+    store = new(tmp_path)
+    store.record("construction_stopped", "stopped", {"reason": "rule", "detail": "x"})
+    with pytest.raises(hs.IntegrityError, match="stopped"):
+        store.amend(amendment(store))

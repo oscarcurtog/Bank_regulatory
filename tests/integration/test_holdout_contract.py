@@ -291,3 +291,24 @@ def test_verification_is_content_based_and_never_reads_git(contract, tmp_path, m
     frozen.write_bytes(frozen.read_bytes() + b"\n")
     with pytest.raises(hc.ContractError, match="holdout_ledger"):
         hc.verify(digest, path, copy, check_corpus=False)
+
+
+def test_the_contract_carries_its_amendment_frozen_by_content(contract):
+    """CONSTRUCTION_AMENDMENT_1: the amendment file is a construction input, so its content is
+    frozen with the rest, and the contract names its base, its point in the log, the identities
+    it may change and the first transition the amended code must make."""
+    amends = contract["amends"]
+    assert amends["amendment"] == "CONSTRUCTION_AMENDMENT_1"
+    assert hc.AMENDMENT_PATH.as_posix() in hc.frozen_files(contract)
+    assert amends["amendment_sha256"] == hc.frozen_files(contract)[hc.AMENDMENT_PATH.as_posix()]
+    assert amends["base_contract_sha256"].startswith("d4f3a1f2826d")
+    assert amends["base_public_commit"].startswith("57ec4c9f3370")
+    assert amends["identity_changes"] == ["construction_code", "pre_authoring_contract"]
+    assert amends["first_transition"]["outcome"] == "concept_invalid"
+    record = json.loads(hc.AMENDMENT_PATH.read_text(encoding="utf-8"))
+    assert record["reason"] == (
+        "An already-frozen anti-copy guard had no defined state transition when triggered "
+        "during real packet construction."
+    )
+    for kept in ("grid", "cell order", "prompts and templates", "S4 metrics and analysis plan"):
+        assert kept in record["unchanged"]

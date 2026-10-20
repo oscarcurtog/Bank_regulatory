@@ -204,6 +204,9 @@ class Scenario:
     gate: dict[str, list[str]] = field(default_factory=dict)  # cell -> verdict per attempt
     closest: str = "N004"  # the need a rejected proposal repeats (DEV by default)
     unfit: set[tuple[str, int]] = field(default_factory=set)  # (cell, attempt)
+    # (cell, attempt) whose concept repeats a DEV statement word for word: the frozen
+    # anti-copy guard fires on the statement writer's packet (CONSTRUCTION_AMENDMENT_1)
+    copied_concept: set[tuple[str, int]] = field(default_factory=set)
     technical: dict[str, str] = field(default_factory=dict)  # cell -> role that fails
     # raise | contaminate | resource | protocol | malformed
     technical_kind: str = "raise"
@@ -352,9 +355,13 @@ class FakeExecutor:
         n = int(cell[1:]) * 10 + number
         if role == "concept_author":
             fit = "the cell cannot hold it" if (cell, number) in s.unfit else "fits"
+            concept = "A firm asks a plain question."
+            if (cell, number) in s.copied_concept:
+                assert self.pipeline is not None
+                concept = copied(self.pipeline.world.dev.needs)
             return {
                 "cell_id": ref,
-                "concept": "A firm asks a plain question.",
+                "concept": concept,
                 "facts": ["a firm"],
                 "atomicity": "one",
                 "figure_or_date": "no",
@@ -519,6 +526,11 @@ class FakeExecutor:
         }
         self._spooled(role, run_id, "local", record)
         return record
+
+
+def copied(needs: Any) -> str:
+    """A DEV statement long enough for the anti-copy guard's eight words."""
+    return str(next(n.statement for n in needs if len(n.statement.split()) >= 12))
 
 
 def broken_diagnostic(answer: dict[str, Any], how: str) -> dict[str, Any]:

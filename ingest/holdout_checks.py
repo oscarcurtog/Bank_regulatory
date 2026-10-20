@@ -132,6 +132,43 @@ CHECKS: dict[str, Check] = {
             "(ingest/holdout_packets.py author_leaks)",
         ),
         Check(
+            "concept_no_dev_wording",
+            "methodological_eligibility",
+            "model_output",
+            ("statement",),
+            "concept_invalid",
+            "D-054's frozen guard on an author's packet (ingest/holdout_packets.py author_leaks: "
+            "no legal wording and no run of eight words of DEV or the fixtures), unchanged, on "
+            "the statement writer's packet: when the concept's own words make it fire (the "
+            "packet built without them passes), the concept is no valid TEST concept. The "
+            "attempt closes, never retried, and the cell gets a new blind attempt that learns "
+            "nothing of it (CONSTRUCTION_AMENDMENT_1)",
+        ),
+        Check(
+            "packet_construction",
+            "technical_integrity",
+            "assembled_records",
+            _MODEL_STAGES,
+            "stop",
+            "a packet the code builds from frozen inputs and admitted outputs before a model "
+            "sees it: a frozen input that no longer holds (the protocol's sections and examples, "
+            "the attempt frames, a template), a node the corpus lacks, or the anti-copy guard "
+            "firing on the frozen parts alone. No execution can change it: the construction "
+            "stops for a person (CONSTRUCTION_AMENDMENT_1)",
+        ),
+        Check(
+            "record_assembly",
+            "technical_integrity",
+            "assembled_records",
+            ("lock", "adjudication", "metadata", "evidence_gate", "ready"),
+            "stop",
+            "the records the code assembles from admitted outputs (the draft and final need and "
+            "queries, the adjudications and qrels with their gap notes, the evidence pairs, the "
+            "ledger's transitions) hold the dataset's schema and the ledger's sequence. No "
+            "execution can change them: the construction stops for a person "
+            "(CONSTRUCTION_AMENDMENT_1)",
+        ),
+        Check(
             "judge_answer_complete",
             "technical_integrity",
             "model_output",

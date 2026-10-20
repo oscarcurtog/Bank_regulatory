@@ -97,7 +97,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 1221 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 1239 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -146,7 +146,7 @@ uv pip install --require-hashes --no-deps -r requirements-embed.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest skips the 143 tests marked `corpus`: they need `data/raw/`, which is
+Without the corpus, pytest skips the 156 tests marked `corpus`: they need `data/raw/`, which is
 not in the repository (see [Data and reproducibility](#data-and-reproducibility)). The 31 tests
 marked `embedding_model` need the `embed` extra and the weights of the three embedding models and
 the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`); two of them also
@@ -161,7 +161,7 @@ against a service container of the same pinned image. The one test marked
 does not exist; every other test of the internal TEST set makes a synthetic one. One contract
 test needs the history back to E's DEV result and is skipped in a shallow clone such as CI's,
 and the host identity test runs on macOS only. In CI (no corpus, no model, PostgreSQL up)
-pytest reports `1043 passed, 178 skipped`.
+pytest reports `1048 passed, 191 skipped`.
 
 ## Docker
 
@@ -205,7 +205,7 @@ same way, neither image installs torch or the embedding model, and the test imag
   integrity rules on every push.
 - `runtime-image`: builds the runtime image and runs `ci/check_runtime_image.py` inside it.
 
-The runner does not have the corpus, so the 143 `corpus` tests are skipped there. A green run does
+The runner does not have the corpus, so the 156 `corpus` tests are skipped there. A green run does
 not validate the full 331-article corpus. The `evaluator` tests do run there: CI checks the
 benchmark machinery on synthetic data, while evaluation against the real corpus runs locally.
 
@@ -229,7 +229,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 | `data/external/` | no | the external benchmark of T4 (third-party data, CC BY-NC-SA 4.0) and everything derived from it |
 
-Without the corpus you can run the test suite (in CI, 1043 tests pass and 178 are skipped with
+Without the corpus you can run the test suite (in CI, 1048 tests pass and 191 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported` and PostgreSQL up), the linters and
 type checks, and both Docker images. The vector index is derived data too: it lives in a Docker
 volume and is rebuilt from `data/chunks/` and `data/embeddings/`.
@@ -448,8 +448,8 @@ gatekeeper drops what overlaps DEV, judges grade the evidence, and a local Qwen3
 diagnostic. No person reads or approves a statement.
 
 Before the first need, the construction is frozen. `config/holdout/pre-authoring-contract.json`
-(SHA-256 `d4f3a1f2826d5a18ff8a1e43ac8ae62347b99a20b07a24121591e5e63956b381`) fixes by content 70
-files (the code and configs of E, E5, BM25 and the evaluation, the S4 plan, and the
+(SHA-256 `d4f3a1f2826d5a18ff8a1e43ac8ae62347b99a20b07a24121591e5e63956b381`, commit `57ec4c9`) fixed by
+content 70 files (the code and configs of E, E5, BM25 and the evaluation, the S4 plan, and the
 construction's code, inputs and templates), the corpus snapshot and chunk layer, and the identity
 of every model runtime: the requested and effective Claude model and its binary, and the MLX
 packages, model files and host (macOS version and build, Mac model) of the diagnostic. It holds
@@ -476,6 +476,22 @@ the rule of a discrepancy (`diagnostic_admissible` in `ingest/holdout_checks.py`
 runtime mismatch is still a technical stop. The grid, the order, the prompts, the judges, the
 systems and the S4 plan are unchanged; the new contract records the aborted run
 (`aborted_runs`), whose state is kept privately and never reused.
+
+The second START is amended once while it runs, with no result of any system on TEST seen
+(`CONSTRUCTION_AMENDMENT_1`, `config/holdout/construction-amendment-1.json`): "An
+already-frozen anti-copy guard had no defined state transition when triggered during real
+packet construction." The guard and its threshold of eight words are unchanged; the amendment
+defines what its firing means. When a blind author's concept carries words of DEV or the
+fixtures into the statement writer's packet, the attempt is rejected methodologically
+(`concept_invalid`), never retried, and the cell gets a new blind attempt that learns nothing of
+it. Every other failure of a packet or record the code builds, 29 paths inspected and 18 of them
+with no transition before, is now an integrity stop for a person. The amended contract
+(`e45ccb1125f6a648759493876f7ebe0c32364a24c438f2ff4ea0961705ed9e26`) changes only the
+construction's code and records the amendment's hash; grid, order, prompts, judges, systems
+and the S4 plan are those of the base. The durable state records the amendment as one event
+after its event 367: the needs ready before it stay bound to the base contract and are never
+built again, and the launcher accepted it only after the amended code had replayed the whole
+log, with every write refused, up to that exact point. The freeze names both contracts.
 
 ### Retrieval iteration
 
@@ -575,7 +591,7 @@ retrieval candidate.
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
-- CI skips the 143 `corpus` tests, so the full corpus is only validated where it is present.
+- CI skips the 156 `corpus` tests, so the full corpus is only validated where it is present.
 - The DEV benchmark holds 30 judged questions in two batches (27 evaluable), so a difference
   between two retrievers needs to be large to be told apart from noise (about 0.08 of nDCG@10).
   The retrieval iterations selected on DEV, so their numbers are development numbers; an

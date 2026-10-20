@@ -54,13 +54,14 @@ of counts: it changes nothing, and a problem it finds stops the construction.
 from __future__ import annotations
 
 import dataclasses
+import functools
 import hashlib
 import json
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, TypeVar
 
 from ingest import benchmark as bm
 from ingest import holdout as ho
@@ -102,6 +103,7 @@ TechnicalReason = Literal[
     "runtime_identity",
 ]
 VARIANTS = [("en", "formal"), ("en", "natural"), ("es", "natural")]
+T = TypeVar("T")
 # The state a cell is in while each stage runs; every later stage is judging
 STAGE_STATE: dict[str, CellState] = {
     "concept": "authoring",
@@ -189,6 +191,54 @@ class Rejected(Exception):
         self.outcome = outcome
         self.stage = stage
         self.against = against
+
+
+class _ConceptLeaks(Exception):
+    """The frozen anti-copy guard fires on the concept's own words: the statement writer's
+    packet passes without them (CONSTRUCTION_AMENDMENT_1)."""
+
+
+# what is already classified, and passes through an integrity guard as it is
+CLASSIFIED: tuple[type[BaseException], ...] = (
+    TechnicalFailure,
+    TechnicalStop,
+    ConstructionStop,
+    Rejected,
+    _ConceptLeaks,
+    hs.StateError,
+    hl.LedgerError,
+)
+
+
+def _packet_guard(writer: Callable[[str, list[str]], str], words: str, facts: list[str]) -> str:
+    """The statement writer's packet under the frozen anti-copy guard (hp.author_leaks), as it
+    is. When the guard fires, the packet is built again without the concept's words: if that
+    passes, the concept carries the leak (_ConceptLeaks, methodological); if it fires again,
+    the frozen parts do, and its PacketError is the packet's own (packet_construction)."""
+    try:
+        return writer(words, facts)
+    except hp.PacketError:
+        writer("", [])
+        raise _ConceptLeaks() from None
+
+
+def _evidence_packet(
+    corpus: hp.Corpus,
+    ref: str,
+    statement: str,
+    pair: Any,
+    dev_by_id: Mapping[str, bm.Need],
+    others: Mapping[str, list[str]],
+) -> str:
+    return hp.gate_evidence_packet(
+        corpus,
+        ref,
+        statement,
+        pair.dev_need,
+        dev_by_id[pair.dev_need].statement,
+        pair.shared_nodes,
+        others,
+    )
 
 
 @dataclass
@@ -519,6 +569,11 @@ class Pipeline:
         except (ConstructionStop, hl.StopForThePerson) as stop:
             self._stopped(stop)
             raise
+        except hl.LedgerError as error:
+            # the ledger refuses a transition: an invariant of what the code assembles
+            refused = self._integrity("record_assembly", "ready", None, error)
+            self._stopped(refused)
+            raise refused from error
 
     def _stopped(self, stop: Exception) -> None:
         detail: dict[str, Any] = {"reason": "minimum", "detail": str(stop), "cell_state": None}
@@ -559,6 +614,36 @@ class Pipeline:
         if found.kind != "methodological_eligibility":
             raise ValueError(f"{check} is not a methodological eligibility check")
         return Rejected(found.consequence, stage)  # type: ignore[arg-type]
+
+    def _integrity(
+        self, check: str, stage: str, pid: str | None, error: Exception
+    ) -> ConstructionStop:
+        """A technical_integrity check of what the code builds or assembles, with the stop the
+        frozen table gives it: no execution can change it (CONSTRUCTION_AMENDMENT_1). It names
+        the kind of failure, never the text that caused it."""
+        found = hk.check(check)
+        if found.kind != "technical_integrity" or found.consequence != "stop":
+            raise ValueError(f"{check} is not an integrity check that stops")
+        cell_id = self.ledger.get(pid).cell_id if pid is not None else None
+        return ConstructionStop(
+            f"{check} at {stage}: {type(error).__name__}",
+            reason=check,
+            cell_id=cell_id,
+            proposal_id=pid,
+            stage=stage,
+            cell_state="pending_technical_unresolved" if cell_id is not None else None,
+        )
+
+    def _built(self, check: str, stage: str, pid: str, build: Callable[[], T]) -> T:
+        """What the code builds before a model sees it, or assembles from admitted outputs: a
+        failure is the integrity stop of check, never a crash (CONSTRUCTION_AMENDMENT_1). What
+        is already classified passes through as it is."""
+        try:
+            return build()
+        except CLASSIFIED:
+            raise
+        except Exception as error:
+            raise self._integrity(check, stage, pid, error) from error
 
     # -- the ledger, durable -----------------------------------------------------
 
@@ -1091,7 +1176,12 @@ class Pipeline:
             "concept_author",
             pid,
             "concept",
-            hp.concept_packet(cell, w.forbidden, ref),
+            self._built(
+                "packet_construction",
+                "concept",
+                pid,
+                lambda: hp.concept_packet(cell, w.forbidden, ref),
+            ),
             ref,
             {},
             _fields("concept", "facts", "fit"),
@@ -1099,9 +1189,20 @@ class Pipeline:
         if str(concept.get("fit", "")).strip().lower() != "fits":
             raise Rejected("concept_unfit", "concept")
         ref = self._ref("statement_writer", pid)
-        writer_packet = hp.writer_packet(
-            cell, ref, str(concept["concept"]), [str(f) for f in concept["facts"]], w.forbidden
-        )
+        words, facts = str(concept["concept"]), [str(f) for f in concept["facts"]]
+
+        def writer(text: str, items: list[str]) -> str:
+            return hp.writer_packet(cell, ref, text, items, w.forbidden)
+
+        try:
+            writer_packet = self._built(
+                "packet_construction", "statement", pid, lambda: _packet_guard(writer, words, facts)
+            )
+        except _ConceptLeaks:
+            # CONSTRUCTION_AMENDMENT_1: the frozen anti-copy guard fires on the concept's own
+            # words. A methodological rejection of this attempt: never a technical retry, and
+            # the next blind attempt receives nothing of this one
+            raise self._ineligible("concept_no_dev_wording", "statement") from None
         written = self._headless(
             "statement_writer",
             pid,
@@ -1127,24 +1228,36 @@ class Pipeline:
             "query_writer",
             pid,
             "query_formulation",
-            bm.render_query_prompt(statement, VARIANTS),
+            self._built(
+                "packet_construction",
+                "query_formulation",
+                pid,
+                lambda: bm.render_query_prompt(statement, VARIANTS),
+            ),
             "",
             self._inputs(pid, "statement"),
             lambda text: [q.model_dump(mode="json") for q in parse_queries(str(text), need_id)],
             parse=False,
         )
-        queries = [bm.Query.model_validate(q) for q in formulated]
-        draft = bm.Need(
-            need_id=need_id,
-            split="test",
-            statement=statement,
-            type=cell.type,
-            drivers=[],
-            difficulty=cell.difficulty,
-            acts=list(cell.acts),
-            answerability=cell.answerability,
-            gap_note="planned" if cell.answerability != "complete" else None,
-            status="draft",
+        queries = self._built(
+            "record_assembly", "lock", pid, lambda: [bm.Query.model_validate(q) for q in formulated]
+        )
+        draft = self._built(
+            "record_assembly",
+            "lock",
+            pid,
+            lambda: bm.Need(
+                need_id=need_id,
+                split="test",
+                statement=statement,
+                type=cell.type,
+                drivers=[],
+                difficulty=cell.difficulty,
+                acts=list(cell.acts),
+                answerability=cell.answerability,
+                gap_note="planned" if cell.answerability != "complete" else None,
+                status="draft",
+            ),
         )
         # the lock: statement and queries fixed, and recorded with their hash, before any
         # judge sees the evidence
@@ -1183,7 +1296,12 @@ class Pipeline:
             "gatekeeper",
             pid,
             "overlap_gate",
-            hp.gate_packet(ref, statement, existing),
+            self._built(
+                "packet_construction",
+                "overlap_gate",
+                pid,
+                lambda: hp.gate_packet(ref, statement, existing),
+            ),
             ref,
             {**self._inputs(pid, "statement"), "ready_test": ready_test},
             admit,
@@ -1232,7 +1350,12 @@ class Pipeline:
             "judge_a",
             pid,
             "judge_a",
-            hp.judge_a_broker_packet(draft, cell, ref=a_ref),
+            self._built(
+                "packet_construction",
+                "judge_a",
+                pid,
+                lambda: hp.judge_a_broker_packet(draft, cell, ref=a_ref),
+            ),
             a_ref,
             self._inputs(pid, "lock"),
             admit_search,
@@ -1250,7 +1373,12 @@ class Pipeline:
                 "omission_searcher",
                 pid,
                 "omission_search",
-                hp.judge_a_broker_packet(draft, cell, ref=s_ref),
+                self._built(
+                    "packet_construction",
+                    "omission_search",
+                    pid,
+                    lambda: hp.judge_a_broker_packet(draft, cell, ref=s_ref),
+                ),
                 s_ref,
                 self._inputs(pid, "lock"),
                 admit_search,
@@ -1273,7 +1401,12 @@ class Pipeline:
             "judge_b",
             pid,
             "judge_b",
-            hp.judge_b_packet(w.corpus, draft, candidates, scope, ref=b_ref),
+            self._built(
+                "packet_construction",
+                "judge_b",
+                pid,
+                lambda: hp.judge_b_packet(w.corpus, draft, candidates, scope, ref=b_ref),
+            ),
             b_ref,
             self._inputs(pid, "lock", "judge_a", "omission_search"),
             admit_b,
@@ -1283,16 +1416,21 @@ class Pipeline:
         c_answers: dict[str, Any] = {}
         if disputed.nodes or disputed.answerability:
             c_ref = self._ref("judge_c", pid)
-            packet, items = hp.judge_c_packet(
-                w.corpus,
-                draft,
-                candidates,
-                scope,
-                a,
-                b,
-                disputed.nodes,
-                disputed.answerability,
-                ref=c_ref,
+            packet, items = self._built(
+                "packet_construction",
+                "judge_c",
+                pid,
+                lambda: hp.judge_c_packet(
+                    w.corpus,
+                    draft,
+                    candidates,
+                    scope,
+                    a,
+                    b,
+                    disputed.nodes,
+                    disputed.answerability,
+                    ref=c_ref,
+                ),
             )
 
             def admit_c(reply: Any) -> Any:
@@ -1313,8 +1451,13 @@ class Pipeline:
             by_item = {i["item"]: i for i in c_reply.get("items", [])}
             for item in items:
                 c_answers[item.target] = by_item[item.item]
-        assembled = hj.assemble(
-            need_id, candidates, a, b, c_answers, a_file.get("gap_note"), w.texts
+        assembled = self._built(
+            "record_assembly",
+            "adjudication",
+            pid,
+            lambda: hj.assemble(
+                need_id, candidates, a, b, c_answers, a_file.get("gap_note"), w.texts
+            ),
         )
         final = _assembled(
             self._decide(
@@ -1364,7 +1507,12 @@ class Pipeline:
             "qwen_diagnostic",
             pid,
             "diagnostic",
-            hp.diagnostic_messages(w.corpus, draft, candidates, scope, ref=q_ref),
+            self._built(
+                "packet_construction",
+                "diagnostic",
+                pid,
+                lambda: hp.diagnostic_messages(w.corpus, draft, candidates, scope, ref=q_ref),
+            ),
             q_ref,
             self._inputs(pid, "lock", "judge_a", "omission_search"),
             admit_q,
@@ -1388,7 +1536,12 @@ class Pipeline:
                 return reply
 
             d_ref = self._ref("judge_d", pid)
-            d_packet = hp.judge_d_packet(w.corpus, draft, candidates, scope, targets, ref=d_ref)
+            d_packet = self._built(
+                "packet_construction",
+                "judge_d",
+                pid,
+                lambda: hp.judge_d_packet(w.corpus, draft, candidates, scope, targets, ref=d_ref),
+            )
             d_reply = self._headless(
                 "judge_d",
                 pid,
@@ -1420,25 +1573,35 @@ class Pipeline:
             "metadata_adjudicator",
             pid,
             "metadata",
-            hp.metadata_packet(
-                w.corpus, draft, final.qrels, final.answerability, final.gap_note, ref=m_ref
+            self._built(
+                "packet_construction",
+                "metadata",
+                pid,
+                lambda: hp.metadata_packet(
+                    w.corpus, draft, final.qrels, final.answerability, final.gap_note, ref=m_ref
+                ),
             ),
             m_ref,
             self._inputs(pid, "lock", "adjudication"),
             admit_m,
         )
         meta = hj.final_metadata(m_reply, final.qrels, final.answerability, cell.acts)
-        need = bm.Need(
-            need_id=need_id,
-            split="test",
-            statement=draft.statement,
-            type=meta.type,  # type: ignore[arg-type]
-            drivers=meta.drivers,  # type: ignore[arg-type]
-            difficulty=meta.difficulty,  # type: ignore[arg-type]
-            acts=meta.acts,  # type: ignore[arg-type]
-            answerability=final.answerability,  # type: ignore[arg-type]
-            gap_note=final.gap_note,
-            status="ready",
+        need = self._built(
+            "record_assembly",
+            "metadata",
+            pid,
+            lambda: bm.Need(
+                need_id=need_id,
+                split="test",
+                statement=draft.statement,
+                type=meta.type,  # type: ignore[arg-type]
+                drivers=meta.drivers,  # type: ignore[arg-type]
+                difficulty=meta.difficulty,  # type: ignore[arg-type]
+                acts=meta.acts,  # type: ignore[arg-type]
+                answerability=final.answerability,  # type: ignore[arg-type]
+                gap_note=final.gap_note,
+                status="ready",
+            ),
         )
         self._evidence_gate(pid, need, final.qrels)
         others = list(self.ready.values())
@@ -1494,7 +1657,13 @@ class Pipeline:
     def _evidence_gate(self, pid: str, need: bm.Need, qrels: Sequence[bm.Qrel]) -> None:
         w = self.world
         dev_by_id = {n.need_id: n for n in w.dev.needs}
-        for pair in ho.evidence_overlap(qrels, w.dev.qrels):
+        pairs = self._built(
+            "record_assembly",
+            "evidence_gate",
+            pid,
+            functools.partial(ho.evidence_overlap, qrels, w.dev.qrels),
+        )
+        for pair in pairs:
             if not pair.shared_nodes:
                 continue
             others = {
@@ -1512,14 +1681,13 @@ class Pipeline:
                 ],
             }
             ref = self._ref("gatekeeper_evidence", pid)
-            packet = hp.gate_evidence_packet(
-                w.corpus,
-                ref,
-                need.statement,
-                pair.dev_need,
-                dev_by_id[pair.dev_need].statement,
-                pair.shared_nodes,
-                others,
+            packet = self._built(
+                "packet_construction",
+                "evidence_gate",
+                pid,
+                functools.partial(
+                    _evidence_packet, w.corpus, ref, need.statement, pair, dev_by_id, others
+                ),
             )
 
             def admit(verdict: Any) -> Any:

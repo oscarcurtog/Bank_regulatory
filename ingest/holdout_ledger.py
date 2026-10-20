@@ -35,6 +35,7 @@ MIN_EVALUABLE = 50
 Outcome = Literal[
     "accepted",
     "concept_unfit",
+    "concept_invalid",  # CONSTRUCTION_AMENDMENT_1: the frozen anti-copy guard on the concept
     "statement_invalid",
     "overlap_paraphrase",
     "overlap_same_legal_question",

@@ -34,16 +34,25 @@ validate() runs checks 1 to 7 and reads the state, building nothing. freeze() re
 state with every write refused, so it can run no model and change nothing until the
 invariants hold; then it exports, seals and freezes. record_public_commit() writes only a
 provenance file. None of them builds an executor.
+
+An amended contract (CONSTRUCTION_AMENDMENT_1) carries what it amends: the base contract and
+its public commit, the point of the durable state's log where it applies, the identities it may
+change and the first transition the amended code must make there. amend() records it as one
+event of the state, after checking all of that and a replay of the whole log under the amended
+code with every write refused, so that no model runs and nothing admitted is built again. The
+needs ready before it stay bound to the base contract; everything after, to the base and the
+amendment.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import stat
 import subprocess
 import tempfile
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -64,6 +73,8 @@ from ingest import psd2_exclusions as px
 from ingest.corpus_tools import CorpusTools
 
 PUBLIC_COMMIT_FILE = "public_commit.json"
+# the public commit of an amended contract (CONSTRUCTION_AMENDMENT_1), beside the base's
+AMENDMENT_COMMIT_FILE = "amendment_commit.json"
 AUDIT_MODULE = Path("ingest/holdout_isolation.py")
 
 
@@ -285,15 +296,36 @@ def runtime_problems(frozen: Frozen, probes: Probes | None) -> list[str]:
 
 def public_commit_problems(paths: Paths, frozen: Frozen) -> list[str]:
     """START's last condition: the public pre-authoring commit recorded, and still holding
-    exactly the frozen content."""
+    exactly the frozen content. An amended contract (CONSTRUCTION_AMENDMENT_1) needs both: the
+    base contract's commit, read from that commit, and the amendment's commit."""
     path = paths.provenance / PUBLIC_COMMIT_FILE
     if not path.exists():
         return ["the public pre-authoring commit is not recorded: no TEST need before it"]
     record = json.loads(path.read_text(encoding="utf-8"))
-    if record.get("contract_sha256") != frozen.contract_sha256:
-        return ["the recorded public commit is of another contract"]
-    return hc.committed_problems(
-        frozen.contract, frozen.contract_sha256, paths.repo, record["commit"]
+    amends = frozen.contract.get("amends")
+    if amends is None:
+        if record.get("contract_sha256") != frozen.contract_sha256:
+            return ["the recorded public commit is of another contract"]
+        return hc.committed_problems(
+            frozen.contract, frozen.contract_sha256, paths.repo, record["commit"]
+        )
+    problems = []
+    base = (amends["base_contract_sha256"], amends["base_public_commit"])
+    if (record.get("contract_sha256"), record.get("commit")) != base:
+        problems.append("the recorded public commit is not the amended contract's base")
+    else:
+        text = ho.git(paths.repo, "show", f"{record['commit']}:{hc.CONTRACT_PATH.as_posix()}")
+        problems += hc.committed_problems(
+            json.loads(text), record["contract_sha256"], paths.repo, record["commit"]
+        )
+    amended = paths.provenance / AMENDMENT_COMMIT_FILE
+    if not amended.exists():
+        return [*problems, "the amendment's public commit is not recorded"]
+    found = json.loads(amended.read_text(encoding="utf-8"))
+    if found.get("contract_sha256") != frozen.contract_sha256:
+        return [*problems, "the recorded amendment commit is of another contract"]
+    return problems + hc.committed_problems(
+        frozen.contract, frozen.contract_sha256, paths.repo, found["commit"]
     )
 
 
@@ -305,7 +337,7 @@ def preflight(paths: Paths, action: str, confirm: str | None, probes: Probes | N
     problems = runtime_problems(frozen, probes)
     if problems:
         raise hs.IncompatibleState("; ".join(problems))
-    if action in ("start", "resume", "freeze") and confirm != frozen.contract_sha256:
+    if action in ("start", "resume", "freeze", "amend") and confirm != frozen.contract_sha256:
         raise LaunchRefused(f"{action} needs the full SHA-256 of the pinned contract, typed again")
     exists = (paths.test / hs.STATE_DIR / hs.DB_FILE).exists()
     if action == "start":
@@ -314,7 +346,7 @@ def preflight(paths: Paths, action: str, confirm: str | None, probes: Probes | N
         problems = public_commit_problems(paths, frozen)
         if problems:
             raise LaunchRefused("; ".join(problems[:8]))
-    if action in ("resume", "freeze") and not exists:
+    if action in ("resume", "freeze", "amend") and not exists:
         raise LaunchRefused(f"no construction state: {action} never makes one up")
     return frozen
 
@@ -471,13 +503,14 @@ def validate(paths: Paths, probes: Probes | None = None) -> dict[str, Any]:
     return report
 
 
-def record_public_commit(paths: Paths, commit: str) -> dict[str, Any]:
-    """After the public pre-authoring commit is pushed: its SHA in the private provenance,
-    once, if the commit holds exactly the frozen content and a remote branch contains it. It
-    is a timestamp of the frozen content, never part of it."""
+def _record_commit(paths: Paths, commit: str, name: str, amended: bool) -> dict[str, Any]:
     frozen, problems = contract_problems(paths)
     if frozen is None or problems:
         raise hs.IncompatibleState("; ".join(problems[:8]))
+    if amended != ("amends" in frozen.contract):
+        raise LaunchRefused(
+            "the pinned contract amends nothing" if amended else "the pinned contract is amended"
+        )
     sha = ho.git(paths.repo, "rev-parse", f"{commit}^{{commit}}")
     problems = hc.committed_problems(frozen.contract, frozen.contract_sha256, paths.repo, sha)
     if problems:
@@ -486,7 +519,7 @@ def record_public_commit(paths: Paths, commit: str) -> dict[str, Any]:
     remotes = sorted({line.strip().split(" -> ")[0] for line in listed if line.strip()})
     if not remotes:
         raise LaunchRefused(f"{sha[:12]} is on no remote branch: push it first")
-    path = paths.provenance / PUBLIC_COMMIT_FILE
+    path = paths.provenance / name
     record = {
         "commit": sha,
         "contract_sha256": frozen.contract_sha256,
@@ -501,8 +534,105 @@ def record_public_commit(paths: Paths, commit: str) -> dict[str, Any]:
         return dict(found)
     ho.write_json(path, record | {"recorded_at": datetime.now(UTC).isoformat()})
     ho.git(paths.test, "add", "--", str(path.relative_to(paths.test)))
-    ho.git(paths.test, "commit", "-q", "-m", f"record the public pre-authoring commit {sha[:12]}")
+    what = "amendment" if amended else "public pre-authoring"
+    ho.git(paths.test, "commit", "-q", "-m", f"record the {what} commit {sha[:12]}")
     return record
+
+
+def record_public_commit(paths: Paths, commit: str) -> dict[str, Any]:
+    """After the public pre-authoring commit is pushed: its SHA in the private provenance,
+    once, if the commit holds exactly the frozen content and a remote branch contains it. It
+    is a timestamp of the frozen content, never part of it."""
+    return _record_commit(paths, commit, PUBLIC_COMMIT_FILE, amended=False)
+
+
+def record_amendment_commit(paths: Paths, commit: str) -> dict[str, Any]:
+    """After the public commit of an amended contract is pushed (CONSTRUCTION_AMENDMENT_1): its
+    SHA in the private provenance, once, under the same conditions as the base's."""
+    return _record_commit(paths, commit, AMENDMENT_COMMIT_FILE, amended=True)
+
+
+def _replay_point(
+    paths: Paths, frozen: Frozen, world: hpl.World, store: hs.Store, held: Mapping[str, str]
+) -> dict[str, Any]:
+    """The amended code replays the whole log under the identities the state holds, with every
+    write refused, so that it can run no model and change nothing: every admitted stage and
+    every decision must be found again exactly, and the first write it would make is where
+    the amendment begins."""
+    pipeline = _pipeline(
+        paths, frozen, dataclasses.replace(world, identities=dict(held)), store, _NoModels()
+    )
+    try:
+        pipeline.replay()
+    except hs.StateError as error:
+        refused = type(error) is hs.StateError and "writes nothing to the state" in str(error)
+        if not refused:
+            raise
+        last = pipeline.ledger.attempts[-1]
+        return {
+            "refused_write": str(error).split(":", 1)[0],
+            "cell_id": last.cell_id,
+            "proposal_id": last.proposal_id,
+            "outcome": last.outcome,
+        }
+    return {"refused_write": None}
+
+
+def amend(paths: Paths, confirm: str | None, probes: Probes | None = None) -> dict[str, Any]:
+    """A documented amendment of the construction (CONSTRUCTION_AMENDMENT_1), recorded as one
+    event of the durable state at the exact point the amendment names, after every check and
+    a replay under the amended code that runs no model. Before it, everything was built under
+    the base contract; after it, under the base and the amendment. Nothing is rebuilt."""
+    frozen = preflight(paths, "amend", confirm, probes)
+    amends = frozen.contract.get("amends")
+    if amends is None:
+        raise LaunchRefused("the pinned contract amends nothing")
+    problems = public_commit_problems(paths, frozen)
+    if problems:
+        raise LaunchRefused("; ".join(problems[:8]))
+    world = build_world(paths, frozen, probes)
+    store = hs.Store.open(paths.test, paths.raw)
+    try:
+        summary = store.verify()
+        done = [a for a in store.amendments() if a["amendment"] == amends["amendment"]]
+        if done:
+            return dict(done[0])
+        held: dict[str, str] = json.loads(store.meta("identities") or "{}")
+        if held.get("pre_authoring_contract") != amends["base_contract_sha256"]:
+            raise LaunchRefused("the state was not built under the amended contract's base")
+        after = amends["after_event"]
+        if (summary["events"], summary["head_sha256"]) != (after["seq"], after["sha256"]):
+            raise LaunchRefused("the log is not at the point the amendment names")
+        changed = sorted(
+            k for k in set(held) | set(world.identities) if held.get(k) != world.identities.get(k)
+        )
+        if changed != sorted(amends["identity_changes"]):
+            raise LaunchRefused(
+                f"the amendment would change {changed}; it declares {amends['identity_changes']}"
+            )
+        if store.runtime() != world.runtime:
+            raise LaunchRefused("the runtimes are not the state's")
+        store.check_cells(world.order, world.omission)
+        point = _replay_point(paths, frozen, world, store, held)
+        if point != amends["first_transition"]:
+            raise LaunchRefused(f"the amended code's first transition is {point}")
+        public = json.loads((paths.provenance / AMENDMENT_COMMIT_FILE).read_text(encoding="utf-8"))
+        record = {
+            "amendment": amends["amendment"],
+            "amendment_sha256": amends["amendment_sha256"],
+            "base_contract_sha256": amends["base_contract_sha256"],
+            "contract_sha256": frozen.contract_sha256,
+            "public_commit": public["commit"],
+            "after_event": after,
+            "changed_identities": changed,
+            "first_transition": point,
+            "from_identities": held,
+            "to_identities": dict(world.identities),
+        }
+        store.amend(record)
+        return {k: record[k] for k in hs.AMENDMENT_FIELDS}
+    finally:
+        store.close()
 
 
 class _NoModels:
@@ -516,7 +646,12 @@ class _NoModels:
     recover_headless = recover_broker = recover_local = _refuse
 
 
-def _export(paths: Paths, frozen: Frozen, docs: Mapping[str, Any]) -> Callable[..., dict[str, str]]:
+def _export(
+    paths: Paths,
+    frozen: Frozen,
+    docs: Mapping[str, Any],
+    amendments: Sequence[Mapping[str, Any]] = (),
+) -> Callable[..., dict[str, str]]:
     def export(records: list[dict[str, Any]], report: Mapping[str, Any]) -> dict[str, str]:
         """The benchmark files from the READY records, sealed as TEST 1.0.0, the private freeze
         record, and the private history: written again equal if a freeze is run again."""
@@ -556,7 +691,7 @@ def _export(paths: Paths, frozen: Frozen, docs: Mapping[str, Any]) -> Callable[.
             },
             ho.isolation_problems(paths.repo, ids),
             bm.TEMPLATES_DIR / "holdout",
-            {"contract_sha256": frozen.contract_sha256, "public_commit": public["commit"]},
+            _pre_authoring(frozen, public, amendments),
             {"needs": len(records)},
             frozen_at,
         )
@@ -573,6 +708,22 @@ def _export(paths: Paths, frozen: Frozen, docs: Mapping[str, Any]) -> Callable[.
         return {name: bm.sha256_file(d / name) for name in names}
 
     return export
+
+
+def _pre_authoring(
+    frozen: Frozen, public: Mapping[str, Any], amendments: Sequence[Mapping[str, Any]]
+) -> dict[str, Any]:
+    """The contract TEST was frozen under: the base, and every amendment with the point of the
+    log where it applies (CONSTRUCTION_AMENDMENT_1)."""
+    amends = frozen.contract.get("amends")
+    if amends is None:
+        return {"contract_sha256": frozen.contract_sha256, "public_commit": public["commit"]}
+    return {
+        "contract_sha256": amends["base_contract_sha256"],
+        "public_commit": public["commit"],
+        "amended_contract_sha256": frozen.contract_sha256,
+        "amendments": [dict(a) for a in amendments],
+    }
 
 
 def _commitment(paths: Paths) -> Callable[[dict[str, Any]], None]:
@@ -604,6 +755,6 @@ def freeze(paths: Paths, confirm: str | None, probes: Probes | None = None) -> d
         _compatible(store, world)
         pipeline = _pipeline(paths, frozen, world, store, _NoModels())
         pipeline.replay()
-        return pipeline.freeze(_export(paths, frozen, docs), _commitment(paths))
+        return pipeline.freeze(_export(paths, frozen, docs, store.amendments()), _commitment(paths))
     finally:
         store.close()

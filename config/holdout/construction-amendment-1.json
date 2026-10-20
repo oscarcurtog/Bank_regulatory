@@ -1,0 +1,279 @@
+{
+ "id": "CONSTRUCTION_AMENDMENT_1",
+ "status": "an amendment of TEST's construction while it runs; no result of E, E5 or BM25 on TEST has been seen",
+ "reason": "An already-frozen anti-copy guard had no defined state transition when triggered during real packet construction.",
+ "base_contract_sha256": "d4f3a1f2826d5a18ff8a1e43ac8ae62347b99a20b07a24121591e5e63956b381",
+ "base_public_commit": "57ec4c9f3370a76f1125304112e58a04a0c2566b",
+ "after_event": {
+  "seq": 367,
+  "sha256": "35a3560b9617e519face398bda67a5640594dd7c1572849d6c5623ee82fecc49"
+ },
+ "ready_needs_before": 4,
+ "first_transition": {
+  "refused_write": "attempt_closed",
+  "cell_id": "G21",
+  "proposal_id": "G21-a2",
+  "outcome": "concept_invalid"
+ },
+ "identity_changes": [
+  "construction_code",
+  "pre_authoring_contract"
+ ],
+ "defines": {
+  "concept_no_dev_wording": "the frozen anti-copy guard, unchanged, firing on the concept's own words while the statement writer's packet is built: a methodological rejection of the current attempt (outcome concept_invalid), never retried; the cell's next blind attempt receives nothing of it; the third such rejection leaves the cell unfilled_after_attempt_limit, as before",
+  "packet_construction": "a packet the code cannot build from its frozen inputs: an integrity stop for a person",
+  "record_assembly": "records the code cannot assemble from admitted outputs: an integrity stop for a person"
+ },
+ "unchanged": [
+  "grid",
+  "cell order",
+  "omission audit",
+  "prompts and templates",
+  "the anti-copy guard and its threshold of eight words",
+  "overlap rules",
+  "taxonomy",
+  "judges",
+  "evidence protocol",
+  "runtimes",
+  "systems",
+  "S4 metrics and analysis plan",
+  "sampling"
+ ],
+ "binding": "the needs made ready before after_event stay bound to the base contract and are never built again; everything after it is bound to the base contract and this amendment",
+ "s4_plan_rule": "the S4 plan says a partly built TEST is never migrated to another method; this amendment migrates no method: it defines the consequence of a guard the base already froze, and is recorded at one point of the log",
+ "exception_paths": [
+  {
+   "source": "holdout_packets.section",
+   "condition": "the protocol has no section the rules quote",
+   "frozen_rule": "PROTOCOL.md, frozen",
+   "classification": "technical_integrity stop (packet_construction)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_packets judge A rules",
+   "condition": "the protocol no longer holds an example to remove",
+   "frozen_rule": "PROTOCOL.md, frozen",
+   "classification": "technical_integrity stop (packet_construction)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_packets judge A rules",
+   "condition": "the rules for judge A still name DEV",
+   "frozen_rule": "D-054: no DEV in a judge's rules",
+   "classification": "technical_integrity stop (packet_construction)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_packets judge B and C rules",
+   "condition": "the rules for judges B and C still name DEV",
+   "frozen_rule": "D-054: no DEV in a judge's rules",
+   "classification": "technical_integrity stop (packet_construction)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_packets attempt frames",
+   "condition": "a frame other than A",
+   "frozen_rule": "attempt_frames.v2: frame A only",
+   "classification": "technical_integrity stop (packet_construction)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_packets.concept_packet anti-copy guard",
+   "condition": "author_leaks fires on the frozen parts (cell, template)",
+   "frozen_rule": "D-054 author_leaks, unchanged",
+   "classification": "technical_integrity stop (packet_construction)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_packets.writer_packet anti-copy guard",
+   "condition": "author_leaks fires on the concept's own words (the packet passes without them)",
+   "frozen_rule": "D-054 author_leaks, unchanged",
+   "classification": "methodological eligibility rejection (concept_no_dev_wording: concept_invalid)",
+   "transition_before": "none: an exception that ended the process (observed)",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_packets.writer_packet anti-copy guard",
+   "condition": "author_leaks fires on the frozen parts alone",
+   "frozen_rule": "D-054 author_leaks, unchanged",
+   "classification": "technical_integrity stop (packet_construction)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_packets.template and every packet",
+   "condition": "a template that cannot be read or filled",
+   "frozen_rule": "the frozen templates",
+   "classification": "technical_integrity stop (packet_construction)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_packets.Corpus.node_block",
+   "condition": "a candidate the corpus lacks, in the packets of judges B, C, D, the diagnostic, the metadata adjudicator or the evidence gate",
+   "frozen_rule": "the corpus contract; judge_a_problems checks every candidate",
+   "classification": "technical_integrity stop (packet_construction)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "benchmark.render_query_prompt, the query writer's packet",
+   "condition": "the statement cites a provision",
+   "frozen_rule": "statement_cites_no_provision runs the same function first",
+   "classification": "technical_integrity stop (packet_construction), defensive",
+   "transition_before": "methodological, upstream",
+   "missing_transition": false
+  },
+  {
+   "source": "holdout_packets gate packets",
+   "condition": "a gate packet that cannot be built, or a DEV need not found",
+   "frozen_rule": "the frozen templates and DEV",
+   "classification": "technical_integrity stop (packet_construction)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_pipeline.statement_problems",
+   "condition": "the query renderer refuses the statement",
+   "frozen_rule": "statement_cites_no_provision",
+   "classification": "methodological eligibility rejection (statement_invalid)",
+   "transition_before": "methodological",
+   "missing_transition": false
+  },
+  {
+   "source": "holdout_pipeline.statement_problems",
+   "condition": "author_leaks on the statement",
+   "frozen_rule": "statement_no_dev_wording",
+   "classification": "methodological eligibility rejection (statement_invalid)",
+   "transition_before": "methodological",
+   "missing_transition": false
+  },
+  {
+   "source": "benchmark.Query, the admitted formulations",
+   "condition": "a formulation the schema refuses",
+   "frozen_rule": "query_formulations at admission",
+   "classification": "technical_integrity stop (record_assembly), defensive",
+   "transition_before": "technical, upstream",
+   "missing_transition": false
+  },
+  {
+   "source": "benchmark.Need, the draft need",
+   "condition": "the schema refuses the draft",
+   "frozen_rule": "the dataset schema",
+   "classification": "technical_integrity stop (record_assembly)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_judging.assemble",
+   "condition": "judge C's answers are not the disputes",
+   "frozen_rule": "the admission of judge C checks every item",
+   "classification": "technical_integrity stop (record_assembly)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_judging.assemble",
+   "condition": "answerability partial or none with no gap note",
+   "frozen_rule": "PROTOCOL.md section 3: the gap note",
+   "classification": "technical_integrity stop (record_assembly)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "benchmark.Adjudication and Qrel, in the assembly",
+   "condition": "the schema refuses a record",
+   "frozen_rule": "the dataset schema",
+   "classification": "technical_integrity stop (record_assembly)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "benchmark.Need, the final need",
+   "condition": "the schema refuses the need",
+   "frozen_rule": "the dataset schema",
+   "classification": "technical_integrity stop (record_assembly)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout.evidence_overlap, the evidence gate",
+   "condition": "the shared evidence cannot be computed",
+   "frozen_rule": "D-054 evidence gate",
+   "classification": "technical_integrity stop (record_assembly)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_ledger",
+   "condition": "the ledger refuses a transition",
+   "frozen_rule": "the ledger's sequence",
+   "classification": "technical_integrity stop (record_assembly)",
+   "transition_before": "none: an exception that ended the process",
+   "missing_transition": true
+  },
+  {
+   "source": "holdout_ledger.StopForThePerson",
+   "condition": "the minimum of evaluable needs is out of reach",
+   "frozen_rule": "min_evaluable 50",
+   "classification": "technical_integrity stop (stop)",
+   "transition_before": "a construction stop",
+   "missing_transition": false
+  },
+  {
+   "source": "benchmark.dataset_problems and qrel_problems",
+   "condition": "the validators refuse the need",
+   "frozen_rule": "dataset_records, qrel_texts",
+   "classification": "technical_integrity stop (stop)",
+   "transition_before": "a construction stop",
+   "missing_transition": false
+  },
+  {
+   "source": "holdout_state replay and decisions",
+   "condition": "a decision or a replay differs from the log",
+   "frozen_rule": "state_integrity",
+   "classification": "technical_integrity stop (stop)",
+   "transition_before": "a state stop",
+   "missing_transition": false
+  },
+  {
+   "source": "holdout_pipeline._model",
+   "condition": "a packet rendered now is not the one its runs received",
+   "frozen_rule": "state_integrity",
+   "classification": "technical_integrity stop (stop)",
+   "transition_before": "a state stop",
+   "missing_transition": false
+  },
+  {
+   "source": "holdout_judging, recomputed after admission",
+   "condition": "the judgments, disagreements, discrepancies, judge D's outcome or the metadata",
+   "frozen_rule": "the same functions already passed at admission",
+   "classification": "technical retry, at admission",
+   "transition_before": "technical",
+   "missing_transition": false
+  },
+  {
+   "source": "holdout_judging.diagnostic_defects",
+   "condition": "the diagnostic's answer is not admissible",
+   "frozen_rule": "diagnostic_admissible",
+   "classification": "diagnostic only",
+   "transition_before": "diagnostic only",
+   "missing_transition": false
+  },
+  {
+   "source": "holdout_pipeline omission audit",
+   "condition": "an omission adjudicated grade >= 1",
+   "frozen_rule": "the omission audit",
+   "classification": "technical_integrity stop (stop)",
+   "transition_before": "a construction stop",
+   "missing_transition": false
+  }
+ ],
+ "exception_paths_unclassified_before": 18
+}

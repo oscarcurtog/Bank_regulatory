@@ -33,12 +33,21 @@ from ingest import holdout_contract as hc
 from ingest import holdout_executor as hx
 from ingest import holdout_isolation as hi
 from ingest import holdout_launcher as hla
+from ingest import holdout_packets as hp
 from ingest import holdout_pipeline as hpl
 from ingest import holdout_roles as hr
 from ingest import holdout_runtime as hrt
 from ingest import holdout_spool as hsp
 from ingest import holdout_state as hs
-from tests.holdout_fakes import FAKE_EFFECTIVE, FAKE_MLX, PIN, FakeExecutor, Scenario, session
+from tests.holdout_fakes import (
+    FAKE_EFFECTIVE,
+    FAKE_MLX,
+    PIN,
+    Crash,
+    FakeExecutor,
+    Scenario,
+    session,
+)
 
 MODEL = FAKE_EFFECTIVE["init"]["model"]
 # the pinned binary of the stand-in's Gate 1, signed in to the control account its sessions
@@ -125,7 +134,8 @@ def machinery(tmp_path_factory):
     claude = hrt.claude_runtime(evidence / "provenance")
     record = hc.construction(evidence / ho.GRID_FILE, plan, roles, claude, FAKE_MLX)
     pinned = json.loads(hc.CONTRACT_PATH.read_text(encoding="utf-8"))
-    contract = pinned | {"construction": record}
+    # a base contract, as the pre-authoring commit holds it: an amendment is added by a test
+    contract = {k: v for k, v in pinned.items() if k != "amends"} | {"construction": record}
     for f in hc.frozen_files(contract):
         (repo / f).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(f, repo / f)
@@ -635,3 +645,129 @@ def test_the_public_commit_is_provenance_never_frozen_content(
             hla.record_public_commit(paths, "HEAD")
     finally:
         ho.git(repo, "reset", "-q", "--hard", first["commit"])
+
+
+# ---------------------------------------------------------------------------
+# a documented amendment (CONSTRUCTION_AMENDMENT_1)
+# ---------------------------------------------------------------------------
+
+
+def amended(paths: hla.Paths, repo: Path, sha: str, cell: str) -> str:
+    """The base contract with an amendment of the point the log is at, committed, pushed and
+    pinned: its SHA-256."""
+    with hs.Store.open(paths.test, paths.raw, readonly=True) as store:
+        summary = store.verify()
+    public = json.loads((paths.provenance / hla.PUBLIC_COMMIT_FILE).read_text())
+    note = repo / "amendment-fixture.json"
+    note.write_text('{"id": "CONSTRUCTION_AMENDMENT_1"}\n', encoding="utf-8")
+    amends = {
+        "amendment": "CONSTRUCTION_AMENDMENT_1",
+        "amendment_file": note.name,
+        "amendment_sha256": hashlib.sha256(note.read_bytes()).hexdigest(),
+        "base_contract_sha256": sha,
+        "base_public_commit": public["commit"],
+        "after_event": {"seq": summary["events"], "sha256": summary["head_sha256"]},
+        "identity_changes": ["pre_authoring_contract"],  # the same code here: the contract only
+        "first_transition": {
+            "refused_write": "attempt_closed",
+            "cell_id": cell,
+            "proposal_id": f"{cell}-a1",
+            "outcome": "concept_invalid",
+        },
+    }
+    contract = json.loads(paths.contract.read_text()) | {"amends": amends}
+    paths.contract.unlink()
+    new = hc.write(contract, paths.contract)
+    ho.git(repo, "add", "-A")
+    ho.git(repo, "commit", "-q", "-m", "the amended contract")
+    ho.git(repo, "push", "-q", "--force", "origin", "HEAD:main")  # the fixture's own remote
+    ho.git(repo, "fetch", "-q", "origin")
+    pin = {"path": hc.CONTRACT_PATH.as_posix(), "sha256": new}
+    ho.write_json(paths.provenance / "contract_pin.json", pin)
+    ho.git(paths.test, "add", "-A")
+    ho.git(paths.test, "commit", "-q", "-m", "pin the amended contract")
+    return new
+
+
+@pytest.mark.corpus
+def test_an_amendment_continues_the_same_construction_from_the_point_it_names(
+    paths, sha, repo, monkeypatch
+):
+    cell = order()[2]
+    guard = hpl._packet_guard
+
+    def base(writer: Any, words: str, facts: list[str]) -> str:
+        # the base code: the guard's PacketError had no transition and ended the process
+        try:
+            return str(writer(words, facts))
+        except hp.PacketError as error:
+            raise Crash("no transition") from error
+
+    monkeypatch.setattr(hpl, "_packet_guard", base)
+    fakes = Fakes(monkeypatch, Scenario(copied_concept={(cell, 1)}))
+    with pytest.raises(Crash):
+        started(paths, sha, fakes)
+    monkeypatch.setattr(hpl, "_packet_guard", guard)  # the amended code
+    with hs.Store.open(paths.test, paths.raw, readonly=True) as store:
+        before = store.events()
+        ready_before = {r["cell_id"]: r["record_sha256"] for r in store.ready()}
+    assert len(ready_before) == 2  # the two cells before it are ready
+    first = ho.git(repo, "rev-parse", "HEAD")
+    try:
+        new = amended(paths, repo, sha, cell)
+        with pytest.raises(hla.LaunchRefused, match="not recorded"):
+            hla.amend(paths, new, PROBES)  # the amendment's public commit first
+        hla.record_amendment_commit(paths, "HEAD")
+        assert hla.validate(paths, PROBES)["public_commit_problems"] == []
+        record = hla.amend(paths, new, PROBES)
+        assert record["changed_identities"] == ["pre_authoring_contract"]
+        assert record["first_transition"]["proposal_id"] == f"{cell}-a1"
+        assert hla.amend(paths, new, PROBES)["seq"] == len(before) + 1  # recorded once
+        calls = len(fakes.calls)
+        hla.resume(paths, new, fakes, PROBES)
+        resumed = fakes.calls[calls:]
+        with hs.Store.open(paths.test, paths.raw, readonly=True) as store:
+            events = store.events()
+            ready = {r["cell_id"]: r["record_sha256"] for r in store.ready()}
+            attempts = [
+                (a["number"], a["outcome"]) for a in store.attempts() if a["cell_id"] == cell
+            ]
+            summary = store.verify()
+        # the log: unchanged up to the point the amendment names, then the amendment
+        assert [e.sha256 for e in events[: len(before)]] == [e.sha256 for e in before]
+        (event,) = [e for e in events if e.kind == "construction_amended"]
+        assert event.seq == len(before) + 1 and event.payload["after_event"]["seq"] == len(before)
+        # the needs ready before it: untouched, never built again
+        assert {c: ready[c] for c in ready_before} == ready_before
+        assert not [c for _, c, _ in resumed if c in ready_before]
+        # the cell it was stopped at: its concept rejected, a new blind attempt
+        assert attempts == [(1, "concept_invalid"), (2, "accepted")]
+        assert summary["cells"] == {"ready": 60} and len(summary["amendments"]) == 1
+        no_models(monkeypatch)
+        frozen = hla.freeze(paths, new, PROBES)
+        assert len(frozen["needs"]) == 60
+        pre = json.loads((paths.test / ho.FREEZE_FILE).read_text())["pre_authoring"]
+        assert (pre["contract_sha256"], pre["amended_contract_sha256"]) == (sha, new)
+        assert [a["amendment"] for a in pre["amendments"]] == ["CONSTRUCTION_AMENDMENT_1"]
+    finally:
+        (paths.repo / ho.COMMITMENT_PATH).unlink(missing_ok=True)
+        ho.git(repo, "reset", "-q", "--hard", first)
+
+
+def test_an_amendment_is_refused_away_from_the_point_it_names(
+    paths, sha, repo, monkeypatch, no_corpus
+):
+    fakes = Fakes(monkeypatch)
+    stopped(paths, sha, fakes)
+    first = ho.git(repo, "rev-parse", "HEAD")
+    try:
+        new = amended(paths, repo, sha, order()[0])
+        hla.record_amendment_commit(paths, "HEAD")
+        with hs.Store.open(paths.test, paths.raw) as store:
+            store.record("resumed", None, {"status": "pending_technical", "waiting": []})
+        with pytest.raises(hla.LaunchRefused, match="not at the point"):
+            hla.amend(paths, new, PROBES)
+        with hs.Store.open(paths.test, paths.raw, readonly=True) as store:
+            assert store.verify()["amendments"] == []
+    finally:
+        ho.git(repo, "reset", "-q", "--hard", first)
