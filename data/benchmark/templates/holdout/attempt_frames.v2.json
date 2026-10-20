@@ -1,0 +1,7 @@
+{
+ "schema": "holdout-attempt-frames.v2",
+ "purpose": "The frame of every blind attempt of a cell (Codex Gate 2, P1.2): the same frame for the first attempt and for each retry, so that a rejection never changes the moment, the actor or the situation. attempt_frames.v1.json (frames A, B and C) is kept only as the record of the earlier design; it is not used.",
+ "frames": {
+  "A": "Choose the actor and the moment of the situation freely within the cell."
+ }
+}

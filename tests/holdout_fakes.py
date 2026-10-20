@@ -1,0 +1,635 @@
+"""A stand-in for TEST's model runs, to test the orchestrator with no model and no TEST
+content (Codex Gate 2, P1.6). Every reply is synthetic and depends only on the cell, the
+attempt and the role, so a construction resumed in another process gets the same answers;
+every evidence node comes from the pipeline fixtures (N001 and N003), and every session has
+the shape of Gate 1's runtime. A scenario makes chosen stages reject, fail technically a
+given number of times, carry contamination, or kill the process."""
+
+from __future__ import annotations
+
+import dataclasses
+import hashlib
+import json
+import os
+import re
+import signal
+from collections import Counter
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+from ingest import benchmark as bm
+from ingest import holdout as ho
+from ingest import holdout_broker as hb
+from ingest import holdout_isolation as hi
+from ingest import holdout_packets as hp
+from ingest import holdout_pipeline as hpl
+from ingest import holdout_roles as hr
+from ingest import holdout_runtime as hrt
+from ingest import holdout_state as hs
+from ingest import psd2_exclusions as px
+from ingest.corpus_tools import CorpusTools
+
+PIN = {"version": "2.1.301 (Claude Code)", "organization_sha256": hi.CONTROL_ORG_SHA256}
+GENERIC = "/code-review ultra launches a multi-agent cloud review of the current branch."
+# What the state is created with in the tests; a test changes one to see resume refuse
+IDENTITIES = {
+    name: hashlib.sha256(name.encode()).hexdigest()
+    for name in (
+        "pre_authoring_contract",
+        "analysis_plan",
+        "systems",
+        "role_contracts",
+        "templates",
+        "order",
+        "omission_audit",
+        "corpus",
+        "binary",
+        "audit",
+    )
+}
+
+COMPLETE = [
+    ("MiCA:149.2", 3),
+    ("MiCA:149.3", 2),
+    ("MiCA:149.4", 2),
+    ("MiCA:149.1", 1),
+    ("DORA:64", 0),
+]
+PARTIAL = [
+    ("DORA:19.4", 3),
+    ("DORA:19.4.a", 2),
+    ("DORA:20.a.ii", 2),
+    ("DORA:19.1", 1),
+    ("DORA:19.3", 0),
+]
+NONE = [("MiCA:149.2", 1), ("MiCA:149.1", 1), ("DORA:64", 0)]
+EXTRA_NODE = "MiCA:143.3"  # what the second search adds in a scenario
+CONTAMINATION = " The E5 baseline reached Recall@10 0.824."
+# The model the stand-in reports, in the shape of the authenticated runtime's own report
+FAKE_EFFECTIVE: dict[str, Any] = {
+    "init": {
+        "model": "m",
+        "fast_mode_state": "off",
+        "per_turn_effort_active": True,
+        "permissionMode": "default",
+        "output_style": "default",
+        "apiKeySource": "none",
+    },
+    "assistant_model": "m",
+    "model_usage": {
+        "m": {
+            "canonicalModel": "m",
+            "provider": "firstParty",
+            "contextWindow": 1000,
+            "maxOutputTokens": 100,
+        }
+    },
+    "model_attachment": {"modelId": "m", "marketingName": "M", "knowledgeCutoff": "x"},
+}
+# An MLX runtime in the shape ingest/holdout_runtime.py mlx_runtime reads
+FAKE_MLX: dict[str, Any] = {
+    "python": {"version": "3.12.0", "implementation": "CPython", "build": "3.12.0 (fake)"},
+    "machine": "arm64",
+    "host": {
+        "macos_product_version": "27.0.0",
+        "macos_build_version": "26A000",
+        "darwin_release": "27.0.0",
+        "hardware_model": "Mac0,0",
+        "architecture": "arm64",
+    },
+    "packages": {name: "1.0.0" for name in hrt.MLX_PACKAGES},
+    "model": {
+        "config_file": "config/retrieval/qwen3-8b-mlx.json",
+        "model_id": "fake/qwen",
+        "revision": "0" * 40,
+        "files": {"model.safetensors": "f" * 64},
+    },
+    "generation": {
+        "max_new_tokens": 2048,
+        "decoding": "greedy",
+        "chat_template_kwargs": {"enable_thinking": False},
+        "max_prompt_tokens": 16384,
+    },
+}
+FAKE_RUNTIME: dict[str, Any] = {
+    "claude_runtime": {
+        "requested_model": "m",
+        "binary": {"version": "2.1.301 (Claude Code)", "sha256": "b" * 64},
+        "effective": FAKE_EFFECTIVE,
+        "policy": {},
+    },
+    "mlx_runtime": FAKE_MLX,
+}
+
+
+class Crash(BaseException):
+    """The process dying at that instant: no handler of the construction catches it, and
+    nothing it has not committed survives."""
+
+
+def session(
+    sent: list[str],
+    replies: list[str],
+    reminder: str = "",
+    extra: tuple = (),
+    workdir: str = "/tmp/tmp.x",
+    identity: Mapping[str, Any] | None = None,
+) -> dict[str, str]:
+    """A session as the runtime records it; identity is the model it reports (FAKE_EFFECTIVE
+    unless another is given)."""
+    model = dict(identity or FAKE_EFFECTIVE)
+    attachments = [
+        {"type": "environment", "snapshot": {**hi._SNAPSHOT, "workingDirectory": workdir}},
+        {"type": "model", "identity": model["model_attachment"], "text": "x"},
+        {"type": "total_tokens_reminder", "text": "<total_tokens>1</total_tokens>"},
+        {"type": "session_context", "context": {"userEmail": hi.CONTROL_EMAIL}},
+        {"type": "date", "date": "2026-10-19"},
+        {"type": "credential_org", "organizationUuid": hi.CONTROL_ORG},
+        {
+            "type": "prompt_snapshot",
+            "systemPrompt": [GENERIC],
+            "reminderFold": False,
+            "echoWireToolInputs": True,
+            "contextRendering": "x",
+        },
+        *extra,
+    ]
+    records: list[dict[str, Any]] = [{"type": "attachment", "attachment": a} for a in attachments]
+    reminder_text = f"<system-reminder>{hi.CONTROL_EMAIL}{reminder}</system-reminder>"
+    records.append(
+        {
+            "type": "api-request-blob",
+            "message": {"role": "user", "content": [{"type": "text", "text": reminder_text}]},
+        }
+    )
+    for i, message in enumerate(sent):
+        content = [{"type": "text", "text": message}]
+        records.append({"type": "user", "message": {"role": "user", "content": content}})
+        if i < len(replies):
+            text = [{"type": "text", "text": replies[i]}]
+            answer = {"model": model["assistant_model"], "content": text}
+            records.append({"type": "assistant", "message": answer})
+    init = {
+        "type": "system",
+        "subtype": "init",
+        "tools": [],
+        "mcp_servers": [],
+        "cwd": workdir,
+        "plugins": list(hi.BUILTIN_PLUGINS),
+        "claude_code_version": "2.1.301",
+        **model["init"],
+    }
+    result = {"type": "result", "is_error": False, "modelUsage": model["model_usage"]}
+    return {
+        "transcript": "\n".join(json.dumps(r) for r in records),
+        "stream": json.dumps(init) + "\n" + json.dumps(result),
+        "stderr": "",
+    }
+
+
+def _refs_in(packet: str, marker: str) -> list[str]:
+    part = packet.split(marker, 1)[1] if marker in packet else packet
+    return re.findall(r"^\[((?:DORA|MiCA|PSD2):[^\]]+)\]", part, re.M)
+
+
+def _ref_of(packet: str) -> str:
+    found = re.search(r"\b(R-[0-9a-f]{12})\b", packet)
+    return found.group(1) if found else "R-unknown"
+
+
+@dataclass
+class Scenario:
+    gate: dict[str, list[str]] = field(default_factory=dict)  # cell -> verdict per attempt
+    closest: str = "N004"  # the need a rejected proposal repeats (DEV by default)
+    unfit: set[tuple[str, int]] = field(default_factory=set)  # (cell, attempt)
+    technical: dict[str, str] = field(default_factory=dict)  # cell -> role that fails
+    # raise | contaminate | resource | protocol | malformed
+    technical_kind: str = "raise"
+    technical_times: int = 1000  # executions of that role that fail before one succeeds
+    crash: tuple[str, str] | None = None  # (cell, role): a Crash inside that call, once
+    kill: tuple[str, str] | None = None  # (cell, role): SIGKILL of the process in that call
+    # (cell, role): the response reaches the spool, then the orchestrator dies, once
+    die_after: tuple[str, str] | None = None
+    extra_grade: dict[str, int] = field(default_factory=dict)  # cell -> grade of EXTRA_NODE
+    qwen_crosses: set[str] = field(default_factory=set)  # cells where the diagnostic disagrees
+    d_answer: dict[str, dict[str, Any]] = field(default_factory=dict)  # cell -> D's item fields
+    # (cell, role) -> a reply that replaces the usual one, for a valid answer of another kind
+    override: dict[tuple[str, str], Any] = field(default_factory=dict)
+    # (cell, role) -> parts of the effective model the session reports instead of the frozen
+    model: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
+    # cell -> how the diagnostic's answer is broken (empty, subset, duplicate, unknown,
+    # invalid_grade, missing_answerability, invalid_answerability, missing_ambiguous), for
+    # the first qwen_bad_times executions
+    qwen_bad: dict[str, str] = field(default_factory=dict)
+    qwen_bad_times: int = 1
+    # cell -> parts of the MLX runtime the diagnostic's output records instead of the frozen
+    local_runtime: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+
+class FakeExecutor:
+    """Replies by role, for the cell and attempt the pipeline is on. Like the real executor,
+    it spools every response to a file named by its run before returning it, so that a
+    resume can recover a response the orchestrator died before recording."""
+
+    def __init__(
+        self,
+        scenario: Scenario | None = None,
+        spool: Path | None = None,
+        workdir: str = "/tmp/tmp.x",
+        runtime: Mapping[str, Any] | None = None,
+    ) -> None:
+        self.scenario = scenario or Scenario()
+        self.spool = spool
+        self.workdir = workdir  # the run's directory the sessions report
+        self.runtime = dict(runtime or FAKE_RUNTIME)  # what the sessions and outputs report
+        self.pipeline: hpl.Pipeline | None = None
+        self.calls: list[tuple[str, str, int]] = []  # (role, cell, attempt)
+        self.packets: dict[tuple[str, str, int], str] = {}
+        self.failed: Counter[tuple[str, str]] = Counter()
+        self.recovered: list[str] = []
+
+    def _spooled(self, role: str, run_id: str, kind: str, value: Any) -> None:
+        """The response on disk; then, if the scenario says so, the orchestrator dies."""
+        if self.spool is not None:
+            self.spool.mkdir(parents=True, exist_ok=True)
+            (self.spool / f"{run_id}.json").write_text(json.dumps({"kind": kind, "value": value}))
+        cell, _, _ = self._where()
+        if self.scenario.die_after == (cell, role):
+            self.scenario.die_after = None
+            raise Crash(f"killed after {role} of {cell} answered")
+
+    def _recall(self, run_id: str) -> Any:
+        path = None if self.spool is None else self.spool / f"{run_id}.json"
+        if path is None or not path.exists():
+            return None
+        self.recovered.append(run_id)
+        return json.loads(path.read_text())["value"]
+
+    def recover_headless(self, role: str, run_id: str, packet: str) -> hpl.Session | None:
+        found = self._recall(run_id)
+        return None if found is None else hpl.Session(found["reply"], found["session"])
+
+    def recover_broker(
+        self, role: str, run_id: str, packet: str, tools: hb.Tools
+    ) -> hpl.BrokerSession | None:
+        found = self._recall(run_id)
+        if found is None:
+            return None
+        run = hb.BrokerRun(**found["run"])
+        return hpl.BrokerSession(run, found["replies"], found["session"])
+
+    def recover_local(
+        self, role: str, run_id: str, messages: list[dict[str, str]]
+    ) -> dict[str, Any] | None:
+        found: dict[str, Any] | None = self._recall(run_id)
+        return found
+
+    def _where(self) -> tuple[str, int, str]:
+        assert self.pipeline is not None
+        attempt = self.pipeline.ledger.attempts[-1]
+        cell = self.pipeline.world.cell(attempt.cell_id)
+        return attempt.cell_id, attempt.number, cell.answerability
+
+    def _evidence(self) -> list[tuple[str, int]]:
+        _, _, answerability = self._where()
+        return {"complete": COMPLETE, "partial": PARTIAL, "none": NONE}[answerability]
+
+    def _enter(self, role: str, packet: str) -> tuple[str, int, str, bool]:
+        """Record the call, die if the scenario says so, and say whether it fails."""
+        cell, number, answerability = self._where()
+        self.calls.append((role, cell, number))
+        self.packets[(role, cell, number)] = packet
+        s = self.scenario
+        if s.kill == (cell, role):
+            os.kill(os.getpid(), signal.SIGKILL)
+        if s.crash == (cell, role):
+            s.crash = None
+            raise Crash(f"killed inside {role} of {cell}")
+        failing = s.technical.get(cell) == role and self.failed[(cell, role)] < s.technical_times
+        if failing:
+            self.failed[(cell, role)] += 1
+        return cell, number, answerability, failing
+
+    def _session(
+        self, role: str, sent: list[str], replies: list[str], failing: bool
+    ) -> dict[str, str]:
+        contaminate = failing and self.scenario.technical_kind == "contaminate"
+        reminder = CONTAMINATION if contaminate else ""
+        cell, _, _ = self._where()
+        identity = self.runtime["claude_runtime"]["effective"]
+        identity = {**identity, **self.scenario.model.get((cell, role), {})}
+        return session(sent, replies, reminder=reminder, workdir=self.workdir, identity=identity)
+
+    def headless(self, role: str, run_id: str, packet: str) -> hpl.Session:
+        cell, number, answerability, failing = self._enter(role, packet)
+        kind = self.scenario.technical_kind
+        if failing and kind in ("raise", "resource", "protocol"):
+            raise RuntimeError("the API answered 529 overloaded")
+        n = int(cell[1:]) * 10 + number
+        if role == "query_writer":
+            reply = (
+                f"en formal: What does the law require in situation {n}?\n"
+                f"en natural: What do I have to do in case {n}?\n"
+                f"es natural: Q{n}-es?"
+            )
+        else:
+            answer = self.scenario.override.get((cell, role))
+            if answer is None:
+                answer = self._reply(role, _ref_of(packet), packet, cell, number, answerability)
+            reply = json.dumps(answer)
+        if failing and kind == "malformed":
+            reply = "I would rather explain in prose."
+        result = hpl.Session(reply, self._session(role, [packet], [reply], failing))
+        self._spooled(role, run_id, "headless", {"reply": reply, "session": result.session})
+        return result
+
+    def _reply(
+        self, role: str, ref: str, packet: str, cell: str, number: int, answerability: str
+    ) -> Any:
+        s = self.scenario
+        n = int(cell[1:]) * 10 + number
+        if role == "concept_author":
+            fit = "the cell cannot hold it" if (cell, number) in s.unfit else "fits"
+            return {
+                "cell_id": ref,
+                "concept": "A firm asks a plain question.",
+                "facts": ["a firm"],
+                "atomicity": "one",
+                "figure_or_date": "no",
+                "fit": fit,
+            }
+        if role == "statement_writer":
+            return {
+                "proposal_id": ref,
+                "primary": (
+                    f"A small firm in situation {n} wonders whether a new rule {n} covers its "
+                    "service. Does it?"
+                ),
+                "primary_atomicity": "one",
+                "alternative": None,
+                "alternative_reason": None,
+            }
+        if role == "gatekeeper":
+            verdicts = s.gate.get(cell, [])
+            verdict = verdicts[number - 1] if number <= len(verdicts) else "independent"
+            return {
+                "proposal_id": ref,
+                "verdict": verdict,
+                "closest": None if verdict in ("independent", "uncertain") else s.closest,
+                "reason": "x",
+            }
+        if role == "gatekeeper_evidence":
+            return {"proposal_id": ref, "verdict": "independent", "closest": None, "reason": "x"}
+        if role == "judge_b":
+            grades = dict(self._evidence())
+            if cell in s.extra_grade:
+                grades[EXTRA_NODE] = s.extra_grade[cell]
+            nodes = _refs_in(packet, "CANDIDATES (document order)")
+            return {
+                "need_id": ref,
+                "grades": [
+                    {
+                        "node": n,
+                        "grade": grades[n],
+                        "ambiguous": False,
+                        "scope_basis": [n] if grades[n] == 0 else [],
+                        "reason": "B",
+                    }
+                    for n in nodes
+                ],
+                "answerability": answerability,
+                "answerability_reason": "B",
+                "missing": None if answerability == "complete" else "the corpus lacks it",
+            }
+        if role == "judge_d":
+            section = packet.split("ITEMS TO GRADE", 2)[-1]
+            items = [t.rstrip(":") for t in re.findall(r"^ITEM \d+: (\S+)", section, re.M)]
+            base: dict[str, Any] = {
+                "grade": 3,
+                "ambiguous": False,
+                "answerability": None,
+                "scope_basis": [],
+                "reason": "D",
+            }
+            return {
+                "need_id": ref,
+                "items": [{**base, **s.d_answer.get(cell, {}), "target": t} for t in items],
+            }
+        if role == "metadata_adjudicator":
+            kind = "direct" if answerability == "complete" else "partial_out_of_scope"
+            return {
+                "need_id": ref,
+                "type": kind,
+                "difficulty": "medium",
+                "drivers": {},
+                "reason": "x",
+            }
+        if role == "judge_c":
+            return {"need_id": ref, "items": []}
+        raise AssertionError(role)
+
+    def broker(self, role: str, run_id: str, packet: str, tools: hb.Tools) -> hpl.BrokerSession:
+        cell, number, answerability, failing = self._enter(role, packet)
+        assert self.pipeline is not None and self.pipeline.states[cell] == "judging"
+        kind = self.scenario.technical_kind
+        if failing and kind in ("raise", "malformed"):
+            raise RuntimeError("the stream-json process died")
+        evidence = list(self._evidence())
+        if role == "omission_searcher" and cell in self.scenario.extra_grade:
+            evidence.append((EXTRA_NODE, self.scenario.extra_grade[cell]))
+        ref = _ref_of(packet)
+        final: dict[str, Any] = {
+            "need_id": ref,
+            "candidates": [
+                {
+                    "node": n,
+                    "scope": [],
+                    "grade": g,
+                    "ambiguous": False,
+                    "scope_basis": [n] if g == 0 else [],
+                    "rationale": "A quotes the node",
+                }
+                for n, g in evidence
+            ],
+            "answerability": answerability,
+            "answerability_reason": "A",
+            "gap_note": None if answerability == "complete" else "the corpus lacks the element",
+            "drivers": {},
+            "problem": None,
+        }
+        ask = json.dumps({"request": {"op": "nodes", "args": {"refs": [evidence[0][0]]}}})
+        if failing and kind == "resource":
+            replies = [ask] * 33 + [json.dumps({"final": final})]
+        elif failing and kind == "protocol":
+            replies = ["not a request"] * 3
+        else:
+            replies = [ask, ask, json.dumps({"final": final})]
+
+        class Judge:
+            received: list[str] = []
+
+            def send(self, text: str) -> str:
+                self.received.append(text)
+                return replies[len(self.received) - 1]
+
+        run = hb.run_judge_a(Judge(), packet, tools)
+        used = replies[: len(run.sent)]
+        result = hpl.BrokerSession(run, used, self._session(role, list(run.sent), used, failing))
+        value = {"run": dataclasses.asdict(run), "replies": used, "session": result.session}
+        self._spooled(role, run_id, "broker", value)
+        return result
+
+    def local(self, role: str, run_id: str, messages: list[dict[str, str]]) -> dict[str, Any]:
+        cell, number, answerability, failing = self._enter(role, messages[0]["content"])
+        if failing:
+            raise RuntimeError("MLX ran out of memory")
+        grades = dict(self._evidence())
+        if cell in self.scenario.extra_grade:
+            grades[EXTRA_NODE] = self.scenario.extra_grade[cell]
+        if cell in self.scenario.qwen_crosses:
+            grades = {n: (0 if g >= 2 else g) for n, g in grades.items()}
+        nodes = _refs_in(messages[0]["content"], "CANDIDATES (document order)")
+        answer: dict[str, Any] = {
+            "need_id": "x",
+            "grades": [{"node": n, "grade": grades[n], "ambiguous": False} for n in nodes],
+            "answerability": answerability,
+        }
+        bad = self.scenario.qwen_bad.get(cell)
+        if bad and self.failed[(cell, "qwen_bad")] < self.scenario.qwen_bad_times:
+            self.failed[(cell, "qwen_bad")] += 1
+            answer = broken_diagnostic(answer, bad)
+        digest = hashlib.sha256(json.dumps(messages, ensure_ascii=False).encode()).hexdigest()
+        runtime = self.runtime["mlx_runtime"]
+        changed = self.scenario.local_runtime.get(cell)
+        if changed:
+            runtime = {**runtime, **changed}
+        record = {
+            "messages": messages,
+            "prompt_sha256": digest,
+            "output": json.dumps(answer),
+            "versions": hrt.generator_versions(runtime),
+            "runtime": runtime,
+        }
+        self._spooled(role, run_id, "local", record)
+        return record
+
+
+def broken_diagnostic(answer: dict[str, Any], how: str) -> dict[str, Any]:
+    """A diagnostic answer broken one way, from a complete one."""
+    grades = [dict(g) for g in answer["grades"]]
+    broken = {**answer, "grades": grades}
+    if how == "empty":
+        broken["grades"] = []
+    elif how == "subset":
+        broken["grades"] = grades[:-1]
+    elif how == "duplicate":
+        broken["grades"] = [*grades, dict(grades[0])]
+    elif how == "unknown":
+        broken["grades"] = [*grades, {"node": "MiCA:1", "grade": 0, "ambiguous": False}]
+    elif how == "invalid_grade":
+        grades[0]["grade"] = 7
+    elif how == "missing_answerability":
+        del broken["answerability"]
+    elif how == "invalid_answerability":
+        broken["answerability"] = "mostly"
+    elif how == "missing_ambiguous":
+        del grades[0]["ambiguous"]
+    else:
+        raise AssertionError(how)
+    return broken
+
+
+class Backups:
+    """A stand-in for the verified backup of a checkpoint or the freeze: it records the label,
+    or fails when told to."""
+
+    def __init__(self) -> None:
+        self.labels: list[str] = []
+        self.fail = False
+
+    def __call__(self, label: str) -> dict[str, Any]:
+        if self.fail:
+            raise RuntimeError("the bundle did not verify")
+        self.labels.append(label)
+        return {"bundle": f"fake-{len(self.labels)}", "label": label}
+
+
+def load_base() -> dict[str, Any]:
+    """The real grid, corpus, DEV and fixtures the construction reads: no model, no TEST."""
+    dev = bm.load_benchmark(bm.DEV_DIR)
+    docs = bm.load_corpus()
+    grid = ho.build_grid(dev, ho.load_areas())
+    return {
+        "dev": dev,
+        "fixtures": bm.load_benchmark(bm.FIXTURES_DIR),
+        "grid": grid,
+        "corpus": hp.Corpus(docs),
+        "tools": CorpusTools(docs),
+        "texts": bm.node_texts(docs),
+        "excluded": px.load_psd2_exclusions(px.PSD2_EXCLUSIONS_PATH).excluded(),
+        "terms": hi.forbidden_terms(None, None, []),
+    }
+
+
+def world(base: dict[str, Any], identities: dict[str, str] | None = None) -> hpl.World:
+    return hpl.World(
+        grid=base["grid"],
+        order=ho.cell_order(base["grid"]),
+        omission=ho.omission_cells(base["grid"]),
+        dev=base["dev"],
+        fixtures=base["fixtures"],
+        corpus=base["corpus"],
+        tools=base["tools"],
+        texts=base["texts"],
+        excluded_psd2=base["excluded"],
+        terms=base["terms"],
+        frozen_templates=hr.template_hashes(),
+        pin=PIN,
+        tmp_root="/tmp/",
+        salt=b"test-salt",
+        identities=dict(identities or IDENTITIES),
+        contract_check=lambda: None,
+        runtime_check=lambda: None,
+        runtime=FAKE_RUNTIME,
+    )
+
+
+def raw_dir(directory: Path) -> Path:
+    return directory.with_name(directory.name + "-raw")
+
+
+def make(
+    base: dict[str, Any],
+    directory: Path,
+    scenario: Scenario | None = None,
+    backup: Any = None,
+) -> tuple[hpl.Pipeline, FakeExecutor]:
+    """A new construction in directory, with its state created there."""
+    w = world(base)
+    store = hs.Store.create(
+        directory, raw_dir(directory), w.identities, w.order, w.omission, runtime=w.runtime
+    )
+    return attach(w, store, scenario, backup)
+
+
+def reopen(
+    base: dict[str, Any],
+    directory: Path,
+    scenario: Scenario | None = None,
+    backup: Any = None,
+    **changes: Any,
+) -> tuple[hpl.Pipeline, FakeExecutor]:
+    """A new process on the same directory: nothing in memory, the state opened from disk."""
+    w = dataclasses.replace(world(base), **changes)
+    return attach(w, hs.Store.open(directory, raw_dir(directory)), scenario, backup)
+
+
+def attach(
+    w: hpl.World, store: hs.Store, scenario: Scenario | None, backup: Any
+) -> tuple[hpl.Pipeline, FakeExecutor]:
+    executor = FakeExecutor(scenario, store.raw_dir / "fake-spool")
+    pipeline = hpl.Pipeline(w, executor, store, backup if backup is not None else Backups())
+    executor.pipeline = pipeline
+    return pipeline, executor

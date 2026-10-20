@@ -77,6 +77,7 @@ markers = [
     "evaluator: needs ir_measures (requirements-dev.lock.txt); skipped only where FUNDAMENTO_EVALUATOR=unsupported",
     "embedding_model: needs torch, transformers and the embedding model (requirements-embed.lock.txt); skipped only where FUNDAMENTO_EMBEDDING_MODEL=unsupported",
     "postgres: needs PostgreSQL with pgvector (compose.yaml) through the libpq variables; skipped only where FUNDAMENTO_POSTGRES=unsupported",
+    "requires_private_holdout_environment: checks the real private TEST area, data/benchmark/test/ (D-054: never versioned); skipped where it does not exist",
 ]
 
 # ---------------------------------------------------------------------------

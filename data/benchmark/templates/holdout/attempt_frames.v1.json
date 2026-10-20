@@ -1,0 +1,9 @@
+{
+ "schema": "holdout-attempt-frames.v1",
+ "purpose": "One frame per blind attempt of a cell (D-054). A later attempt gets the next frame in a new context, never the reason an earlier one was dropped. The frames vary only the moment of the situation, so that a blind author does not write the same concept again; they keep the cell, the taxonomy and the register.",
+ "frames": {
+  "A": "Choose the actor and the moment of the situation freely within the cell.",
+  "B": "Place the situation when something is about to begin: an actor planning, preparing, applying for, setting up or launching an activity, a product, a service or a contract. If no realistic question of this cell arises at that moment, place it at any moment.",
+  "C": "Place the situation while something is already under way: an actor dealing with an event, a change, a problem or a decision in an activity, a product, a service or a contract that is already running. If no realistic question of this cell arises at that moment, place it at any moment."
+ }
+}

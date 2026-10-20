@@ -26,6 +26,10 @@ RAW_DIR = Path(__file__).parent.parent / "data" / "raw"
 # data/manifest.json IS versioned (unlike data/raw/), so the manifest contract
 # tests also run in a clean checkout.
 MANIFEST_PATH = Path(__file__).parent.parent / "data" / "manifest.json"
+# The private TEST area (D-054) is never versioned either. The tests marked
+# "requires_private_holdout_environment" check the real installation in it, and are
+# skipped where it does not exist; every other holdout test makes a synthetic one.
+PRIVATE_HOLDOUT_DIR = Path(__file__).parent.parent / "data" / "benchmark" / "test"
 
 
 def fixture_path(name: str) -> str:
@@ -100,6 +104,14 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "postgres" in item.keywords:
                 item.add_marker(skip_postgres)
+    if not (PRIVATE_HOLDOUT_DIR / "provenance").is_dir():
+        skip_private = pytest.mark.skip(
+            reason="data/benchmark/test/ is missing in this checkout (D-054: the private "
+            "TEST area is not versioned)"
+        )
+        for item in items:
+            if "requires_private_holdout_environment" in item.keywords:
+                item.add_marker(skip_private)
     if RAW_DIR.exists() and any(RAW_DIR.iterdir()):
         return
     skip = pytest.mark.skip(reason="data/raw/ is missing in this checkout (D-002: not versioned)")

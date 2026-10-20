@@ -39,6 +39,11 @@ data/reference/
 # redistributed, and everything derived from it (adapted files, vectors, runs). Its results,
 # numbers and ids without dataset text, ARE versioned, in data/results/external/.
 data/external/
+# The internal TEST benchmark (S3, D-054): private, like the future TEST D-019 planned.
+# It has its own local git history inside the directory, backed up by bundles outside
+# the repository. Only its commitment, data/benchmark/test-commitment.json (hashes,
+# counts and distributions, no text), is published, before S4 runs any system.
+data/benchmark/test/
 
 # Local Claude Code config: it belongs to this machine, not to the project.
 # .claude/settings.json (without "local") IS shared and can be versioned.

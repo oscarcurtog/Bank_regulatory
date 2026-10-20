@@ -1,0 +1,787 @@
+{
+ "schema": "holdout-pre-authoring-contract.v1",
+ "status": "frozen before authoring; only derived TEST properties are added at the freeze",
+ "construction": {
+  "grid_sha256": "c88dbef908947c0bcffb18b5b00aab130aabf007f184e81cc7594a34c680b447",
+  "order": {
+   "algorithm": "holdout-order.v1: the cells sorted by the hex SHA-256 of '<seed>:<cell_id>', ascending; no other input",
+   "seed": 20261020,
+   "sha256": "17fec94e9456427c5f654a837f2b83de1deb94e29acd15a5540ca0eb49c0d8a9"
+  },
+  "omission_audit": {
+   "algorithm": "holdout-omission.v1: strata (planned type, planned acts); each gets round(12 x its share) by largest remainder, ties by the hex SHA-256 of '<seed>:<stratum>'; within a stratum the cells with the lowest hex SHA-256 of '<seed>:<cell_id>'",
+   "seed": 20261021,
+   "sha256": "f0d3279e86f43f4db3808e3c59793631744cb356d5f6b6b10b878bbcfce3da4e",
+   "cells": 12
+  },
+  "role_contracts_sha256": "147e71068548c8b6660003b1b8a9204da159b487b708473ee981120d9552483b",
+  "templates_sha256": {
+   "attempt_frames.v2": "9b1bc7fd6eebd393b8ae1d164fca5215dcfa28249d04ab2fb35373fcd8d56411",
+   "concept_author.v1": "6a4ca085ed7067153ac7d55504c51a98820df66f4e9f5d16095f8409694c1eca",
+   "judge_a.v2": "0f9557e1d72ae18940d68de55c3b58f518e1c1d46b2abb05aa02e60bbdbe7d00",
+   "judge_b.v1": "5614761149c2abdfc1eac54e5649055d991fde1c5c3e9435c9f5daca77e5180d",
+   "judge_c.v1": "54b8f341cc0b0adf00cca44a46cbfedaa89f3370e6b0fccae9718e64dacdec66",
+   "judge_d.v1": "a15039ca76ecf7b8ae19238defd962d5fabec74a538262694715c7e9de784107",
+   "metadata_adjudicator.v1": "f713c3333a7a3645dc7f16d40badef3fddf3c1dce12f152fb0768ddf65a28574",
+   "overlap_gate.v1": "d17a342aaa8bfcd22321494daf425eee59d6e81efdd2dd9b789570cec1dd4500",
+   "overlap_gate_evidence.v1": "c663bd2c7487e890dd45a13b9922869231b9e78bcf0e1236a14027acb1fb4bb8",
+   "query_variants.v1": "466bcfe8b10993f59c8ce16f0495cb145324d9196bfd197935e297ee807a4a4f",
+   "statement_writer.v1": "0502f1f131a43a9c664d5403d82b0b22b218abe61daab0d94cab68ae2b9455a8"
+  },
+  "broker": {
+   "escalation_at": 16,
+   "ceiling": 32,
+   "max_payload_characters": 8000,
+   "violations_forgiven": 2
+  },
+  "attempts_per_cell": 3,
+  "min_evaluable": 50,
+  "technical_executions_per_stage": 3,
+  "resume": "same cell, need, stage and frozen inputs; admitted outputs never run again",
+  "state_schema": "holdout-state.v1",
+  "operational_checkpoints": [
+   20,
+   40,
+   60
+  ],
+  "statement_review": "code and blind roles only; no person edits or approves a statement",
+  "code_sha256": {
+   "ingest/corpus_tools.py": "1b6c4c89497c244c707bb02c1c662342a1b526d0ce85bd3e7be2a192eb2bf718",
+   "ingest/holdout.py": "57af5d0b70da193707f3bd1f84bfee87194eacda18df15949935318c9900f005",
+   "ingest/holdout_broker.py": "a3ada497a2e8be0b8c255fe9ce718a67f3a072a209db128abbabdd5048d36937",
+   "ingest/holdout_checks.py": "4bcbe897800e1ad98a1327fe6ab7dca578417647fc6ac858f17a7297c6ba15ec",
+   "ingest/holdout_contract.py": "4c337b27c24690ccff51de3c689659d4178e828f9cdc127f6b76877e9b59db3b",
+   "ingest/holdout_executor.py": "aeeabb916eb0ecf0995644406fe51a2e8242f7e9161fa2bb5493812aae9151f7",
+   "ingest/holdout_isolation.py": "2e5c69b6566e5d7cd4229dc5ad3b80fa736fded67c6343a6a7593240b58265be",
+   "ingest/holdout_judging.py": "ce50219447ff1b01c82c09ac05eab90507877a2ae5f10b794e6c7b596e975ac4",
+   "ingest/holdout_launcher.py": "b0a69a1bb96f93d6e00326374da7d29e88d8494a832e15ed4935c97a7fb5ecc7",
+   "ingest/holdout_ledger.py": "3b181da602501b678e287703ed9f447c262836ee3a188d6e29dbc83348cdf884",
+   "ingest/holdout_packets.py": "d6a96dda3133d89d2fa3b81d16f112081c101c6a555dff9cca635db1bea706ee",
+   "ingest/holdout_pipeline.py": "034dcd1d6eeee20630ebfe67b36108a6438d8700e7f6b3c4ac0774766d6fe092",
+   "ingest/holdout_roles.py": "4d9ea88777d63716319bd6db5faaa34341a1b0a2c4204bb252cf582877ce9c5b",
+   "ingest/holdout_runtime.py": "bb41b3c9b5c5029eecc578110700b2fb85004d4263df0e4f1c54e94dc85b2b51",
+   "ingest/holdout_spool.py": "eed1aa64725f381cde2aaafde2888147fae8b2a1fb44c5443dfc86c0a7ff4a77",
+   "ingest/holdout_state.py": "9b62bb9574411e71b203cce184867f81d3e1afc654f9bf0ff80eef0da8120831",
+   "ingest/psd2_exclusions.py": "9900c494238c4df56f9d1e82d6ca62b920a3d9cf701374c9468b057ed8552065",
+   "scripts/evidence_tools.py": "b1ae9a1b1855544324e9d9095be9fb4e19eb4a4c32ee51a428f3d2daa95155ef",
+   "scripts/holdout.py": "6066d7d573de0c50b891b8535a0e2e07c8f227d09d97b29f69a600ff254c24f5"
+  },
+  "inputs_sha256": {
+   "data/benchmark/PROTOCOL.md": "79cafdda538cf9cfec682817ac77bf75692f562545ad5b21f38d8394df0db1d0",
+   "config/retrieval/qwen3-8b-mlx.json": "92836ad88b8529027775f101b3c1e1bf1c47db46434199de271a582e82ac02a4",
+   "data/benchmark/dev/manifest.json": "c845b684035dac91dec399604e6623a60c67a9564afba975f177b5d6482fb917",
+   "data/benchmark/dev/needs.jsonl": "1c22c80dfb1b1d3092634b795bee5e01e0fca2bc07582d4ea1854d91c07cb791",
+   "data/benchmark/dev/queries.jsonl": "8c1d859430139f3d40354fe0866c9e11d9c05e6458aba27969f1a9077d55f2c7",
+   "data/benchmark/dev/qrels.jsonl": "3322ff2abe714eee11cfd4209ebe7d059a1605be49bbbc24124e205e443c9b90",
+   "data/benchmark/fixtures/manifest.json": "f855583f61a20e591eaa8e1d3fc0c68c87abc3322eef263566b2e3133f51b0de",
+   "data/benchmark/fixtures/needs.jsonl": "ad04a1a70d7f5be43daf325cb8e79031ead02a978ca37f14d133fb3fdb6cfeeb",
+   "data/benchmark/fixtures/queries.jsonl": "27d7509a792f83ae6586c43b9ecb6541d15990075fe5c4c845319aa7f8d8196b",
+   "data/benchmark/fixtures/qrels.jsonl": "f2e485adbf8ca2f76c33de4b7ceec5dea7a237a5a72302a9434bcbd516728941"
+  },
+  "template_files": {
+   "attempt_frames.v2": "data/benchmark/templates/holdout/attempt_frames.v2.json",
+   "concept_author.v1": "data/benchmark/templates/holdout/concept_author.v1.md",
+   "judge_a.v2": "data/benchmark/templates/holdout/judge_a.v2.md",
+   "judge_b.v1": "data/benchmark/templates/holdout/judge_b.v1.md",
+   "judge_c.v1": "data/benchmark/templates/holdout/judge_c.v1.md",
+   "judge_d.v1": "data/benchmark/templates/holdout/judge_d.v1.md",
+   "metadata_adjudicator.v1": "data/benchmark/templates/holdout/metadata_adjudicator.v1.md",
+   "overlap_gate.v1": "data/benchmark/templates/holdout/overlap_gate.v1.md",
+   "overlap_gate_evidence.v1": "data/benchmark/templates/holdout/overlap_gate_evidence.v1.md",
+   "query_variants.v1": "data/benchmark/templates/query_variants.v1.md",
+   "statement_writer.v1": "data/benchmark/templates/holdout/statement_writer.v1.md"
+  },
+  "checks": {
+   "checks": {
+    "answer_fields": {
+     "name": "answer_fields",
+     "kind": "technical_integrity",
+     "reads": "model_output",
+     "stages": [
+      "concept",
+      "statement",
+      "overlap_gate",
+      "evidence_gate"
+     ],
+     "consequence": "malformed_session",
+     "rule": "the fields the role's template asks for, a statement not empty, a verdict from the gatekeeper's list naming only a need it was shown",
+     "retriable": true
+    },
+    "broker_ceiling": {
+     "name": "broker_ceiling",
+     "kind": "technical_integrity",
+     "reads": "model_output",
+     "stages": [
+      "judge_a",
+      "omission_search"
+     ],
+     "consequence": "resource",
+     "rule": "32 requests are the technical ceiling (ingest/holdout_broker.py, Codex Gate 2 P1.3)",
+     "retriable": true
+    },
+    "broker_protocol": {
+     "name": "broker_protocol",
+     "kind": "technical_integrity",
+     "reads": "model_output",
+     "stages": [
+      "judge_a",
+      "omission_search"
+     ],
+     "consequence": "protocol",
+     "rule": "the third invalid reply ends the run (ingest/holdout_broker.py, D-054)",
+     "retriable": true
+    },
+    "dataset_records": {
+     "name": "dataset_records",
+     "kind": "technical_integrity",
+     "reads": "assembled_records",
+     "stages": [
+      "validators"
+     ],
+     "consequence": "stop",
+     "rule": "the benchmark's own validators accept the need with every ready one (ingest/benchmark.py dataset_problems)",
+     "retriable": false
+    },
+    "evidence_overlap_stratum": {
+     "name": "evidence_overlap_stratum",
+     "kind": "diagnostic_only",
+     "reads": "assembled_records",
+     "stages": [
+      "evidence_gate"
+     ],
+     "consequence": "recorded",
+     "rule": "shared grade-3 evidence with DEV is a stratum for S4, not an exclusion; only the evidence gatekeeper's verdict decides (D-054)",
+     "retriable": false
+    },
+    "final_qrels_unambiguous": {
+     "name": "final_qrels_unambiguous",
+     "kind": "methodological_eligibility",
+     "reads": "assembled_records",
+     "stages": [
+      "adjudication"
+     ],
+     "consequence": "ambiguous",
+     "rule": "PROTOCOL.md v1.4 section 4: an ambiguous need leaves TEST and is replaced blind",
+     "retriable": false
+    },
+    "judge_answer_complete": {
+     "name": "judge_answer_complete",
+     "kind": "technical_integrity",
+     "reads": "model_output",
+     "stages": [
+      "judge_a",
+      "omission_search",
+      "judge_b",
+      "judge_c",
+      "diagnostic",
+      "judge_d"
+     ],
+     "consequence": "malformed_session",
+     "rule": "every candidate graded, once, and only the candidates, and every item answered, by the protocol's labels (ingest/holdout_judging.py judge_a_problems, disagreements, diagnostic_problems, judge_d_outcome)",
+     "retriable": true
+    },
+    "material_discrepancy": {
+     "name": "material_discrepancy",
+     "kind": "diagnostic_only",
+     "reads": "model_output",
+     "stages": [
+      "diagnostic"
+     ],
+     "consequence": "recorded",
+     "rule": "Qwen3-8B has no vote: a material discrepancy only sends the item to judge D (D-054 decision 7)",
+     "retriable": false
+    },
+    "metadata_answer": {
+     "name": "metadata_answer",
+     "kind": "technical_integrity",
+     "reads": "model_output",
+     "stages": [
+      "metadata"
+     ],
+     "consequence": "malformed_session",
+     "rule": "a type, difficulty and drivers from the rubric (ingest/holdout_judging.py final_metadata)",
+     "retriable": true
+    },
+    "model_identity": {
+     "name": "model_identity",
+     "kind": "technical_integrity",
+     "reads": "model_output",
+     "stages": [
+      "concept",
+      "statement",
+      "overlap_gate",
+      "query_formulation",
+      "judge_a",
+      "omission_search",
+      "judge_b",
+      "judge_c",
+      "judge_d",
+      "metadata",
+      "evidence_gate"
+     ],
+     "consequence": "runtime_identity",
+     "rule": "the effective model the authenticated runtime reports in the session is, exactly, the one frozen from Gate 1 (ingest/holdout_runtime.py claude_problems)",
+     "retriable": true
+    },
+    "plan_deviation": {
+     "name": "plan_deviation",
+     "kind": "diagnostic_only",
+     "reads": "assembled_records",
+     "stages": [
+      "ready"
+     ],
+     "consequence": "recorded",
+     "rule": "the grid is a target, not a quota: departures are recorded (D-054 decision 8)",
+     "retriable": false
+    },
+    "qrel_texts": {
+     "name": "qrel_texts",
+     "kind": "technical_integrity",
+     "reads": "assembled_records",
+     "stages": [
+      "validators"
+     ],
+     "consequence": "stop",
+     "rule": "every qrel names a node of the corpus with its text (ingest/benchmark.py qrel_problems)",
+     "retriable": false
+    },
+    "query_formulations": {
+     "name": "query_formulations",
+     "kind": "technical_integrity",
+     "reads": "model_output",
+     "stages": [
+      "query_formulation"
+     ],
+     "consequence": "malformed_session",
+     "rule": "query_variants.v1: exactly the three formulations, one per line",
+     "retriable": true
+    },
+    "reply_is_json": {
+     "name": "reply_is_json",
+     "kind": "technical_integrity",
+     "reads": "model_output",
+     "stages": [
+      "concept",
+      "statement",
+      "overlap_gate",
+      "omission_search",
+      "judge_b",
+      "judge_c",
+      "diagnostic",
+      "judge_d",
+      "metadata",
+      "evidence_gate"
+     ],
+     "consequence": "malformed_session",
+     "rule": "every packet asks for one JSON object (the role templates)",
+     "retriable": true
+    },
+    "role_audit": {
+     "name": "role_audit",
+     "kind": "technical_integrity",
+     "reads": "model_output",
+     "stages": [
+      "concept",
+      "statement",
+      "overlap_gate",
+      "query_formulation",
+      "judge_a",
+      "omission_search",
+      "judge_b",
+      "judge_c",
+      "diagnostic",
+      "judge_d",
+      "metadata",
+      "evidence_gate"
+     ],
+     "consequence": "isolation",
+     "rule": "each run against its role contract: authorized input, orchestrator messages, runtime context (ingest/holdout_roles.py, Codex Gate 2 P1.1)",
+     "retriable": true
+    },
+    "runtime_identity": {
+     "name": "runtime_identity",
+     "kind": "technical_integrity",
+     "reads": "model_output",
+     "stages": [
+      "diagnostic"
+     ],
+     "consequence": "runtime_identity",
+     "rule": "the diagnostic was produced under the frozen MLX runtime, recorded in its spool before the run and in the output itself (ingest/holdout_runtime.py local_problems)",
+     "retriable": true
+    },
+    "state_integrity": {
+     "name": "state_integrity",
+     "kind": "technical_integrity",
+     "reads": "state",
+     "stages": [
+      "start",
+      "resume",
+      "checkpoint",
+      "freeze"
+     ],
+     "consequence": "stop",
+     "rule": "the durable state verifies and equals what the replay rebuilds (ingest/holdout_state.py, D-055)",
+     "retriable": false
+    },
+    "statement_cites_no_provision": {
+     "name": "statement_cites_no_provision",
+     "kind": "methodological_eligibility",
+     "reads": "model_output",
+     "stages": [
+      "statement_validation"
+     ],
+     "consequence": "statement_invalid",
+     "rule": "PROTOCOL.md step 1: a statement names no article, paragraph, point, structural unit, node path or CELEX (ingest/benchmark.py render_query_prompt)",
+     "retriable": false
+    },
+    "statement_no_dev_wording": {
+     "name": "statement_no_dev_wording",
+     "kind": "methodological_eligibility",
+     "reads": "model_output",
+     "stages": [
+      "statement_validation"
+     ],
+     "consequence": "statement_invalid",
+     "rule": "D-054: no legal wording and no run of eight words of DEV or the fixtures (ingest/holdout_packets.py author_leaks)",
+     "retriable": false
+    }
+   },
+   "role_verdicts": [
+    {
+     "role": "concept_author",
+     "verdict": "fit is not 'fits'",
+     "outcome": "concept_unfit",
+     "rule": "concept_author.v1"
+    },
+    {
+     "role": "gatekeeper",
+     "verdict": "paraphrase, same_legal_question, same_rule_superficial_change or uncertain",
+     "outcome": "overlap_*",
+     "rule": "overlap_gate.v1 and D-054 decision 2"
+    },
+    {
+     "role": "gatekeeper_evidence",
+     "verdict": "paraphrase, same_legal_question, same_rule_superficial_change or uncertain",
+     "outcome": "overlap_*",
+     "rule": "overlap_gate_evidence.v1"
+    },
+    {
+     "role": "judge_a",
+     "verdict": "a problem with the need",
+     "outcome": "judge_problem",
+     "rule": "judge_a.v2"
+    },
+    {
+     "role": "judge_d",
+     "verdict": "does not hold the final label, or finds the item ambiguous",
+     "outcome": "adjudication_uncertain",
+     "rule": "judge_d.v1 and D-054 decision 7"
+    }
+   ],
+   "stop_rules": [
+    "an omission found by the second search adjudicated grade >= 1 (Codex Gate 2 P1.4)",
+    "fewer than 50 evaluable needs still reachable (D-054 decision 3)",
+    "a problem found at an operational checkpoint (D-055)",
+    "a technical stage failed three executions: pending_technical_unresolved (D-055)"
+   ]
+  },
+  "claude_runtime": {
+   "requested_model": "claude-opus-5-5",
+   "binary": {
+    "version": "2.1.301 (Claude Code)",
+    "sha256": "1f04c69e1c24e4d0a716a863af0aad8fc64d49a499334c29701f073700276b99"
+   },
+   "effective": {
+    "init": {
+     "model": "claude-opus-5-5",
+     "fast_mode_state": "off",
+     "per_turn_effort_active": true,
+     "permissionMode": "default",
+     "output_style": "default",
+     "apiKeySource": "none"
+    },
+    "assistant_model": "claude-opus-5-5",
+    "model_usage": {
+     "claude-opus-5-5": {
+      "canonicalModel": "claude-opus-5-5",
+      "provider": "firstParty",
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000
+     }
+    },
+    "model_attachment": {
+     "modelId": "claude-opus-5-5",
+     "marketingName": "Opus 5.5",
+     "knowledgeCutoff": "June 2026"
+    }
+   },
+   "policy": {
+    "command": [
+     "<pinned binary>",
+     "-p",
+     "--safe-mode",
+     "--tools",
+     "",
+     "--model",
+     "<requested model>",
+     "--output-format",
+     "stream-json",
+     "--verbose"
+    ],
+    "broker_flags": [
+     "--input-format",
+     "stream-json"
+    ],
+    "environment": {
+     "inherited": [
+      "HOME",
+      "USER"
+     ],
+     "set": {
+      "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
+      "CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1"
+     },
+     "path": "/usr/bin:/bin:/usr/sbin:/sbin",
+     "refused": [
+      "OLDPWD",
+      "PWD",
+      "PYTHONPATH",
+      "VIRTUAL_ENV"
+     ]
+    },
+    "plugins": [
+     {
+      "name": "cc-plugin-agents-md",
+      "path": "builtin",
+      "source": "cc-plugin-agents-md@builtin"
+     },
+     {
+      "name": "cc-plugin-telemetry",
+      "path": "builtin",
+      "source": "cc-plugin-telemetry@builtin"
+     },
+     {
+      "name": "cc-plugin-plugin-authoring",
+      "path": "builtin",
+      "source": "cc-plugin-plugin-authoring@builtin"
+     }
+    ]
+   }
+  },
+  "mlx_runtime": {
+   "python": {
+    "version": "3.12.14",
+    "implementation": "CPython",
+    "build": "3.12.14 (main, Sep  1 2026, 14:09:38) [Clang 22.1.3 ]"
+   },
+   "machine": "arm64",
+   "packages": {
+    "Jinja2": "3.1.6",
+    "MarkupSafe": "3.0.4",
+    "huggingface_hub": "2.2.0",
+    "mlx": "0.32.3",
+    "mlx-lm": "0.32.0",
+    "mlx-metal": "0.32.3",
+    "tokenizers": "0.23.3",
+    "transformers": "5.19.0"
+   },
+   "host": {
+    "macos_product_version": "27.0.1",
+    "macos_build_version": "26A434",
+    "darwin_release": "27.0.0",
+    "hardware_model": "MacBookAir10,1",
+    "architecture": "arm64"
+   },
+   "model": {
+    "config_file": "config/retrieval/qwen3-8b-mlx.json",
+    "model_id": "mlx-community/Qwen3-8B-4bit",
+    "revision": "545dc4251c05440727734bcd94334791f6ab0192",
+    "files": {
+     "added_tokens.json": "b54f9135e44c1e81047e8d05cb027af8bc039eed",
+     "config.json": "6f2a32b76648381bea25bdc81fad0e7160f86ac5",
+     "merges.txt": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+     "model.safetensors": "f2d29621aab300336ad645567ff38c42aac755513006ef4e8a579cf7ef5256d8",
+     "model.safetensors.index.json": "4af62897c345f277e7b17aab48230d7ba119d87e",
+     "special_tokens_map.json": "ac23c0aaa2434523c494330aeb79c58395378103",
+     "tokenizer.json": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+     "tokenizer_config.json": "7345216a0785dc7086e8c245b2a9d3896ce2b756",
+     "vocab.json": "4783fe10ac3adce15ac8f358ef5462739852c569"
+    }
+   },
+   "generation": {
+    "max_new_tokens": 2048,
+    "decoding": "greedy",
+    "chat_template_kwargs": {
+     "enable_thinking": false
+    },
+    "max_prompt_tokens": 16384
+   }
+  }
+ },
+ "code": {
+  "built_on_commit": "9a3ef381d211aaae3db5861df91b84dbe899e920",
+  "e_result_commit": "7636908bf57c7fbd95cc46b180c9f2e59a41b3f8",
+  "files_sha256": {
+   "ingest/benchmark.py": "09896f2ff6f2ad8436d7b1e5e5aa05036b15dfed65ab77ba525222da1deb840c",
+   "ingest/chunks.py": "ee4bdb8d2e780ff12e2024f207b4a28790982b7dabe3acc6a4e4944b3646019c",
+   "ingest/decomposition.py": "5bb0a1069ad7e78f3ad7ee3bc438684b31e658fd3be5934264b1cb8cfad1296a",
+   "ingest/dense.py": "450b3aebf94c8e1e6f08ba98206748fbb4dbfb5382fcd9ba49563fa028a12ec8",
+   "ingest/download.py": "e0dd207f277290c8da61976cdc1727f3c64fc60cb95ee03456cc50189faa674c",
+   "ingest/embeddings.py": "749d285b68a5d013ed3c6de58a2df37302a8f9600e8698173b249bfce42849e6",
+   "ingest/encoder.py": "92f6127da8e2ff99d2514bc9852a5407c5dfe22b241533c2a42c7c31a3dec881",
+   "ingest/evaluation.py": "bc951a3623e80f81b9589dd5d82cca5169e6794ee93e66bbbf244e1edc43b6bf",
+   "ingest/hierarchy.py": "933241b4daf0f8ac55e2538ad6b4b8e6d3ce896a28ad735260d22eeba9ab45f1",
+   "ingest/ir_metrics.py": "a1b666387c48ce27e5113600c7a2fa11fe8c8f2e8a7db1376203a2bc59ceb949",
+   "ingest/lexical.py": "e82813f8ebbc4794b9e22a3a8a002d56f7fbad181ad532980d5bc3044371f64d",
+   "ingest/necessity.py": "e520713d68ffe23b985fcc5d09a730a462bf39e232b8d839a1237dede5400814",
+   "ingest/processed.py": "d9b4af950250187be9ff8f45ea32af6e31c5c482c08ad3046e60b3e7c79192bd",
+   "ingest/reranker.py": "c701948c2546d960930903b566f1457d2a908d5c55a9db8c08adcfe009ff1c62",
+   "ingest/requirement_rerank.py": "3237458b68c22c57ccb2890029b28715efba73f88d06034445ba7813609562e8",
+   "ingest/retrieval.py": "d7b4479b070a5b19073e4825c072a47dd1f2564d4e0e4a402331444b519d1c27",
+   "ingest/run_report.py": "0ed87c6800725b3f551e2d5ca407c49f53805c85e662caa173ea6ecd2ff9b158",
+   "scripts/bm25_baseline.py": "0aa8de587361718730f50e819c0ea036f489486e2a0467adce04b403f96bf22a",
+   "scripts/compare_embedding_runs.py": "2f5a1450061243b819763fd998a8b90df0afd1e2c80f59e57028b55e38811d90",
+   "scripts/decomposition.py": "fe59f92e81ab78bc808b4d4d03abadd9863bd46af245ff190da144f28e607e3b",
+   "scripts/embed_baseline.py": "9fd95c75e1cc3a924e44d7c5e836f31d26f90e0c5c19983c34e7d03ee4d4926b",
+   "scripts/mlx_generate.py": "41a462498ecd1fe57cd1a5306a7bc9e5cc778c362e4383349f92738ae2066dbb",
+   "scripts/report_embedding_run.py": "1f8a1aad4c763c7e6fd2c199335aeb33dbbf0a3568bfc7392c297f0a98999ce0",
+   "scripts/requirement_reranking.py": "3c29009726749ca9d558ecc5ed925a554dcb5f07918e52a91e4b5deeb74f5414"
+  },
+  "changes_since_e_result": {
+   "ingest/decomposition.py": "adds assemble_scored (G1, iteration 5); assemble, E's rule, unchanged",
+   "ingest/ir_metrics.py": "adds binary_scores (T4); the graded measures unchanged",
+   "ingest/lexical.py": "adds the Italian analyzer of T4; the English and Porter branch is equivalent, and tests/unit/test_lexical.py keeps the DEV config hash e086bdb4"
+  },
+  "python": "3.12.14"
+ },
+ "corpus": {
+  "acts": {
+   "DORA": {
+    "source_celex": "32022R2554",
+    "source_sha256": "cf50d8f023d23b2a56f535aaee0760eba7f1925ef08a9858c5c31d43d414f46b"
+   },
+   "MiCA": {
+    "source_celex": "02023R1114-20240109",
+    "source_sha256": "078da6ed766fe117be60ff63536f25101ec21f2dec175394eef7bf82c02ffe19"
+   },
+   "PSD2": {
+    "source_celex": "02015L2366-20151223",
+    "source_sha256": "e9063e8919bf93bd2b92ae0c6f816ad83bcf6ca42a5b97cdc277214e5080e1c3"
+   }
+  },
+  "parser_version": "1.4.0",
+  "psd2_exclusions_sha256": "2ce53d31d82f285271e34112a76ef053d93a1fe605465468a453555f2635719d",
+  "layer": {
+   "max_tokens": 500,
+   "chunker_version": "0.1.0",
+   "parser_version": "1.4.0",
+   "chunk_tokenizer": "cl100k_base",
+   "sources": {
+    "DORA": "cf50d8f023d23b2a56f535aaee0760eba7f1925ef08a9858c5c31d43d414f46b",
+    "MiCA": "078da6ed766fe117be60ff63536f25101ec21f2dec175394eef7bf82c02ffe19",
+    "PSD2": "e9063e8919bf93bd2b92ae0c6f816ad83bcf6ca42a5b97cdc277214e5080e1c3"
+   },
+   "structure_sha256": "76fce5626d300ac23892169682a21cb5c6805adc428248d8c91adee6fa7de372",
+   "content_sha256": "8748ef18fe7b1aaad831055e8de9d910f6b3088c0a9837b3a975065baf9f9c2d"
+  },
+  "query_template": {
+   "query_variants.v1": "466bcfe8b10993f59c8ce16f0495cb145324d9196bfd197935e297ee807a4a4f"
+  }
+ },
+ "systems": {
+  "E5": {
+   "config_file": "config/embeddings/multilingual-e5-large.json",
+   "config_sha256": "2368eadd6b41b5874fe1be6c0a89bcd181e25ae07a1a8d155fd787af71d332b8",
+   "config": {
+    "schema_version": "2",
+    "name": "multilingual-e5-large",
+    "model_id": "intfloat/multilingual-e5-large",
+    "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+    "tokenizer_revision": null,
+    "tokenizer_file": "tokenizer.json",
+    "dimension": 1024,
+    "max_input_tokens": 512,
+    "query_prefix": "query: ",
+    "document_prefix": "passage: ",
+    "pooling": "mean",
+    "normalize": true,
+    "similarity": "dot",
+    "document_truncation": "explicit_tail",
+    "query_truncation": "refuse",
+    "batch_size": 16,
+    "device": "cpu",
+    "dtype": "float32"
+   },
+   "config_hash": "2183ee7eedd919664cd579f55d99def7586854615b900dfe31d7713eee152745",
+   "tokenizer_sha256": "62c24cdc13d4c9952d63718d6c9fa4c287974249e16b7ade6d5a85e7bbb75626",
+   "runtime": {
+    "python": "3.12.14",
+    "torch": "2.14.1",
+    "transformers": "5.15.1",
+    "tokenizers": "0.22.2",
+    "numpy": "2.5.4",
+    "sentence_transformers": null,
+    "dtype": "float32",
+    "device": "cpu"
+   },
+   "scoring": "dot product of the normalized mean-pooled vectors (its similarity)",
+   "ranking": "score descending, then chunk id ascending (ingest/retrieval.py rank_by_scores)",
+   "depth": "every chunk of the layer, at least ingest/evaluation.MIN_RUN_DEPTH",
+   "dev_run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921"
+  },
+  "BM25": {
+   "config_file": "config/retrieval/bm25.json",
+   "config_sha256": "65597fe35299a73b4eba0e3f160bd612cfec44ffb67faaddf775f56097f9088b",
+   "config": {
+    "schema_version": "1",
+    "name": "bm25",
+    "library": "bm25s",
+    "library_version": "0.3.11",
+    "method": "lucene",
+    "k1": 1.2,
+    "b": 0.75,
+    "text": "chunk_text",
+    "analyzer": {
+     "lowercase": true,
+     "strip_possessive": true,
+     "token_pattern": "[^\\W_]+",
+     "stopwords": "lucene_english",
+     "stemmer": "porter",
+     "stem_min_length": 3,
+     "stemmer_library": "PyStemmer",
+     "stemmer_library_version": "3.1.0"
+    }
+   },
+   "config_hash": "e086bdb4511feae4796c639cd0450c732840f00e1da81e5c859d6960ee9b293b",
+   "versions": {
+    "bm25s": "0.3.11",
+    "pystemmer": "3.1.0"
+   },
+   "corpus_unit": "the chunk_text of every chunk of the layer",
+   "ranking": "score descending, then chunk id ascending (ingest/retrieval.py rank_by_scores)",
+   "dev_run_sha256": "49b9d78fd41c12205e07a878ffeb2260d1110abd5ad99464b2d5f0e282c7aa76"
+  },
+  "E": {
+   "kind": "decomposition_requirements_reranked_merge",
+   "rule": "D's rule on each requirement's first 50 E5 chunks reordered by the reranker",
+   "d_rule": "E5's first 6; places 7 to 10 to corroborated E5 ranks 7 to 10, then each requirement's best chunk outside E5's top 10 in turns, then the rest of E5's 7 to 10; the 10 in E5's order (K = 5)",
+   "decomposer": {
+    "config_file": "config/retrieval/qwen3-4b-instruct-mlx.json",
+    "config_sha256": "9f8b638720508a169ae5d23edf35db9dc5e4005831ca4162a34c69cb02a747c5",
+    "config": {
+     "schema_version": "1",
+     "name": "qwen3-4b-instruct-2507-mlx-4bit",
+     "model_id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+     "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+     "base_model": "Qwen/Qwen3-4B-Instruct-2507",
+     "base_revision": "cdbee75f17c01a7cc42f958dc650907174af0554",
+     "license": "apache-2.0",
+     "quantization": "4-bit, as published by mlx-community",
+     "runtime": "mlx 0.32.3, mlx-lm 0.32.0, in .cache/mlx-venv",
+     "max_prompt_tokens": 16384,
+     "decoding": "greedy"
+    },
+    "prompt": "ingest/decomposition.py requirements_prompt",
+    "system_sha256": "aefebaa554297ca9273afa89ba3a89d15951c88850fce900739f2d66ff575153",
+    "necessary_sha256": "f5d81791de8de64868e865074cffc2bbc2721707f2384f06439d9508928c0b49",
+    "task_sha256": "f6ee0baf18ffc82a8592f3ab24f7ab5dab4995a6b8309086f2aa00aa44b2f284",
+    "excerpts": 3,
+    "requirements": [
+     2,
+     4
+    ],
+    "max_new_tokens": 256,
+    "decoding": "greedy",
+    "unreadable": "fewer than 2 readable requirements keep E5's ranking"
+   },
+   "requirement_retrieval": {
+    "model": "E5, the same contract",
+    "depth": 50
+   },
+   "reranker": {
+    "config_file": "config/retrieval/qwen3-reranker-0.6b.json",
+    "config_sha256": "8e1b4cd43eb106055166b3320e9550d81adcba4e078dc13bb4a09a7f08c20bc6",
+    "config": {
+     "schema_version": "1",
+     "name": "qwen3-reranker-0.6b",
+     "model_id": "Qwen/Qwen3-Reranker-0.6B",
+     "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+     "tokenizer_file": "tokenizer.json",
+     "prefix": "<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be \"yes\" or \"no\".<|im_end|>\n<|im_start|>user\n",
+     "body": "<Instruct>: {instruction}\n<Query>: {query}\n<Document>: {document}",
+     "suffix": "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+     "yes_token": "yes",
+     "no_token": "no",
+     "pad_token": "<|endoftext|>",
+     "max_input_tokens": 32768,
+     "truncation": "explicit_document_tail",
+     "score": "logit_yes_minus_no",
+     "batch_size": 8,
+     "device": "mps",
+     "dtype": "float32"
+    },
+    "instruction": "Given a question about EU financial regulation, retrieve the passages of the law that answer it",
+    "order": "descending score; equal scores keep E5's order"
+   },
+   "assembler": {
+    "function": "ingest/decomposition.py assemble",
+    "K": 5,
+    "keep": 6,
+    "depth": 10,
+    "after_the_ten": "the rest of E5's ranking, in E5's order"
+   },
+   "dev_identity": {
+    "base_run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+    "decomposition_run_sha256": "ccdf3e111731c78c19e2bcd616e6c46896527c0cdf8530547df88d9a3ee15317",
+    "prompts_sha256": "db8276317c6feb85d7c3aa1124e8ce023dedb3b64e56ddc5ac1f40f80a014a4d",
+    "run_sha256": "8ee79746f75e817320228e004344fb6eb09d5fe97fdcb815891834197b7ef521"
+   }
+  }
+ },
+ "evaluation": {
+  "relevance": "binary at grade >= 2; nDCG uses the grades as linear gains",
+  "metrics": {
+   "co_primary": [
+    "Recall@10",
+    "nDCG@10"
+   ],
+   "secondary": [
+    "Recall@5",
+    "Recall@20",
+    "MRR@10"
+   ]
+  },
+  "min_run_depth": 100,
+  "evaluator": {
+   "ir-measures": "0.4.3",
+   "pytrec-eval-terrier": "0.5.10"
+  },
+  "unit": "the information need",
+  "evaluable": "needs of answerability complete or partial; none never enters a metric",
+  "aggregation": "each metric per query, the mean over a need's queries (its three formulations: EN formal, EN natural, ES natural), then the mean over the evaluable needs: ingest/retrieval.py macro_by_need and ingest/run_report.py paired_bootstrap, the computation of M-049's +0.061",
+  "aggregation_note": "D-020 calls this global value descriptive because it mixes languages; S4 makes it primary by the S3 decision that the statistical unit is the need, and reports the languages as secondary strata",
+  "missing_rankings": "a query absent from a run is scored 0 and listed (evaluation.py)"
+ },
+ "analysis": {
+  "plan_file": "config/holdout/s4-analysis-plan.md",
+  "plan_sha256": "7cbdf77bc2d4e97b5e3f7f51640efc78475bbe170d7430808e697b0810d3df43",
+  "primary_comparison": "E against E5",
+  "bootstrap": {
+   "function": "ingest/run_report.py paired_bootstrap",
+   "seed": 20261013,
+   "resamples": 10000,
+   "level": 0.95,
+   "interval": "percentile: sorted means at int(0.025 * reps) and int(0.975 * reps) - 1",
+   "resampling": "needs with replacement (random.Random(seed).choices), each need's delta the mean over its queries"
+  },
+  "effect_size": "d_z = mean of the per-need deltas / their standard deviation (n - 1)"
+ },
+ "derived_at_freeze_only": [
+  "dataset hashes",
+  "final counts",
+  "realized distributions",
+  "rejection counts",
+  "overlap statistics",
+  "file identities"
+ ]
+}

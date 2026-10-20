@@ -37,6 +37,8 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   JuriFindIT's anti-money-laundering questions over Italian statute articles). E5 and an Italian
   BM25 come out level there, and E could not complete: its frozen reranker ran out of memory on
   long articles
+- **Internal TEST set (S3):** its construction and S4's analysis plan are frozen by content in a
+  pre-authoring contract, committed before any TEST need is written; TEST itself is not built yet
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -82,6 +84,10 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   relevance judgments in separate files, and a protocol fixed before any download: one run per
   system, and the rankings frozen by hash before any judgment is read. See
   [External validation](#external-validation-t4).
+- **Internal TEST set** (`ingest/holdout*.py`, `scripts/holdout.py`, `config/holdout/`): the
+  frozen machinery that will build a private TEST set of information needs written independently
+  of the development loop, and the contract that fixes it before the first need. See
+  [Internal TEST set](#internal-test-set-s3).
 - **Data contracts** (Pydantic): the manifest, the processed layer (`data/processed/{act}.json`),
   the chunk layer (`data/chunks/{act}.json`) and the benchmark files are validated when they are
   written and when they are read. Loading aborts instead of returning partly checked data.
@@ -89,7 +95,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 812 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 1198 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -102,6 +108,7 @@ ingest/              library: download, parser, processed and chunk layers, benc
 config/embeddings/   the contract of each embedding model, and the model comparison policy
 config/retrieval/    the retrieval iterations' protocols and the contracts of BM25, fusion, rerankers
 config/external/     the protocol of the external validation (T4)
+config/holdout/      the pre-authoring contract of the internal TEST set and S4's analysis plan (S3)
 scripts/             pipeline and measurement entry points
 tests/unit/          isolated tests, no files involved
 tests/integration/   tests on real EUR-Lex excerpts (tests/fixtures/, see PROVENANCE.md)
@@ -137,7 +144,7 @@ uv pip install --require-hashes --no-deps -r requirements-embed.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest skips the 38 tests marked `corpus`: they need `data/raw/`, which is
+Without the corpus, pytest skips the 136 tests marked `corpus`: they need `data/raw/`, which is
 not in the repository (see [Data and reproducibility](#data-and-reproducibility)). The 31 tests
 marked `embedding_model` need the `embed` extra and the weights of the three embedding models and
 the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`); two of them also
@@ -147,8 +154,12 @@ Without them they fail, unless the environment declares `FUNDAMENTO_EMBEDDING_MO
 CI does. The 16 tests marked `postgres` need the PostgreSQL of `compose.yaml`, reached through the
 libpq variables (see [Vector index](#vector-index-t3)); without it they fail, unless the
 environment declares `FUNDAMENTO_POSTGRES=unsupported`, as the test image does. CI runs them
-against a service container of the same pinned image. In CI (no corpus, no model, PostgreSQL up)
-pytest reports `743 passed, 69 skipped`.
+against a service container of the same pinned image. The one test marked
+`requires_private_holdout_environment` checks the real private TEST area and is skipped where it
+does not exist; every other test of the internal TEST set makes a synthetic one. One contract
+test needs the history back to E's DEV result and is skipped in a shallow clone such as CI's,
+and the host identity test runs on macOS only. In CI (no corpus, no model, PostgreSQL up)
+pytest reports `1027 passed, 171 skipped`.
 
 ## Docker
 
@@ -192,7 +203,7 @@ same way, neither image installs torch or the embedding model, and the test imag
   integrity rules on every push.
 - `runtime-image`: builds the runtime image and runs `ci/check_runtime_image.py` inside it.
 
-The runner does not have the corpus, so the 38 `corpus` tests are skipped there. A green run does
+The runner does not have the corpus, so the 136 `corpus` tests are skipped there. A green run does
 not validate the full 331-article corpus. The `evaluator` tests do run there: CI checks the
 benchmark machinery on synthetic data, while evaluation against the real corpus runs locally.
 
@@ -212,11 +223,12 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/chunks/` | no | the chunk layer, derived from `data/processed/` |
 | `.cache/tiktoken/` | no | the tokenizer file, downloaded the first time (see [Tokenizer file](#tokenizer-file)) |
 | `data/benchmark/` | yes | the retrieval benchmark: DEV, fixtures, protocol, templates, PSD2 exclusions |
+| `data/benchmark/test/` | no | the internal TEST set (S3), private, with a local history of its own; only its commitment is published |
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 | `data/external/` | no | the external benchmark of T4 (third-party data, CC BY-NC-SA 4.0) and everything derived from it |
 
-Without the corpus you can run the test suite (743 tests pass and 69 are skipped with
-`FUNDAMENTO_EMBEDDING_MODEL=unsupported` and the PostgreSQL of `compose.yaml` up), the linters and
+Without the corpus you can run the test suite (in CI, 1027 tests pass and 171 are skipped with
+`FUNDAMENTO_EMBEDDING_MODEL=unsupported` and PostgreSQL up), the linters and
 type checks, and both Docker images. The vector index is derived data too: it lives in a Docker
 volume and is rebuilt from `data/chunks/` and `data/embeddings/`.
 
@@ -419,6 +431,37 @@ unit): the comparison lives inside the benchmark.
   articles, which DEV's chunks (662 tokens at most per pair) never exercised. E is reported as
   not completed, with no variant.
 
+### Internal TEST set (S3)
+
+```bash
+PYTHONPATH=. .venv/bin/python scripts/holdout.py validate   # every check, building nothing
+```
+
+DEV's numbers are development numbers: the retrieval iterations were selected on it. The internal
+TEST set measures the same task on information needs written independently of that loop, and S4
+will evaluate the frozen systems on it by the plan fixed in `config/holdout/s4-analysis-plan.md`.
+A pipeline of isolated model roles builds it (`ingest/holdout_pipeline.py`): contexts with no
+access to the systems, DEV or their results write each need's concept and statement, a separate
+gatekeeper drops what overlaps DEV, judges grade the evidence, and a local Qwen3-8B gives a
+diagnostic. No person reads or approves a statement.
+
+Before the first need, the construction is frozen. `config/holdout/pre-authoring-contract.json`
+(SHA-256 `fe18917551276d676a6f3e0c5c20d14ee34f2f4a66c9de18407f264366a858f9`) fixes by content 70
+files (the code and configs of E, E5, BM25 and the evaluation, the S4 plan, and the
+construction's code, inputs and templates), the corpus snapshot and chunk layer, and the identity
+of every model runtime: the requested and effective Claude model and its binary, and the MLX
+packages, model files and host (macOS version and build, Mac model) of the diagnostic. It holds
+no account data. The commit that adds it is the public timestamp of that freeze: the launcher
+(`ingest/holdout_launcher.py`) does not start before that commit is recorded, and stops before
+any model whenever a frozen identity differs. `start` and `resume` are the only commands that run
+a model on TEST, and each needs the contract's full SHA-256 typed again.
+
+TEST lives in `data/benchmark/test/`, which is not versioned: a local git history of its own
+that refuses every push, verified backups outside the repository, and the durable state of the
+construction (SQLite, an append-only event log). What is published is its commitment,
+`data/benchmark/test-commitment.json` (hashes, counts and distributions, no text), pushed before
+S4 runs any system. No TEST need, query or judgment exists yet.
+
 ### Retrieval iteration
 
 ```bash
@@ -517,7 +560,7 @@ retrieval candidate.
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
-- CI skips the 38 `corpus` tests, so the full corpus is only validated where it is present.
+- CI skips the 136 `corpus` tests, so the full corpus is only validated where it is present.
 - The DEV benchmark holds 30 judged questions in two batches (27 evaluable), so a difference
   between two retrievers needs to be large to be told apart from noise (about 0.08 of nDCG@10).
   The retrieval iterations selected on DEV, so their numbers are development numbers; an
@@ -531,8 +574,8 @@ retrieval candidate.
 - The external validation (T4) rests on 27 validation questions (108 with train) of one
   benchmark, whose judgments come from one expert per area, drawn from candidate pools built by
   keyword search; its intervals are wide. E could not be evaluated there on this machine. The
-  internal TEST set, which would measure the selection bias of DEV on the same task, has not
-  been built.
+  internal TEST set, which will measure the selection bias of DEV on the same task, has its
+  construction frozen and not one need written yet.
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4
