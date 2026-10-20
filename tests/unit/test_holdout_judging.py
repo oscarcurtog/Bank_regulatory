@@ -371,3 +371,87 @@ def test_a_complete_diagnostic_passes_with_null_and_ambiguous_labels():
     assert hj.diagnostic_problems(CANDIDATES, _diagnostic(grades=grades)) == []
     assert hj.diagnostic_problems(CANDIDATES, _diagnostic()) == []
     assert hj.diagnostic_problems([], _diagnostic(grades=[], answerability="none")) == []
+
+
+@pytest.mark.parametrize(
+    ("output", "defects"),
+    [
+        ("I would rather explain in prose.", ["not_json"]),
+        ("", ["not_json"]),
+        (json.dumps([_diagnostic()]), ["not_an_object"]),  # the first START's answer
+        (json.dumps({"answerability": "complete"}), ["no_grades"]),
+        (json.dumps(_diagnostic(grades=[])), ["missing_candidate"]),
+        (json.dumps(_diagnostic(grades=_diagnostic()["grades"][:2])), ["missing_candidate"]),
+        (
+            json.dumps(_diagnostic(grades=[*_diagnostic()["grades"], _diagnostic()["grades"][0]])),
+            ["duplicate_candidate"],
+        ),
+        (
+            json.dumps(
+                _diagnostic(grades=[*_diagnostic()["grades"], {"node": "MiCA:1", "grade": 0}])
+            ),
+            ["invalid_ambiguous", "unknown_candidate"],
+        ),
+        (
+            json.dumps(_diagnostic(grades=[{"grade": 1}, *_diagnostic()["grades"]])),
+            ["entry_without_candidate"],
+        ),
+        (
+            json.dumps(
+                _diagnostic(
+                    grades=[
+                        {**_diagnostic()["grades"][0], "grade": 4},
+                        *_diagnostic()["grades"][1:],
+                    ]
+                )
+            ),
+            ["invalid_grade"],
+        ),
+        (json.dumps(_diagnostic(answerability="mostly")), ["invalid_answerability"]),
+        (
+            json.dumps({k: v for k, v in _diagnostic().items() if k != "answerability"}),
+            ["invalid_answerability"],
+        ),
+    ],
+)
+def test_an_inadmissible_answer_is_named_by_its_classes_of_defect_only(output, defects):
+    found = hj.diagnostic_defects(CANDIDATES, output)
+    assert found == defects
+    assert not any(c in " ".join(found) for c in CANDIDATES)  # never the content
+    marker = hj.unavailable_diagnostic(found)
+    assert hj.diagnostic_unavailable(marker)
+
+
+def test_a_complete_answer_has_no_defect_even_fenced():
+    assert hj.diagnostic_defects(CANDIDATES, json.dumps(_diagnostic())) == []
+    fenced = "```json\n" + json.dumps(_diagnostic()) + "\n```"
+    assert hj.diagnostic_defects(CANDIDATES, fenced) == []
+
+
+def test_every_problem_of_the_completeness_check_has_a_class():
+    answers = [
+        ["x"],
+        {"answerability": "complete"},
+        _diagnostic(
+            grades=[{"grade": True}, {"node": "MiCA:1", "grade": 9}, *_diagnostic()["grades"]]
+        ),
+        _diagnostic(
+            grades=[*_diagnostic()["grades"], _diagnostic()["grades"][0]], answerability=None
+        ),
+        _diagnostic(grades=[]),
+    ]
+    for answer in answers:
+        for problem in hj.diagnostic_problems(CANDIDATES, answer):
+            assert hj._defect(problem) in hj.DIAGNOSTIC_DEFECTS, problem
+
+
+def test_only_the_exact_marker_is_an_unavailable_diagnostic():
+    assert not hj.diagnostic_unavailable(_diagnostic())
+    assert not hj.diagnostic_unavailable({**_diagnostic(), hj.DIAGNOSTIC_UNAVAILABLE: True})
+    assert not hj.diagnostic_unavailable(
+        {hj.DIAGNOSTIC_UNAVAILABLE: "yes", "defects": ["not_json"]}
+    )
+    with pytest.raises(ValueError):
+        hj.unavailable_diagnostic([])
+    with pytest.raises(ValueError):
+        hj.unavailable_diagnostic(["MiCA:149.1: not graded"])

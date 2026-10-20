@@ -370,6 +370,75 @@ def diagnostic_problems(candidates: Sequence[str], diagnostic: Any) -> list[str]
     return problems
 
 
+# What keeps the diagnostic's answer from being admitted, by class, never by content. An answer
+# of a run that ended normally with any of them makes the diagnostic unavailable: the first
+# START, aborted on 2026-10-20, showed that the greedy local model gives the same answer to the
+# same prompt, so another execution of it repairs nothing.
+DIAGNOSTIC_DEFECTS = (
+    "not_json",
+    "not_an_object",
+    "no_grades",
+    "entry_without_candidate",
+    "invalid_grade",
+    "invalid_ambiguous",
+    "duplicate_candidate",
+    "unknown_candidate",
+    "missing_candidate",
+    "invalid_answerability",
+)
+DIAGNOSTIC_UNAVAILABLE = "qwen_diagnostic_unavailable"
+
+
+def _defect(problem: str) -> str:
+    whole = {
+        "the answer is not a JSON object": "not_an_object",
+        "the answer has no list of grades": "no_grades",
+        "an entry names no candidate": "entry_without_candidate",
+    }
+    if problem in whole:
+        return whole[problem]
+    if problem.startswith("answerability ") and problem.endswith(" is not of the protocol"):
+        return "invalid_answerability"
+    for suffix, defect in (
+        (" is not 0 to 3 or null", "invalid_grade"),
+        (": no true or false ambiguous", "invalid_ambiguous"),
+        (": graded more than once", "duplicate_candidate"),
+        (": not a candidate", "unknown_candidate"),
+        (": not graded", "missing_candidate"),
+    ):
+        if problem.endswith(suffix):
+            return defect
+    raise ValueError(f"a diagnostic problem of no known class: {problem!r}")
+
+
+def diagnostic_defects(candidates: Sequence[str], output: str) -> list[str]:
+    """The classes of defect of the diagnostic's raw answer, in DIAGNOSTIC_DEFECTS order: none
+    for an answer diagnostic_problems finds complete. Never the answer's content, which names
+    TEST's candidates."""
+    try:
+        answer = as_json(output)
+    except (json.JSONDecodeError, IndexError):
+        return ["not_json"]
+    found = {_defect(p) for p in diagnostic_problems(candidates, answer)}
+    return [d for d in DIAGNOSTIC_DEFECTS if d in found]
+
+
+def unavailable_diagnostic(defects: Sequence[str]) -> dict[str, Any]:
+    """The diagnostic stage's value when the answer is not admitted: its classes of defect only."""
+    if not defects or any(d not in DIAGNOSTIC_DEFECTS for d in defects):
+        raise ValueError(f"not classes of defect: {list(defects)}")
+    return {DIAGNOSTIC_UNAVAILABLE: True, "defects": list(defects)}
+
+
+def diagnostic_unavailable(value: Any) -> bool:
+    """Whether the diagnostic stage recorded no diagnostic. Unavailable is not agreement."""
+    return (
+        isinstance(value, Mapping)
+        and set(value) == {DIAGNOSTIC_UNAVAILABLE, "defects"}
+        and value[DIAGNOSTIC_UNAVAILABLE] is True
+    )
+
+
 def material_discrepancies(
     candidates: Sequence[str], final: Assembled, diagnostic: Mapping[str, Any]
 ) -> Diagnostic:

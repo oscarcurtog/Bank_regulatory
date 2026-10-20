@@ -52,6 +52,18 @@ def test_a_technical_failure_is_built_only_from_a_check_on_a_model_output():
     assert rejection.outcome == "statement_invalid"
 
 
+def test_at_the_diagnostic_only_the_process_and_its_runtime_are_technical():
+    """A greedy local model gives the same answer to the same prompt: what is wrong with the
+    answer is diagnostic_admissible's, never retried; only the role audit of the run and the
+    runtime it ran under are technical there (the first START, aborted on 2026-10-20)."""
+    at = {n: c for n, c in hk.CHECKS.items() if "diagnostic" in c.stages}
+    technical = {n for n, c in at.items() if c.kind == "technical_integrity"}
+    assert technical == {"role_audit", "runtime_identity"}
+    admissible = hk.check("diagnostic_admissible")
+    assert (admissible.kind, admissible.consequence) == ("diagnostic_only", "recorded")
+    assert not admissible.retriable
+
+
 def test_the_record_carries_every_check_with_its_retry_rule():
     record = hk.record()
     assert set(record["checks"]) == set(hk.CHECKS)

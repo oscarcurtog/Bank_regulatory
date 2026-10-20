@@ -73,9 +73,12 @@ CHECKS: dict[str, Check] = {
             "reply_is_json",
             "technical_integrity",
             "model_output",
-            tuple(s for s in _MODEL_STAGES if s not in ("query_formulation", "judge_a")),
+            tuple(
+                s for s in _MODEL_STAGES if s not in ("query_formulation", "judge_a", "diagnostic")
+            ),
             "malformed_session",
-            "every packet asks for one JSON object (the role templates)",
+            "every packet asks for one JSON object (the role templates); the diagnostic's own "
+            "answer is diagnostic_admissible's",
         ),
         Check(
             "broker_protocol",
@@ -132,11 +135,11 @@ CHECKS: dict[str, Check] = {
             "judge_answer_complete",
             "technical_integrity",
             "model_output",
-            ("judge_a", "omission_search", "judge_b", "judge_c", "diagnostic", "judge_d"),
+            ("judge_a", "omission_search", "judge_b", "judge_c", "judge_d"),
             "malformed_session",
             "every candidate graded, once, and only the candidates, and every item answered, "
             "by the protocol's labels (ingest/holdout_judging.py judge_a_problems, "
-            "disagreements, diagnostic_problems, judge_d_outcome)",
+            "disagreements, judge_d_outcome); the diagnostic's is diagnostic_admissible",
         ),
         Check(
             "model_identity",
@@ -208,6 +211,21 @@ CHECKS: dict[str, Check] = {
             "recorded",
             "Qwen3-8B has no vote: a material discrepancy only sends the item to judge D "
             "(D-054 decision 7)",
+        ),
+        Check(
+            "diagnostic_admissible",
+            "diagnostic_only",
+            "model_output",
+            ("diagnostic",),
+            "recorded",
+            "an answer of Qwen3-8B, from a run that ended normally under the frozen runtime, is "
+            "a diagnostic only if it is one JSON object grading every candidate once with the "
+            "protocol's labels (ingest/holdout_judging.py diagnostic_defects); otherwise the "
+            "diagnostic is unavailable: the answer stays with its run, never read again, with "
+            "no vote and no label, and a blind judge D grades every candidate and the "
+            "answerability by the rule of a discrepancy. Unavailable is not agreement. Greedy "
+            "decoding gives the same answer again, so it is never executed again (the first "
+            "START, aborted on 2026-10-20 with no ready need)",
         ),
         Check(
             "evidence_overlap_stratum",

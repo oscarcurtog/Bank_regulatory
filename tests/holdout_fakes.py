@@ -220,8 +220,8 @@ class Scenario:
     # (cell, role) -> parts of the effective model the session reports instead of the frozen
     model: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
     # cell -> how the diagnostic's answer is broken (empty, subset, duplicate, unknown,
-    # invalid_grade, missing_answerability, invalid_answerability, missing_ambiguous), for
-    # the first qwen_bad_times executions
+    # invalid_grade, missing_answerability, invalid_answerability, missing_ambiguous,
+    # outer_array, not_json), for the first qwen_bad_times executions
     qwen_bad: dict[str, str] = field(default_factory=dict)
     qwen_bad_times: int = 1
     # cell -> parts of the MLX runtime the diagnostic's output records instead of the frozen
@@ -404,19 +404,23 @@ class FakeExecutor:
                 "missing": None if answerability == "complete" else "the corpus lacks it",
             }
         if role == "judge_d":
+            # the evidence as judges A and B see it: D holds the consensus unless told otherwise
             section = packet.split("ITEMS TO GRADE", 2)[-1]
             items = [t.rstrip(":") for t in re.findall(r"^ITEM \d+: (\S+)", section, re.M)]
-            base: dict[str, Any] = {
-                "grade": 3,
-                "ambiguous": False,
-                "answerability": None,
-                "scope_basis": [],
-                "reason": "D",
-            }
-            return {
-                "need_id": ref,
-                "items": [{**base, **s.d_answer.get(cell, {}), "target": t} for t in items],
-            }
+            grades = dict(self._evidence())
+            if cell in s.extra_grade:
+                grades[EXTRA_NODE] = s.extra_grade[cell]
+            base: dict[str, Any] = {"ambiguous": False, "scope_basis": [], "reason": "D"}
+
+            def item(target: str) -> dict[str, Any]:
+                found: dict[str, Any]
+                if target == bm.ANSWERABILITY_TARGET:
+                    found = {"grade": None, "answerability": answerability}
+                else:
+                    found = {"grade": grades.get(target, 0), "answerability": None}
+                return {**base, **found, **s.d_answer.get(cell, {}), "target": target}
+
+            return {"need_id": ref, "items": [item(t) for t in items]}
         if role == "metadata_adjudicator":
             kind = "direct" if answerability == "complete" else "partial_out_of_scope"
             return {
@@ -496,10 +500,11 @@ class FakeExecutor:
             "grades": [{"node": n, "grade": grades[n], "ambiguous": False} for n in nodes],
             "answerability": answerability,
         }
+        output = json.dumps(answer)
         bad = self.scenario.qwen_bad.get(cell)
         if bad and self.failed[(cell, "qwen_bad")] < self.scenario.qwen_bad_times:
             self.failed[(cell, "qwen_bad")] += 1
-            answer = broken_diagnostic(answer, bad)
+            output = broken_output(answer, bad)
         digest = hashlib.sha256(json.dumps(messages, ensure_ascii=False).encode()).hexdigest()
         runtime = self.runtime["mlx_runtime"]
         changed = self.scenario.local_runtime.get(cell)
@@ -508,7 +513,7 @@ class FakeExecutor:
         record = {
             "messages": messages,
             "prompt_sha256": digest,
-            "output": json.dumps(answer),
+            "output": output,
             "versions": hrt.generator_versions(runtime),
             "runtime": runtime,
         }
@@ -539,6 +544,16 @@ def broken_diagnostic(answer: dict[str, Any], how: str) -> dict[str, Any]:
     else:
         raise AssertionError(how)
     return broken
+
+
+def broken_output(answer: dict[str, Any], how: str) -> str:
+    """The diagnostic's raw output broken one way: the shapes of broken_diagnostic, the whole
+    answer inside a one-element array (the first START's), or no JSON at all."""
+    if how == "outer_array":
+        return json.dumps([answer])
+    if how == "not_json":
+        return "I would rather explain the grades in prose."
+    return json.dumps(broken_diagnostic(answer, how))
 
 
 class Backups:

@@ -49,15 +49,15 @@
    "ingest/corpus_tools.py": "1b6c4c89497c244c707bb02c1c662342a1b526d0ce85bd3e7be2a192eb2bf718",
    "ingest/holdout.py": "57af5d0b70da193707f3bd1f84bfee87194eacda18df15949935318c9900f005",
    "ingest/holdout_broker.py": "a3ada497a2e8be0b8c255fe9ce718a67f3a072a209db128abbabdd5048d36937",
-   "ingest/holdout_checks.py": "4bcbe897800e1ad98a1327fe6ab7dca578417647fc6ac858f17a7297c6ba15ec",
-   "ingest/holdout_contract.py": "4c337b27c24690ccff51de3c689659d4178e828f9cdc127f6b76877e9b59db3b",
+   "ingest/holdout_checks.py": "ed98ecdce8de6bf82a6ee6977a4815bb8568de3ef5583288283bd44f872fe735",
+   "ingest/holdout_contract.py": "a8f2ebcb89fad6fcb7f233106b8529c62c208a3014298fc8ceb9edb68dc68924",
    "ingest/holdout_executor.py": "aeeabb916eb0ecf0995644406fe51a2e8242f7e9161fa2bb5493812aae9151f7",
    "ingest/holdout_isolation.py": "2e5c69b6566e5d7cd4229dc5ad3b80fa736fded67c6343a6a7593240b58265be",
-   "ingest/holdout_judging.py": "ce50219447ff1b01c82c09ac05eab90507877a2ae5f10b794e6c7b596e975ac4",
+   "ingest/holdout_judging.py": "d0793c3b967b9bb66f2eb8c62b624625047c58a2c55fe31c4c92a66fc7c7f18d",
    "ingest/holdout_launcher.py": "b0a69a1bb96f93d6e00326374da7d29e88d8494a832e15ed4935c97a7fb5ecc7",
    "ingest/holdout_ledger.py": "3b181da602501b678e287703ed9f447c262836ee3a188d6e29dbc83348cdf884",
    "ingest/holdout_packets.py": "d6a96dda3133d89d2fa3b81d16f112081c101c6a555dff9cca635db1bea706ee",
-   "ingest/holdout_pipeline.py": "034dcd1d6eeee20630ebfe67b36108a6438d8700e7f6b3c4ac0774766d6fe092",
+   "ingest/holdout_pipeline.py": "c6c1326b065ece8a9ac402639345f1d4fc341dbfd2f55e916713665fcad6f178",
    "ingest/holdout_roles.py": "4d9ea88777d63716319bd6db5faaa34341a1b0a2c4204bb252cf582877ce9c5b",
    "ingest/holdout_runtime.py": "bb41b3c9b5c5029eecc578110700b2fb85004d4263df0e4f1c54e94dc85b2b51",
    "ingest/holdout_spool.py": "eed1aa64725f381cde2aaafde2888147fae8b2a1fb44c5443dfc86c0a7ff4a77",
@@ -142,6 +142,17 @@
      "rule": "the benchmark's own validators accept the need with every ready one (ingest/benchmark.py dataset_problems)",
      "retriable": false
     },
+    "diagnostic_admissible": {
+     "name": "diagnostic_admissible",
+     "kind": "diagnostic_only",
+     "reads": "model_output",
+     "stages": [
+      "diagnostic"
+     ],
+     "consequence": "recorded",
+     "rule": "an answer of Qwen3-8B, from a run that ended normally under the frozen runtime, is a diagnostic only if it is one JSON object grading every candidate once with the protocol's labels (ingest/holdout_judging.py diagnostic_defects); otherwise the diagnostic is unavailable: the answer stays with its run, never read again, with no vote and no label, and a blind judge D grades every candidate and the answerability by the rule of a discrepancy. Unavailable is not agreement. Greedy decoding gives the same answer again, so it is never executed again (the first START, aborted on 2026-10-20 with no ready need)",
+     "retriable": false
+    },
     "evidence_overlap_stratum": {
      "name": "evidence_overlap_stratum",
      "kind": "diagnostic_only",
@@ -173,11 +184,10 @@
       "omission_search",
       "judge_b",
       "judge_c",
-      "diagnostic",
       "judge_d"
      ],
      "consequence": "malformed_session",
-     "rule": "every candidate graded, once, and only the candidates, and every item answered, by the protocol's labels (ingest/holdout_judging.py judge_a_problems, disagreements, diagnostic_problems, judge_d_outcome)",
+     "rule": "every candidate graded, once, and only the candidates, and every item answered, by the protocol's labels (ingest/holdout_judging.py judge_a_problems, disagreements, judge_d_outcome); the diagnostic's is diagnostic_admissible",
      "retriable": true
     },
     "material_discrepancy": {
@@ -267,13 +277,12 @@
       "omission_search",
       "judge_b",
       "judge_c",
-      "diagnostic",
       "judge_d",
       "metadata",
       "evidence_gate"
      ],
      "consequence": "malformed_session",
-     "rule": "every packet asks for one JSON object (the role templates)",
+     "rule": "every packet asks for one JSON object (the role templates); the diagnostic's own answer is diagnostic_admissible's",
      "retriable": true
     },
     "role_audit": {
@@ -519,7 +528,7 @@
   }
  },
  "code": {
-  "built_on_commit": "9a3ef381d211aaae3db5861df91b84dbe899e920",
+  "built_on_commit": "3226afad8fdb8f424b6486f540312e31cb16278a",
   "e_result_commit": "7636908bf57c7fbd95cc46b180c9f2e59a41b3f8",
   "files_sha256": {
    "ingest/benchmark.py": "09896f2ff6f2ad8436d7b1e5e5aa05036b15dfed65ab77ba525222da1deb840c",
@@ -776,6 +785,16 @@
   },
   "effect_size": "d_z = mean of the per-need deltas / their standard deviation (n - 1)"
  },
+ "aborted_runs": [
+  {
+   "status": "ABORTED_PROTOCOL_DEFECT_QWEN_DIAGNOSTIC",
+   "contract_sha256": "fe18917551276d676a6f3e0c5c20d14ee34f2f4a66c9de18407f264366a858f9",
+   "public_commit": "3226afad8fdb8f424b6486f540312e31cb16278a",
+   "ready_needs": 0,
+   "reason": "The frozen Qwen diagnostic recovery policy assumed that a repeated technical execution could produce a different semantic output. In the real S3 run Qwen3-8B was running greedy deterministic decoding, so a structurally malformed but successfully generated response was likely reproducible. Retrying the identical semantic execution was therefore not a meaningful recovery strategy.",
+   "change": "the diagnostic's failure semantics only (holdout_checks.py diagnostic_admissible); sampling, grid, order, prompts, judges and systems unchanged"
+  }
+ ],
  "derived_at_freeze_only": [
   "dataset hashes",
   "final counts",

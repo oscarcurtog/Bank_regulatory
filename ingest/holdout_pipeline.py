@@ -8,7 +8,8 @@ model's output is consumed only after it passes its role's audit (ingest/holdout
     query_formulation (blind query writer) -> lock (statement and queries) -> judge_a (through
     the evidence broker) -> omission_search (a second blind search, in the omission audit's
     cells) -> judge_b -> judge_c (on every disagreement) -> adjudication -> diagnostic
-    (Qwen3-8B) -> judge_d (on a material discrepancy) -> metadata (blind adjudicator) ->
+    (Qwen3-8B) -> judge_d (on a material discrepancy, or on every candidate and the
+    answerability when the diagnostic is unavailable) -> metadata (blind adjudicator) ->
     evidence_gate (each DEV need that shares grade-3 evidence) -> validators -> READY
 
 No person reads or approves a statement before the lock (the person's decision of
@@ -34,6 +35,15 @@ Two kinds of failure, never mixed:
   failure the need is pending_technical_unresolved and the construction stays stopped. Never a
   rejection, an unfilled cell, a replacement or a new question. A valid answer is never
   executed again to obtain another.
+
+The diagnostic's own answer is neither (diagnostic_admissible, after the first START was
+aborted on 2026-10-20 with no ready need). A run of the local model that ended normally under
+the frozen runtime, but answered something other than one JSON object grading every candidate
+once with the protocol's labels, makes the diagnostic unavailable: greedy decoding would give
+the same answer again, so it is not executed again. The answer stays with its run, never read
+again, with no vote and no label; judge D, blind, grades every candidate and the answerability
+in its place, by the rule of a discrepancy. A failure of the process or of the runtime (a
+crash, memory, an interruption, another runtime or host) is still technical.
 
 An omission found by the second search and adjudicated grade >= 1 stops the construction
 before the freeze; so do fewer than 50 reachable evaluable needs. After the 20th, 40th and 60th
@@ -1066,7 +1076,8 @@ class Pipeline:
             problems = hrt.local_problems(doc["record"], self.world.local_runtime)
             if problems:
                 raise technical("runtime_identity", f"{role}: {problems[:3]}")
-            return admit(_json(doc["record"].get("output", "")))
+            # the raw answer: what it is worth is the stage's to decide (diagnostic_admissible)
+            return admit(doc["record"].get("output", ""))
 
         packet = messages[0]["content"]
         return self._model(role, pid, stage, packet, ref, inputs, call, recall, check)
@@ -1335,12 +1346,16 @@ class Pipeline:
                     stage="adjudication",
                 )
 
-        def admit_q(diagnostic: Any) -> Any:
-            # every expected candidate, from the stage's own input, and only those: an
-            # incomplete answer never reaches the discrepancies, nor judge D
-            problems = hj.diagnostic_problems(candidates, diagnostic)
-            if problems:
-                raise technical("judge_answer_complete", f"the diagnostic: {problems[:3]}")
+        def admit_q(output: str) -> Any:
+            # every expected candidate, from the stage's own input, and only those. An answer
+            # that is not that, from a run that ended normally, is no diagnostic: never read
+            # again, no vote, no label, no replacement; the run keeps it, and judge D grades
+            # the need in its place (diagnostic_admissible). Executing the greedy model again
+            # would give the same answer, so it is no technical failure.
+            defects = hj.diagnostic_defects(candidates, output)
+            if defects:
+                return hj.unavailable_diagnostic(defects)
+            diagnostic = hj.as_json(output)
             hj.material_discrepancies(candidates, final, diagnostic)
             return diagnostic
 
@@ -1354,20 +1369,26 @@ class Pipeline:
             self._inputs(pid, "lock", "judge_a", "omission_search"),
             admit_q,
         )
-        found = hj.material_discrepancies(candidates, final, diagnostic)
+        unavailable = hj.diagnostic_unavailable(diagnostic)
+        discrepancies: list[str] = []
+        if unavailable:
+            # Qwen unavailable is not Qwen agreeing: judge D, blind, grades every candidate and
+            # the answerability, and holds the consensus or not by the rule of a discrepancy
+            targets = [*candidates, bm.ANSWERABILITY_TARGET]
+        else:
+            discrepancies = hj.material_discrepancies(candidates, final, diagnostic).discrepancies
+            targets = discrepancies
         d_outcome: dict[str, str] = {}
-        if found.discrepancies:
+        if targets:
 
             def admit_d(reply: Any) -> Any:
                 outcome = hj.judge_d_outcome(final, reply.get("items", []))
-                if set(outcome) != set(found.discrepancies):
+                if set(outcome) != set(targets):
                     raise technical("judge_answer_complete", "judge D did not answer every item")
                 return reply
 
             d_ref = self._ref("judge_d", pid)
-            d_packet = hp.judge_d_packet(
-                w.corpus, draft, candidates, scope, found.discrepancies, ref=d_ref
-            )
+            d_packet = hp.judge_d_packet(w.corpus, draft, candidates, scope, targets, ref=d_ref)
             d_reply = self._headless(
                 "judge_d",
                 pid,
@@ -1381,8 +1402,9 @@ class Pipeline:
         self.diagnostic_log.append(
             {
                 "need_id": need_id,
-                "status": "ok",
-                "discrepancies": found.discrepancies,
+                "status": "unavailable" if unavailable else "ok",
+                "defects": list(diagnostic["defects"]) if unavailable else [],
+                "discrepancies": discrepancies,
                 "judge_d": d_outcome,
             }
         )
@@ -1617,7 +1639,8 @@ class Pipeline:
 
     def _diagnostic_coverage_problems(self) -> list[str]:
         """Every admitted diagnostic covers exactly its attempt's candidates, as the attempt's
-        adjudication records them, with the protocol's labels."""
+        adjudication records them, with the protocol's labels; an unavailable one names its
+        classes of defect, and judge D graded every candidate and the answerability instead."""
         problems = []
         for row in self.store.stages():
             if row["stage"] != "diagnostic":
@@ -1633,6 +1656,17 @@ class Pipeline:
                 for a in adjudication["value"]["adjudications"]
                 if a["target"] != bm.ANSWERABILITY_TARGET
             ]
+            if hj.diagnostic_unavailable(diagnostic["value"]):
+                judge_d = self.store.stage(pid, "judge_d")
+                answered = {
+                    i.get("target") for i in (judge_d or {"value": {}})["value"].get("items", [])
+                }
+                if answered != {*candidates, bm.ANSWERABILITY_TARGET}:
+                    problems.append(
+                        f"{pid}: an unavailable diagnostic without judge D on every candidate "
+                        "and the answerability"
+                    )
+                continue
             found = hj.diagnostic_problems(candidates, diagnostic["value"])
             if found:
                 problems.append(f"{pid}: an admitted diagnostic is incomplete: {found[:3]}")
@@ -1798,6 +1832,20 @@ class Pipeline:
                 "with_discrepancies": sum(bool(d["discrepancies"]) for d in self.diagnostic_log),
                 "judge_d": dict(
                     Counter(v for d in self.diagnostic_log for v in d["judge_d"].values())
+                ),
+                # unavailable is not agreement: those needs had judge D on every item instead
+                "available": sum(d["status"] == "ok" for d in self.diagnostic_log),
+                "unavailable": sum(d["status"] == "unavailable" for d in self.diagnostic_log),
+                "unavailable_defects": dict(
+                    Counter(x for d in self.diagnostic_log for x in d["defects"])
+                ),
+                "judge_d_in_place_of_the_diagnostic": dict(
+                    Counter(
+                        v
+                        for d in self.diagnostic_log
+                        if d["status"] == "unavailable"
+                        for v in d["judge_d"].values()
+                    )
                 ),
             },
             "technical": {

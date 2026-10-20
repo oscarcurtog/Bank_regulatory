@@ -379,6 +379,27 @@ def construction(
     }
 
 
+# The constructions started under an earlier contract and aborted: what this contract replaces,
+# and why. Nothing of an aborted run is reused.
+ABORTED_RUNS = (
+    {
+        "status": "ABORTED_PROTOCOL_DEFECT_QWEN_DIAGNOSTIC",
+        "contract_sha256": "fe18917551276d676a6f3e0c5c20d14ee34f2f4a66c9de18407f264366a858f9",
+        "public_commit": "3226afad8fdb8f424b6486f540312e31cb16278a",
+        "ready_needs": 0,
+        "reason": (
+            "The frozen Qwen diagnostic recovery policy assumed that a repeated technical "
+            "execution could produce a different semantic output. In the real S3 run Qwen3-8B "
+            "was running greedy deterministic decoding, so a structurally malformed but "
+            "successfully generated response was likely reproducible. Retrying the identical "
+            "semantic execution was therefore not a meaningful recovery strategy."
+        ),
+        "change": "the diagnostic's failure semantics only (holdout_checks.py "
+        "diagnostic_admissible); sampling, grid, order, prompts, judges and systems unchanged",
+    },
+)
+
+
 def build(
     repo: Path = Path("."), construction_record: Mapping[str, Any] | None = None
 ) -> dict[str, Any]:
@@ -393,6 +414,7 @@ def build(
         "systems": systems(),
         "evaluation": evaluation(),
         "analysis": analysis(),
+        "aborted_runs": [dict(r) for r in ABORTED_RUNS],
         "derived_at_freeze_only": [
             "dataset hashes",
             "final counts",
