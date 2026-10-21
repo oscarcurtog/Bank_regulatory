@@ -260,12 +260,20 @@ def hanging_binary(folder: Path) -> tuple[Path, Path]:
     return path, child
 
 
-def gone(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return True
-    return False
+def gone(pid: int, within: float = 5.0) -> bool:
+    """Ended and reaped: a killed process the system has not reaped yet (a zombie, which runs
+    nothing) is given a moment to disappear."""
+    import time as _time
+
+    deadline = _time.monotonic() + within
+    while True:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        if _time.monotonic() > deadline:
+            return False
+        _time.sleep(0.05)
 
 
 def test_a_prompt_over_the_frozen_limit_is_counted_and_never_generated(tmp_path, monkeypatch):

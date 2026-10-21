@@ -82,7 +82,7 @@
    "ingest/holdout_ledger.py": "cde61409ef9d0b8826541f3173772ac8fc1dad65a18b85d6b4d09655c8b9b704",
    "ingest/holdout_packets.py": "d6a96dda3133d89d2fa3b81d16f112081c101c6a555dff9cca635db1bea706ee",
    "ingest/holdout_pipeline.py": "64db0d4aa6b36bdc0ffc5c1278a757451265666c2ae4b89d360b3013341a6d81",
-   "ingest/holdout_process.py": "7d8ba705852133c3aa1346873b423afcc2fc7cbe539f5a62074ff8b5bebbf60e",
+   "ingest/holdout_process.py": "dd87a17b3ada9ab5502468b769020b3b52769c38a2774cbc32caa8c2a2dc9244",
    "ingest/holdout_roles.py": "27e661ae98c99c3b6f1a748edbff6fd5cdb4752e1b826e36eca5d2e53a16e035",
    "ingest/holdout_runtime.py": "ba0dcc4db48a907c6dd62792c62000151db3a71570aec438c4886238edbdef50",
    "ingest/holdout_spool.py": "a3b3c311a84b350570ae38ed95bf37f4f734f6e8c377334d8bf3fef7f884f473",
@@ -689,7 +689,7 @@
   }
  },
  "code": {
-  "built_on_commit": "73bfb18f2ca90a8b7d5c32d0e57ed6896f078f48",
+  "built_on_commit": "482514a40e307e11f39642063c84cca4df20e170",
   "e_result_commit": "7636908bf57c7fbd95cc46b180c9f2e59a41b3f8",
   "files_sha256": {
    "ingest/benchmark.py": "09896f2ff6f2ad8436d7b1e5e5aa05036b15dfed65ab77ba525222da1deb840c",

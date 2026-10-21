@@ -41,12 +41,20 @@ def wait_for(path: Path) -> list[int]:
     raise AssertionError(f"{path} never written")
 
 
-def gone(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return True
-    return False
+def gone(pid: int, within: float = 5.0) -> bool:
+    """Ended and reaped: a killed process the system has not reaped yet (a zombie, which runs
+    nothing) is given a moment to disappear."""
+    import time as _time
+
+    deadline = _time.monotonic() + within
+    while True:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        if _time.monotonic() > deadline:
+            return False
+        _time.sleep(0.05)
 
 
 def test_a_process_is_the_leader_of_its_own_group_and_registered(tmp_path):

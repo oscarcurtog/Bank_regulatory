@@ -18,6 +18,7 @@ from ingest import holdout_controller as hct
 from ingest import holdout_process as hproc
 from ingest import holdout_roles as hr
 from tests.holdout_fakes import load_base, raw_dir, world
+from tests.unit.test_holdout_process import gone
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -174,8 +175,7 @@ def test_a_stalled_invocation_is_ended_and_its_group_verified_gone(tmp_path):
     assert ended.how == "stalled" and time.monotonic() - started < 30
     leader, grandchild = (int(p) for p in pids.read_text().split())
     assert not hproc.group_alive(leader)
-    with pytest.raises(ProcessLookupError):
-        os.kill(grandchild, 0)
+    assert gone(grandchild)
 
 
 def test_an_invocation_past_its_deadline_is_ended_even_while_it_progresses(tmp_path):
@@ -421,6 +421,5 @@ def test_sigterm_to_the_controller_ends_its_invocation_and_logs_a_stop(tmp_path)
     assert code == "interrupted: Terminated"
     leader, grandchild = (int(p) for p in pids.read_text().split())
     assert not hproc.group_alive(leader)
-    with pytest.raises(ProcessLookupError):
-        os.kill(grandchild, 0)
+    assert gone(grandchild)
     assert signal.getsignal(signal.SIGTERM) is not hproc.raise_terminated  # restored

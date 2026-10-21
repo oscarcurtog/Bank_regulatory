@@ -460,7 +460,7 @@ may run START or RESUME and resume again only under its own policy: a technical 
 the invocation just produced, of a kind the protocol retries. It never freezes.
 
 Before the first need, the construction is frozen. `config/holdout/pre-authoring-contract.json`
-(SHA-256 `63f6032e1a5f752d5e72ce6a55169c3239aad4b29a600783dd3f94054f5a1fd2`) fixes by content 76 files (the code and
+(SHA-256 `c6b0c6912b67c077c86738e186180c5000d305965e585a74744e5d63b215dbd6`) fixes by content 76 files (the code and
 configs of E, E5, BM25 and the evaluation, the S4 plan, and the construction's code, inputs and
 templates), the corpus snapshot and chunk layer, and the identity of every model runtime: the
 requested and effective Claude model and its binary, and the MLX packages, model files and host

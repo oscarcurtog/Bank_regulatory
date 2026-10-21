@@ -148,13 +148,24 @@ def spawn(
     return process
 
 
+def _reap(pid: int) -> None:
+    """The leader reaped if it is the caller's own child and has ended. On Linux a zombie is
+    still a member of its group, so a leader nobody reaps would keep its group alive."""
+    try:
+        os.waitpid(pid, os.WNOHANG)
+    except ChildProcessError:
+        pass  # reaped already, or another process's child, which the system reaps
+
+
 def _verify_gone(pgid: int, kill_wait: float) -> None:
     deadline = time.monotonic() + kill_wait
+    _reap(pgid)
     while group_alive(pgid):
         if time.monotonic() > deadline:
             raise CleanupFailed(f"process group {pgid} is still alive after SIGKILL")
         _signal(pgid, signal.SIGKILL)
         time.sleep(0.05)
+        _reap(pgid)
 
 
 def end_group(
