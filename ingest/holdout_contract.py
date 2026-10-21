@@ -459,6 +459,24 @@ ABORTED_RUNS = (
             "systems and the S4 metrics unchanged"
         ),
     },
+    {
+        "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+        "contract_sha256": "c6b0c6912b67c077c86738e186180c5000d305965e585a74744e5d63b215dbd6",
+        "public_commit": "1765ae38f5a5381f5346f095ec55ff710cfcf363",
+        "ready_needs": 6,
+        "reason": (
+            "Three independent executions of the metadata adjudicator gave a well-formed answer "
+            "violating the same frozen semantic rule of its stage, so that technical retries "
+            "could not repair it and the stage was left pending_technical_unresolved. The "
+            "transition for that class was defined prospectively, and TEST restarts under it."
+        ),
+        "change": (
+            "a semantic admissibility failure, the same frozen invariant violated in the three "
+            "executions of search A, search B or the metadata adjudicator, rejects the attempt "
+            "(semantic_inadmissible); contract failures and search C keep their technical "
+            "exhaustion. Everything else unchanged"
+        ),
+    },
 )
 
 

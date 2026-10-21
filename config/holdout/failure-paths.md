@@ -44,10 +44,11 @@ Each is recorded as `run_failed` with the cell `pending_technical`, or
 | C4 | The run's isolation audit fails, or cannot read the run (fail closed) | `role_audit` (`isolation`) | `run_failed` with the audit | RESUME; controller only when its one finding lies inside authorized metadata | yes otherwise |
 | C5 | The session ran on another effective model, or the pinned binary changed (checked before each of its processes starts) | `model_identity`, `runtime_identity` | `run_failed` | RESUME by a person | yes |
 | C6 | The diagnostic would run, or ran, under another MLX runtime or host | `runtime_identity` | `run_failed` | RESUME by a person | yes |
-| C7 | An answer breaks its complete contract: its shape, fields, types, text, grades, answerability, candidate set or labels (each built as the adjudication record builds it), three formulations not distinct, a value that cannot be written as UTF-8 text | `answer_fields`, `query_formulations`, `reply_is_json`, `judge_answer_complete`, `metadata_answer` (`malformed_session`) | `run_failed` | RESUME; controller | after the 3rd |
+| C7 | An answer breaks its role's contract: its shape, fields, types, text, grades, answerability, candidate set or labels (each built as the adjudication record builds it), the rubric's vocabulary, a reference it was not shown (a need, a node), three formulations not distinct, a value that cannot be written as UTF-8 text | `answer_fields`, `query_formulations`, `reply_is_json`, `judge_answer_complete`, `metadata_answer` (`malformed_session`) | `run_failed` | RESUME; controller | after the 3rd |
+| C7s | A well-formed answer violates a frozen semantic invariant tying its labels to the need's evidence or answerability: the metadata's type against the answerability, a gap driver on a complete need, `negation` without a grade 3, a driver without relevant support; a search's complete without a grade 3, none with relevant evidence, partial without relevant evidence | `metadata_answer`, `judge_answer_complete` (`malformed_session`), with the invariants' codes | `run_failed`, with its `violations` | RESUME; controller | see E8 (searches A and B, metadata); C10 (search C) |
 | C8 | The diagnostic's record has no valid token count, or a generation that contradicts it | `diagnostic_preflight` (`malformed_session`) | `run_failed` | RESUME; controller | after the 3rd |
 | C9 | A search's broker run ends in a protocol failure or at the ceiling of 32 requests | `broker_protocol` (`protocol`), `broker_ceiling` (`resource`) | `run_failed` | RESUME; controller | after the 3rd |
-| C10 | A stage's third execution fails | `pending_technical_unresolved` | `run_failed`, cell unresolved; RESUME refuses | none | yes |
+| C10 | A stage's third execution fails, and the three are not a semantic admissibility failure of searches A or B or the metadata (E8): a contract failure, different invariants, or search C | `pending_technical_unresolved` | `run_failed`, cell unresolved; RESUME refuses | none | yes |
 
 ## D. Diagnostics (recorded; never a retry, a rejection or a stop)
 
@@ -69,6 +70,7 @@ Each is recorded as `run_failed` with the cell `pending_technical`, or
 | E5 | A final qrel is ambiguous | `final_qrels_unambiguous` (`ambiguous`) | `attempt_failed_after_gate` | next attempt | no |
 | E6 | Judge D does not hold the final label, or finds it ambiguous | `adjudication_uncertain` | `attempt_failed_after_gate` | next attempt | no |
 | E7 | A cell fails three attempts | `unfilled_after_attempt_limit` | the cell is terminal | none | no |
+| E8 | The three executions of search A, search B or the metadata adjudicator all violate the same semantic invariant (C7s): the check and its codes, never the text | `semantic_admissibility` (`semantic_inadmissible`) | the third `run_failed`, then `attempt_failed_after_gate` with the check and the invariants as its note; nothing inferred, repaired or substituted | next attempt | no |
 
 ## F. Stops for a person (`construction_stopped`; RESUME refuses until a person decides)
 

@@ -70,23 +70,23 @@
   "code_sha256": {
    "ingest/corpus_tools.py": "1b6c4c89497c244c707bb02c1c662342a1b526d0ce85bd3e7be2a192eb2bf718",
    "ingest/holdout.py": "57af5d0b70da193707f3bd1f84bfee87194eacda18df15949935318c9900f005",
-   "ingest/holdout_admission.py": "e81dacf927714b1d8f6a57658c6b6f5920948604a108c921ec110b1ebfbecc68",
+   "ingest/holdout_admission.py": "2fdf55bb7c8018c2add36573500feeace7412100a7ca21a742faca0d8a75e83e",
    "ingest/holdout_broker.py": "373ecf4ca93180e8bd407b688cddd6b086556a50eadfd13701e66ecb288dd40c",
-   "ingest/holdout_checks.py": "8b2304e30819b01e4ed61d4d6d1fe372d240682c9a2087b19fb708f739b698a4",
-   "ingest/holdout_contract.py": "efd1056899d41b657f728e1e696264ad638758c4e8f87be1aa1f48bfa8400d45",
+   "ingest/holdout_checks.py": "29c7f8c36ab07a88d871138fb4475333c9650d0b1e7f942b369804b1852e4f62",
+   "ingest/holdout_contract.py": "de36f6d411a82cd018db2bf799fb64494054e0fd4983b46a9d6b1912ecd56b99",
    "ingest/holdout_controller.py": "91f86b286c6d17d1e6cfdaec2fd4ace782ec413b531e774359dfdbc686b4c70c",
    "ingest/holdout_executor.py": "4566f95710961c729c2f27e35def949fec52bc315eb2fa523d709ea869b5f6fa",
    "ingest/holdout_isolation.py": "2e5c69b6566e5d7cd4229dc5ad3b80fa736fded67c6343a6a7593240b58265be",
    "ingest/holdout_judging.py": "c952263ac15c07b2571cf8f65e301906adc33ffef1c0970827add86e4032e9d6",
    "ingest/holdout_launcher.py": "e611ff224a266c13bf92be32eb6a280426921ed44eded687d1ac8da1b82a56a1",
-   "ingest/holdout_ledger.py": "cde61409ef9d0b8826541f3173772ac8fc1dad65a18b85d6b4d09655c8b9b704",
+   "ingest/holdout_ledger.py": "552e4681a40af6bb3b2ff4072880eaae7c8d4df992d2f8414a926bb9ca3c2904",
    "ingest/holdout_packets.py": "d6a96dda3133d89d2fa3b81d16f112081c101c6a555dff9cca635db1bea706ee",
-   "ingest/holdout_pipeline.py": "64db0d4aa6b36bdc0ffc5c1278a757451265666c2ae4b89d360b3013341a6d81",
+   "ingest/holdout_pipeline.py": "713c8b06dff1b89a1d1972693c5b83e044514a936dd3c49b8a694e9f2c1deb2c",
    "ingest/holdout_process.py": "dd87a17b3ada9ab5502468b769020b3b52769c38a2774cbc32caa8c2a2dc9244",
    "ingest/holdout_roles.py": "27e661ae98c99c3b6f1a748edbff6fd5cdb4752e1b826e36eca5d2e53a16e035",
    "ingest/holdout_runtime.py": "ba0dcc4db48a907c6dd62792c62000151db3a71570aec438c4886238edbdef50",
    "ingest/holdout_spool.py": "a3b3c311a84b350570ae38ed95bf37f4f734f6e8c377334d8bf3fef7f884f473",
-   "ingest/holdout_state.py": "783ced2b11102f740b8942dd28bd58fea814c80ed24ef0bcc02ade6becd502ae",
+   "ingest/holdout_state.py": "07390e77c9c7dfeb8adad5f30a402a857b61384e4b64528fce1f72ac7f513d26",
    "ingest/psd2_exclusions.py": "9900c494238c4df56f9d1e82d6ca62b920a3d9cf701374c9468b057ed8552065",
    "scripts/evidence_tools.py": "b1ae9a1b1855544324e9d9095be9fb4e19eb4a4c32ee51a428f3d2daa95155ef",
    "scripts/holdout.py": "14e373e35b08f103f80f2e5ce4625d160a9d6128cdd667e98ab125db8c45ff63",
@@ -94,8 +94,8 @@
   },
   "inputs_sha256": {
    "data/benchmark/PROTOCOL.md": "79cafdda538cf9cfec682817ac77bf75692f562545ad5b21f38d8394df0db1d0",
-   "config/holdout/evidence-discovery.md": "a32bd3a3de9424d12088099f773f0d49ddc5b96fd9ab24201db17e85ed36a92d",
-   "config/holdout/failure-paths.md": "3f6a07e841b39c1dd54a1fc137cb8fe1cf641c39eb3598b124bdaf361179d0cc",
+   "config/holdout/evidence-discovery.md": "1f995934dd6d508e2cc2fff40f448c41d5af05d862af7203c63703a5c0611119",
+   "config/holdout/failure-paths.md": "750d691f9b6cc41269031c5a2812fc0835bac17b25553ac8ea11a5ee6dbea43a",
    "config/retrieval/qwen3-8b-mlx.json": "92836ad88b8529027775f101b3c1e1bf1c47db46434199de271a582e82ac02a4",
    "data/benchmark/dev/manifest.json": "c845b684035dac91dec399604e6623a60c67a9564afba975f177b5d6482fb917",
    "data/benchmark/dev/needs.jsonl": "1c22c80dfb1b1d3092634b795bee5e01e0fca2bc07582d4ea1854d91c07cb791",
@@ -459,6 +459,19 @@
      "rule": "the diagnostic was produced under the frozen MLX runtime, recorded in its spool before the run and in the output itself (ingest/holdout_runtime.py local_problems)",
      "retriable": true
     },
+    "semantic_admissibility": {
+     "name": "semantic_admissibility",
+     "kind": "methodological_eligibility",
+     "reads": "model_output",
+     "stages": [
+      "judge_a",
+      "second_search",
+      "metadata"
+     ],
+     "consequence": "semantic_inadmissible",
+     "rule": "the person's rule of 2026-10-21: an answer that ended normally, passed its audit and has the right form, but violates a frozen semantic invariant tying its labels to the need's evidence or answerability (the metadata's type, gap drivers, negation and drivers against the final grades; a search's answerability against its own grades: ingest/holdout_admission.py), is one failed technical execution; when the stage's three executions all violate the same invariant (the check and its codes, never the text), the need or its adjudication cannot give an admissible answer: the attempt is rejected, nothing is inferred, repaired or substituted, and the cell gets a new blind attempt (at most three). A failure of the role's contract (form, fields, types, vocabulary, a reference it was not shown) stays technical, and so does search C's, whose audit cells get no rejection the others do not get",
+     "retriable": false
+    },
     "state_integrity": {
      "name": "state_integrity",
      "kind": "technical_integrity",
@@ -689,7 +702,7 @@
   }
  },
  "code": {
-  "built_on_commit": "482514a40e307e11f39642063c84cca4df20e170",
+  "built_on_commit": "1765ae38f5a5381f5346f095ec55ff710cfcf363",
   "e_result_commit": "7636908bf57c7fbd95cc46b180c9f2e59a41b3f8",
   "files_sha256": {
    "ingest/benchmark.py": "09896f2ff6f2ad8436d7b1e5e5aa05036b15dfed65ab77ba525222da1deb840c",
@@ -934,7 +947,7 @@
  },
  "analysis": {
   "plan_file": "config/holdout/s4-analysis-plan.md",
-  "plan_sha256": "5882b730330a26b2969a19b064e4b53ad359bfe0f8966162f0b86c4b791ca191",
+  "plan_sha256": "fbd4eff00cc51294da2dedf387aaf919b099c34d1237bf658d57523a4a2bda46",
   "primary_comparison": "E against E5",
   "bootstrap": {
    "function": "ingest/run_report.py paired_bootstrap",
@@ -967,6 +980,14 @@
    "ready_needs": 8,
    "reason": "The omission audit's hard stop: a second blind search found evidence judge A had missed, adjudicated grade >= 1, so that the frozen rule called for the evidence search to be corrected for every need alike. The review that followed also found control-flow defects (outputs admitted without their full contract, a second searcher's declared problem with no transition, audits bound to the wrong attempt, unbounded processes, a controller that could act on a stale failure). The run is kept whole as a protocol-development run, and TEST restarts prospectively under one final procedure for every need, rather than being repaired.",
    "change": "evidence discovery: two blind searches for every need, their union adjudicated once, and the omission audit as a third blind search (config/holdout/evidence-discovery.md); complete admission of every output; bounded processes with verified cleanup; the diagnostic's token preflight; every reachable failure classified (config/holdout/failure-paths.md); the unattended controller in the repository. Sampling, grid, order, omission cells, templates, judges, thresholds, systems and the S4 metrics unchanged"
+  },
+  {
+   "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+   "contract_sha256": "c6b0c6912b67c077c86738e186180c5000d305965e585a74744e5d63b215dbd6",
+   "public_commit": "1765ae38f5a5381f5346f095ec55ff710cfcf363",
+   "ready_needs": 6,
+   "reason": "Three independent executions of the metadata adjudicator gave a well-formed answer violating the same frozen semantic rule of its stage, so that technical retries could not repair it and the stage was left pending_technical_unresolved. The transition for that class was defined prospectively, and TEST restarts under it.",
+   "change": "a semantic admissibility failure, the same frozen invariant violated in the three executions of search A, search B or the metadata adjudicator, rejects the attempt (semantic_inadmissible); contract failures and search C keep their technical exhaustion. Everything else unchanged"
   }
  ],
  "derived_at_freeze_only": [

@@ -145,6 +145,12 @@ EXECUTOR_FAILURE: dict[str, TechnicalReason] = {
 }
 
 
+# The checks whose failure can be a frozen semantic invariant of a well-formed answer, and the
+# stages where three executions violating the same one reject the attempt (the person's rule of
+# 2026-10-21). Search C keeps the frozen technical exhaustion: the audit's cells get no
+# rejection the others do not get.
+SEMANTIC_CHECKS = ("metadata_answer", "judge_answer_complete")
+SEMANTIC_STAGES = ("judge_a", "second_search", "metadata")
 # The searches of a need's evidence, in their order: search A, search B (every need) and the
 # omission audit's search C (its 12 cells); every later stage is built from what they admitted
 SEARCHES = ("judge_a", "second_search", "omission_search")
@@ -174,6 +180,44 @@ class TechnicalFailure(Exception):
         self.reason = reason
         self.detail = detail
         self.check = check
+
+
+class SemanticFailure(TechnicalFailure):
+    """A well-formed answer that violates frozen semantic invariants of its stage: one failed
+    technical execution, which carries the invariants' codes (holdout_admission.Verdict)."""
+
+    def __init__(self, reason: TechnicalReason, detail: str, check: str, violations: Sequence[str]):
+        super().__init__(reason, detail, check)
+        self.violations = tuple(sorted(set(violations)))
+
+
+def semantic(check: str, violations: Sequence[str]) -> SemanticFailure:
+    found = hk.check(check)
+    if not found.retriable:
+        raise ValueError(f"{check} is not a check on a model's output")
+    detail = f"semantic invariants violated: {sorted(set(violations))}"
+    return SemanticFailure(found.consequence, detail, check, violations)  # type: ignore[arg-type]
+
+
+def semantic_exhaustion(failures: Sequence[Mapping[str, Any]]) -> tuple[str, list[str]] | None:
+    """Whether a stage's failed executions show the need or its adjudication unable to give an
+    admissible answer under the frozen rules: all three ended normally, passed their audit,
+    failed the same semantic check, and share at least one violated invariant. The identity is
+    the check and its codes, never the answers' text. Returns the check and the invariants
+    every execution violated, or None."""
+    if len(failures) < hs.MAX_TECHNICAL_RUNS:
+        return None
+    checks = {f.get("check") for f in failures}
+    if len(checks) != 1 or not checks <= set(SEMANTIC_CHECKS):
+        return None
+    if any((f.get("audit") or {}).get("ok") is not True for f in failures):
+        return None
+    shared = set(failures[0].get("violations") or [])
+    for f in failures[1:]:
+        shared &= set(f.get("violations") or [])
+    if not shared:
+        return None
+    return str(checks.pop()), sorted(shared)
 
 
 def technical(check: str, detail: str) -> TechnicalFailure:
@@ -213,11 +257,18 @@ class ConstructionStop(Exception):
 class Rejected(Exception):
     """A methodological rejection of the current attempt."""
 
-    def __init__(self, outcome: hl.Outcome, stage: str, against: hl.Against | None = None) -> None:
+    def __init__(
+        self,
+        outcome: hl.Outcome,
+        stage: str,
+        against: hl.Against | None = None,
+        note: str | None = None,
+    ) -> None:
         super().__init__(outcome)
         self.outcome = outcome
         self.stage = stage
         self.against = against
+        self.note = note
 
 
 class _ConceptLeaks(Exception):
@@ -689,12 +740,25 @@ class Pipeline:
         self.ledger.check_minimum(self.world.grid, final, evaluable)
 
     @staticmethod
-    def _ineligible(check: str, stage: str) -> Rejected:
+    def _ineligible(check: str, stage: str, note: str | None = None) -> Rejected:
         """A failed methodological eligibility check: the rejection the frozen table names."""
         found = hk.check(check)
         if found.kind != "methodological_eligibility":
             raise ValueError(f"{check} is not a methodological eligibility check")
-        return Rejected(found.consequence, stage)  # type: ignore[arg-type]
+        return Rejected(found.consequence, stage, note=note)  # type: ignore[arg-type]
+
+    def _exhausted(self, pid: str, stage: str) -> Rejected | None:
+        """The rejection a stage's three recorded failures call for, if they are a semantic
+        admissibility failure (semantic_exhaustion): the same answer to it live and on replay."""
+        if stage not in SEMANTIC_STAGES:
+            return None
+        failed = [r["run_id"] for r in self.store.runs(pid, stage) if r["status"] == "failed"]
+        found = semantic_exhaustion(self.store.failure_payloads(failed))
+        if found is None:
+            return None
+        check, shared = found
+        note = f"{check}: {', '.join(shared)} in {len(failed)} executions"
+        return self._ineligible("semantic_admissibility", stage, note)
 
     def _integrity(
         self, check: str, stage: str, pid: str | None, error: Exception
@@ -766,7 +830,7 @@ class Pipeline:
         pid, cell_id = attempt.proposal_id, attempt.cell_id
         payload: dict[str, Any]
         if attempt.need_id is not None and attempt.outcome == "accepted":
-            note = "after the gate"
+            note = rejection.note or "after the gate"
             self.ledger.reopen_failed(pid, rejection.outcome, rejection.stage, note)
             kind, key = "attempt_failed_after_gate", f"{pid}/failed_after_gate"
             payload = {"outcome": rejection.outcome, "note": note}
@@ -894,6 +958,12 @@ class Pipeline:
             self.consumed.append(admitted["run_id"])
             self.states[cell_id] = stage_state(stage)
             return admitted["value"]
+        if sum(r["status"] == "failed" for r in runs) >= hs.MAX_TECHNICAL_RUNS:
+            # three recorded failures that are a semantic admissibility failure: the rejection,
+            # decided again from the records alone, on a replay that writes nothing too
+            exhausted = self._exhausted(pid, stage)
+            if exhausted is not None:
+                raise exhausted
         if not store.writable:
             raise hs.StateError(f"{cell_id} {stage} has no admitted output: this replay runs none")
         self._replayed_audits([r for r in runs if r["status"] == "failed"])
@@ -926,6 +996,9 @@ class Pipeline:
             runs = store.runs(pid, stage)
         failed = [r for r in runs if r["status"] == "failed"]
         if len(failed) >= hs.MAX_TECHNICAL_RUNS:
+            exhausted = self._exhausted(pid, stage)
+            if exhausted is not None:
+                raise exhausted
             raise TechnicalStop(
                 f"{cell_id}: {stage} failed {len(failed)} technical executions: "
                 "pending_technical_unresolved; a person decides"
@@ -1037,8 +1110,14 @@ class Pipeline:
         try:
             value = admit(document)
         except TechnicalFailure as failure:
+            violations = failure.violations if isinstance(failure, SemanticFailure) else ()
             raise self._failed(
-                run, failure.reason, failure.detail, audit_record, failure.check
+                run,
+                failure.reason,
+                failure.detail,
+                audit_record,
+                failure.check,
+                violations=violations,
             ) from failure
         except Exception as error:  # an answer of a shape the stage cannot read
             shape = technical(
@@ -1085,35 +1164,49 @@ class Pipeline:
         audit: Mapping[str, Any] | None,
         check: str | None = None,
         unresolved: bool = False,
-    ) -> TechnicalStop:
+        violations: Sequence[str] = (),
+    ) -> Exception:
         """One failed technical execution, recorded with the state it leaves: pending_technical,
         or pending_technical_unresolved after the third (or at once, when unresolved: no
-        execution may follow it). Nothing of it is ever consumed. Returns the stop the caller
-        raises."""
+        execution may follow it). Nothing of it is ever consumed. When the third failure makes
+        the stage's executions a semantic admissibility failure (semantic_exhaustion), the
+        attempt is rejected methodologically instead: the cell goes on, and the three failures
+        stay recorded with their invariants as provenance. Returns what the caller raises."""
         pid, stage = run["proposal_id"], run["stage"]
         cell_id = self.ledger.get(pid).cell_id
-        failed = sum(r["status"] == "failed" for r in self.store.runs(pid, stage)) + 1
+        before = [r["run_id"] for r in self.store.runs(pid, stage) if r["status"] == "failed"]
+        failed = len(before) + 1
+        payload = {
+            "reason": reason,
+            "check": check,
+            "detail": detail[:500],
+            "audit": None if audit is None else dict(audit),
+            "violations": sorted(set(violations)),
+        }
+        exhausted = None
+        if not unresolved and failed >= hs.MAX_TECHNICAL_RUNS and stage in SEMANTIC_STAGES:
+            exhausted = semantic_exhaustion([*self.store.failure_payloads(before), payload])
         state: CellState = (
-            "pending_technical_unresolved"
+            "judging"  # the attempt is rejected next, by its own event
+            if exhausted is not None
+            else "pending_technical_unresolved"
             if unresolved or failed >= hs.MAX_TECHNICAL_RUNS
             else "pending_technical"
         )
         self.store.record(
             "run_failed",
             f"{run['run_id']}/ended",
-            {
-                "reason": reason,
-                "check": check,
-                "detail": detail[:500],
-                "audit": None if audit is None else dict(audit),
-                "state": state,
-            },
+            {**payload, "state": state},
             cell=cell_id,
             proposal=pid,
             stage=stage,
             run=run["run_id"],
         )
         self.states[cell_id] = state
+        if exhausted is not None:
+            rejection = self._exhausted(pid, stage)
+            assert rejection is not None  # the same decision, now from the recorded failures
+            return rejection
         return TechnicalStop(
             f"{cell_id} is {state} at {stage}, technical execution {failed} of "
             f"{hs.MAX_TECHNICAL_RUNS}: {reason}: {detail[:200]}"
@@ -1440,10 +1533,14 @@ class Pipeline:
             return found
 
         def admit_search(value: Any) -> Any:
-            # the complete contract of a search's answer, or of the problem it declares
-            problems = ha.search_problems(a_file_of(value), w.texts, w.excluded_psd2)
-            if problems:
-                raise technical("judge_answer_complete", f"a search's answer: {problems[:3]}")
+            # the complete contract of a search's answer, or of the problem it declares; then
+            # the semantic invariants tying its answerability to its own grades
+            verdict = ha.search_verdict(a_file_of(value), w.texts, w.excluded_psd2)
+            if verdict.problems:
+                detail = f"a search's answer: {verdict.problems[:3]}"
+                raise technical("judge_answer_complete", detail)
+            if verdict.violations:
+                raise semantic("judge_answer_complete", verdict.violations)
             return value
 
         def search(role: str, stage: str) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -1681,7 +1778,13 @@ class Pipeline:
             raise Rejected("adjudication_uncertain", "judge_d")
 
         def admit_m(reply: Any) -> Any:
-            _admitted("metadata_answer", ha.metadata_shape_problems)(reply)
+            verdict = ha.metadata_verdict(reply, final.qrels, final.answerability)
+            if verdict.problems:
+                raise technical(
+                    "metadata_answer", f"the answer breaks its contract: {verdict.problems[:3]}"
+                )
+            if verdict.violations:
+                raise semantic("metadata_answer", verdict.violations)
             hj.final_metadata(reply, final.qrels, final.answerability, cell.acts)
             return reply
 
@@ -2126,6 +2229,10 @@ class Pipeline:
                 "by_reason": dict(Counter(a.outcome or "" for a in rejected)),
                 "by_type": dict(Counter(cells[a.cell_id].type for a in rejected)),
                 "by_act": dict(Counter("+".join(cells[a.cell_id].acts) for a in rejected)),
+                # the invariants three executions all violated: codes, never text
+                "semantic_inadmissible": dict(
+                    Counter(a.note or "" for a in rejected if a.outcome == "semantic_inadmissible")
+                ),
             },
             "gate": dict(Counter(f"{g['stage']}:{g['verdict']}" for g in self.gate_log)),
             # the audits of the READY attempts; every attempt audited, as provenance

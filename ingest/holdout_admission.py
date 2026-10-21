@@ -16,10 +16,12 @@ are recorded in the state and read by the controller.
 
 from __future__ import annotations
 
+import dataclasses
 import re
 from collections import Counter
 from collections.abc import Mapping, Sequence
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, get_args
 
 from ingest import benchmark as bm
 from ingest import holdout_judging as hj
@@ -34,6 +36,40 @@ GATE_VERDICTS = (
     "uncertain",
 )
 NO_PROBLEM = (None, "", "null")
+METADATA_TYPES = frozenset(
+    {"direct", "multi_provision", "exception_confusion", "partial_out_of_scope"}
+)
+DIFFICULTIES = frozenset({"easy", "medium", "hard"})
+# The frozen semantic invariants an answer of the right form can still violate: each ties the
+# answer's labels to the need's evidence or answerability. Three independent executions of a
+# stage violating one of them is a property of the need or its adjudication, not of the run.
+SEARCH_INVARIANTS = (
+    "complete_without_grade_3",
+    "none_with_relevant_evidence",
+    "partial_without_relevant_evidence",
+)
+METADATA_INVARIANTS = (
+    "type_against_answerability",
+    "gap_driver_on_complete_need",
+    "negation_without_grade_3",
+    "driver_without_relevant_support",
+)
+
+
+@dataclass(frozen=True)
+class Verdict:
+    """What admission finds: problems of the role's contract (form, fields, types, vocabulary,
+    references), and, only when there is none, the frozen semantic invariants the answer
+    violates (codes, never text)."""
+
+    problems: list[str] = dataclasses.field(default_factory=list)
+    violations: list[str] = dataclasses.field(default_factory=list)
+
+    @property
+    def admitted(self) -> bool:
+        return not self.problems and not self.violations
+
+
 _NODE_REF = re.compile(bm.NODE_REF_PATTERN)
 _NODE_IN_TEXT = re.compile(r"\b(?:DORA|MiCA|PSD2):[\w.]+")
 
@@ -134,20 +170,22 @@ def declared_problem(found: Mapping[str, Any]) -> str | None:
     return None if problem in NO_PROBLEM else str(problem)
 
 
-def search_problems(
+def search_verdict(
     found: Any, texts: Mapping[bm.NodeKey, str], excluded: frozenset[str]
-) -> list[str]:
+) -> Verdict:
     """A search's final answer (judge_a.v2). A declared problem is an answer of its own: its
     text, and nothing else, is required (its transition is the pipeline's, before any
-    candidate is read). Otherwise every candidate and the answerability, complete."""
+    candidate is read). Otherwise every candidate and the answerability, complete (the role's
+    contract), and then the protocol's rules tying the answerability to the search's own
+    grades (DEV batch 2's checks: the semantic invariants)."""
     if not isinstance(found, Mapping):
-        return ["the answer is not an object"]
+        return Verdict(["the answer is not an object"])
     problem = found.get("problem")
     if problem not in NO_PROBLEM:
-        return [] if _text(problem) else ["problem: neither null nor text"]
+        return Verdict([] if _text(problem) else ["problem: neither null nor text"])
     candidates = found.get("candidates")
     if not isinstance(candidates, list):
-        return ["candidates: not a list"]
+        return Verdict(["candidates: not a list"])
     problems = []
     nodes = []
     for i, c in enumerate(candidates, start=1):
@@ -158,7 +196,7 @@ def search_problems(
     if len(set(nodes)) != len(nodes):
         problems.append("candidates: a node named twice")
     if found.get("answerability") not in ANSWERABILITIES:
-        return [*problems, "answerability: not complete, partial or none"]
+        return Verdict([*problems, "answerability: not complete, partial or none"])
     if not _text(found.get("answerability_reason")):
         problems.append("answerability_reason: no text")
     gap = found.get("gap_note")
@@ -170,15 +208,35 @@ def search_problems(
         # every label exactly as the adjudication record will build it (hj.a_judgments)
         labels = hj.a_judgments(found)
         problems += [p for n, j in labels.items() for p in _judgment(j, _place(n, nodes))]
-    if not problems:
-        # the protocol's rules on the file as a whole (DEV batch 2's checks), by class
+    if problems:
+        return Verdict(problems)
+    relevant = [c for c in candidates if c["grade"] >= 2 and not c.get("ambiguous")]
+    top = [c for c in candidates if c["grade"] == 3 and not c.get("ambiguous")]
+    answerability = found["answerability"]
+    violations = []
+    if answerability == "complete" and not top:
+        violations.append("complete_without_grade_3")
+    if answerability == "none" and relevant:
+        violations.append("none_with_relevant_evidence")
+    if answerability == "partial" and not relevant:
+        violations.append("partial_without_relevant_evidence")
+    if not violations:
+        # nothing else of the protocol's rules may remain: if it does, the role's contract
         problems += sorted(
             {
                 "rule: " + _NODE_IN_TEXT.sub("<node>", p.split(": ", 1)[-1])
                 for p in hj.judge_a_problems(found, texts, excluded)
             }
         )
-    return problems
+    return Verdict(problems, violations)
+
+
+def search_problems(
+    found: Any, texts: Mapping[bm.NodeKey, str], excluded: frozenset[str]
+) -> list[str]:
+    """Everything that keeps a search's answer from admission, contract and invariants alike."""
+    verdict = search_verdict(found, texts, excluded)
+    return [*verdict.problems, *(f"invariant: {v}" for v in verdict.violations)]
 
 
 def _candidate_problems(
@@ -357,6 +415,50 @@ def _answerability_problems(answer: Mapping[str, Any], reason: str) -> list[str]
 # ---------------------------------------------------------------------------
 # the metadata adjudicator
 # ---------------------------------------------------------------------------
+
+
+def metadata_verdict(reply: Any, qrels: Sequence[bm.Qrel], answerability: str) -> Verdict:
+    """The metadata adjudicator's answer (metadata_adjudicator.v1), as holdout_judging's
+    metadata_problems judges it, split in two: the role's contract (form, the rubric's
+    vocabulary, a node it was shown, the gap note only for a driver a gap can hold) and the
+    semantic invariants that tie its labels to the final grades and answerability."""
+    problems = metadata_shape_problems(reply)
+    if problems:
+        return Verdict(problems)
+    violations = []
+    kind = reply["type"]
+    if kind not in METADATA_TYPES:
+        problems.append("type: not a type of the rubric")
+    elif (answerability == "complete") == (kind == "partial_out_of_scope"):
+        violations.append("type_against_answerability")
+    if reply["difficulty"] not in DIFFICULTIES:
+        problems.append("difficulty: not one of the rubric")
+    graded = {f"{r.act}:{r.path}": r for r in qrels}
+    known = set(get_args(bm.Driver)) - {"cross_act"}
+    for driver, nodes in reply["drivers"].items():
+        if driver not in known:
+            problems.append("drivers: a driver the adjudicator may not give")
+            continue
+        if not nodes:
+            problems.append("drivers: a driver with no node named")
+            continue
+        for node in nodes:
+            if node == "gap_note":
+                if driver not in hj.GAP_DRIVERS:
+                    problems.append("drivers: the gap named for a driver no gap can hold")
+                elif answerability == "complete":
+                    violations.append("gap_driver_on_complete_need")
+                continue
+            r = graded.get(node)
+            if r is None:
+                problems.append("drivers: a node that is not among the final grades")
+            elif driver == "negation" and not (r.grade == 3 and not r.ambiguous):
+                violations.append("negation_without_grade_3")
+            elif driver != "lexical_twin" and not hj.relevant(r.grade, r.ambiguous):
+                violations.append("driver_without_relevant_support")
+    if problems:
+        return Verdict(problems)
+    return Verdict([], sorted(set(violations)))
 
 
 def metadata_shape_problems(reply: Any) -> list[str]:

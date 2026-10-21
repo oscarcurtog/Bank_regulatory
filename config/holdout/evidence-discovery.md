@@ -54,6 +54,12 @@ new context up to three executions:
   The protocol's rules on the file as a whole hold too, as in DEV batch 2 (a complete need
   has a grade 3, a partial need a relevant node, a none need no relevant node).
 
+A well-formed answer whose answerability its own grades do not support (complete without a
+grade 3, none with relevant evidence, partial without relevant evidence) violates a semantic
+invariant: one failed technical execution. When the three executions of search A or of search B
+all violate the same invariant, the attempt is rejected (`semantic_inadmissible`) and the cell
+gets a new blind attempt; search C's stay a technical exhaustion, which stops the construction.
+
 ## 3. A declared problem
 
 The transition comes before any candidate is read:

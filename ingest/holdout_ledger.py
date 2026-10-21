@@ -44,6 +44,9 @@ Outcome = Literal[
     "ambiguous",
     "adjudication_uncertain",
     "judge_problem",
+    # the person's rule of 2026-10-21: three executions of a stage violating the same frozen
+    # semantic invariant of a well-formed answer (holdout_pipeline.semantic_exhaustion)
+    "semantic_inadmissible",
 ]
 VERDICT_OUTCOME: dict[str, Outcome] = {
     "paraphrase": "overlap_paraphrase",

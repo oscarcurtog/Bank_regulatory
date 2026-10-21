@@ -230,6 +230,9 @@ class Scenario:
     records: dict[tuple[str, str], list[dict[str, Any]]] = field(default_factory=dict)
     # (cell, attempt) where judge D finds every item ambiguous: adjudication_uncertain
     d_uncertain: set[tuple[str, int]] = field(default_factory=set)
+    # (cell, role) -> replies for its next executions, one per execution, in order: an object
+    # (a search's final answer, or a headless role's JSON) or a raw text; then the usual ones
+    per_execution: dict[tuple[str, str], list[Any]] = field(default_factory=dict)
     qwen_crosses: set[str] = field(default_factory=set)  # cells where the diagnostic disagrees
     d_answer: dict[str, dict[str, Any]] = field(default_factory=dict)  # cell -> D's item fields
     # (cell, role) -> a reply that replaces the usual one, for a valid answer of another kind
@@ -363,6 +366,13 @@ class FakeExecutor:
         if failing and kind in ("raise", "resource", "protocol"):
             raise RuntimeError("the API answered 529 overloaded")
         n = int(cell[1:]) * 10 + number
+        queued = self.scenario.per_execution.get((cell, role))
+        if queued:
+            given = queued.pop(0)
+            reply = given if isinstance(given, str) else json.dumps(given)
+            result = hpl.Session(reply, self._session(role, [packet], [reply], failing))
+            self._spooled(role, run_id, "headless", {"reply": reply, "session": result.session})
+            return result
         if role == "query_writer":
             reply = (
                 f"en formal: What does the law require in situation {n}?\n"
@@ -533,6 +543,9 @@ class FakeExecutor:
         if (cell, role) in s.problem:
             # a declared problem, and nothing else: its transition comes before any candidate
             final = {"need_id": ref, "problem": s.problem[(cell, role)]}
+        queued = s.per_execution.get((cell, role))
+        if queued:
+            final = {"need_id": ref, **queued.pop(0)}
         ask = json.dumps({"request": {"op": "nodes", "args": {"refs": [evidence[0][0]]}}})
         if failing and kind == "resource":
             replies = [ask] * 33 + [json.dumps({"final": final})]

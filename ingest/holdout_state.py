@@ -358,7 +358,8 @@ def _apply(db: sqlite3.Connection, e: Event) -> None:
             f"run {e.run_id} failed",
         )
         _set_cell(db, e, p["state"], e.stage)
-        _set_meta(db, "status", p["state"])
+        # a failure that leaves the attempt to be rejected next leaves the construction going
+        _set_meta(db, "status", p["state"] if p["state"] in STATUSES else "building")
     elif e.kind == "stage_admitted":
         if e.run_id is not None:
             if (p.get("audit") or {}).get("ok") is not True:
@@ -755,6 +756,18 @@ class Store:
             "SELECT * FROM runs WHERE proposal_id = ? AND stage = ? ORDER BY technical_run",
             (proposal_id, stage),
         )
+
+    def failure_payloads(self, run_ids: Sequence[str]) -> list[dict[str, Any]]:
+        """The run_failed events of these runs, in the order they were recorded."""
+        if not run_ids:
+            return []
+        marks = ", ".join("?" for _ in run_ids)
+        rows = self.db.execute(
+            f"SELECT payload FROM events WHERE kind = 'run_failed' AND run_id IN ({marks}) "
+            "ORDER BY seq",
+            list(run_ids),
+        ).fetchall()
+        return [json.loads(r[0]) for r in rows]
 
     def stage(self, proposal_id: str, stage: str) -> dict[str, Any] | None:
         found = self._dicts(

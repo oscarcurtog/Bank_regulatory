@@ -181,8 +181,13 @@ from it.
 - **Every answer is admitted only whole.** Before an output is admitted, its complete contract is
   checked: shape, required fields and types, non-empty text, valid grades and answerabilities,
   the exact candidate set, the rationale every label needs, and every invariant its consumers
-  rely on. An answer that breaks it is a failed technical execution, never a rejection. A failure
-  the construction does not classify is recorded as a stop for a person.
+  rely on. An answer that breaks it is a failed technical execution, never a rejection, with one
+  exception fixed before this construction: a well-formed answer that violates a frozen semantic
+  invariant tying its labels to the need's evidence or answerability (the metadata's type,
+  drivers and negation against the final grades; a search's answerability against its own
+  grades), in all three executions of searches A or B or of the metadata adjudicator, rejects the
+  attempt (`semantic_inadmissible`), with nothing inferred or repaired. A failure the construction
+  does not classify is recorded as a stop for a person.
 - **Technical retries and resume.** A resume continues the same cell, the same need and the same
   stage from the same frozen inputs, after verifying again the pre-authoring contract, the
   binary and runtime, every packet, the corpus, snapshot and chunk layer and every admitted

@@ -235,13 +235,29 @@ def test_a_broken_search_is_never_admitted(break_it, expected):
     assert any(expected in p for p in problems(found)), problems(found)
 
 
-def test_the_protocol_rules_on_a_search_file_are_named_by_class_never_by_node():
+def test_the_protocol_rules_on_a_search_file_are_invariants_named_by_code():
+    """A search's answerability against its own grades: semantic invariants, as codes, never a
+    node or a text; and never mixed with the role's contract, which comes first."""
     found = search()
     found["candidates"][0]["grade"] = 2  # complete, with no grade 3 left
-    assert problems(found) == ["rule: complete without a non-ambiguous grade 3"]
+    assert ha.search_verdict(found, TEXTS, EXCLUDED) == ha.Verdict([], ["complete_without_grade_3"])
+    assert problems(found) == ["invariant: complete_without_grade_3"]
     found = search()
     found["answerability"], found["gap_note"] = "none", "the corpus lacks it"
-    assert problems(found) == ["rule: none, but relevant nodes ['<node>', '<node>']"]
+    assert ha.search_verdict(found, TEXTS, EXCLUDED).violations == ["none_with_relevant_evidence"]
+    found = search()
+    found["answerability"], found["gap_note"] = "partial", "lacks"
+    for c in found["candidates"]:
+        c["grade"], c["scope_basis"] = 0, [c["node"]]
+    assert ha.search_verdict(found, TEXTS, EXCLUDED).violations == [
+        "partial_without_relevant_evidence"
+    ]
+    # a contract problem as well: the contract alone, no invariant judged
+    found = search()
+    found["candidates"][0]["grade"] = 2
+    found["candidates"][1]["rationale"] = ""
+    verdict = ha.search_verdict(found, TEXTS, EXCLUDED)
+    assert verdict.problems and verdict.violations == []
 
 
 def test_a_declared_problem_is_an_answer_of_its_own():

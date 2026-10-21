@@ -97,7 +97,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 1381 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 1404 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -146,7 +146,7 @@ uv pip install --require-hashes --no-deps -r requirements-embed.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest skips the 186 tests marked `corpus`: they need `data/raw/`, which is
+Without the corpus, pytest skips the 209 tests marked `corpus`: they need `data/raw/`, which is
 not in the repository (see [Data and reproducibility](#data-and-reproducibility)). The 31 tests
 marked `embedding_model` need the `embed` extra and the weights of the three embedding models and
 the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`); two of them also
@@ -161,7 +161,7 @@ against a service container of the same pinned image. The one test marked
 does not exist; every other test of the internal TEST set makes a synthetic one. One contract
 test needs the history back to E's DEV result and is skipped in a shallow clone such as CI's,
 and the host identity test runs on macOS only. In CI (no corpus, no model, PostgreSQL up)
-pytest reports `1160 passed, 221 skipped`.
+pytest reports `1160 passed, 244 skipped`.
 
 ## Docker
 
@@ -205,7 +205,7 @@ same way, neither image installs torch or the embedding model, and the test imag
   integrity rules on every push.
 - `runtime-image`: builds the runtime image and runs `ci/check_runtime_image.py` inside it.
 
-The runner does not have the corpus, so the 186 `corpus` tests are skipped there. A green run does
+The runner does not have the corpus, so the 209 `corpus` tests are skipped there. A green run does
 not validate the full 331-article corpus. The `evaluator` tests do run there: CI checks the
 benchmark machinery on synthetic data, while evaluation against the real corpus runs locally.
 
@@ -229,7 +229,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 | `data/external/` | no | the external benchmark of T4 (third-party data, CC BY-NC-SA 4.0) and everything derived from it |
 
-Without the corpus you can run the test suite (in CI, 1160 tests pass and 221 are skipped with
+Without the corpus you can run the test suite (in CI, 1160 tests pass and 244 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported` and PostgreSQL up), the linters and
 type checks, and both Docker images. The vector index is derived data too: it lives in a Docker
 volume and is rebuilt from `data/chunks/` and `data/embeddings/`.
@@ -455,12 +455,16 @@ search, C, is the omission audit: a node new to C that the adjudication grades 1
 construction before the freeze. Every answer is admitted only after its complete contract holds
 (`ingest/holdout_admission.py`), every execution is bounded and its processes verified gone
 (`ingest/holdout_process.py`), and every reachable failure has a classified, durable outcome
-(`config/holdout/failure-paths.md`). An unattended controller (`ingest/holdout_controller.py`)
+(`config/holdout/failure-paths.md`). A well-formed answer that violates a frozen semantic
+invariant tying its labels to the need's evidence (the metadata's drivers against the final
+grades, a search's answerability against its own grades) in all three executions of its stage
+rejects the attempt, with nothing inferred or repaired; a failure of a role's contract stays
+technical. An unattended controller (`ingest/holdout_controller.py`)
 may run START or RESUME and resume again only under its own policy: a technical failure that
 the invocation just produced, of a kind the protocol retries. It never freezes.
 
 Before the first need, the construction is frozen. `config/holdout/pre-authoring-contract.json`
-(SHA-256 `c6b0c6912b67c077c86738e186180c5000d305965e585a74744e5d63b215dbd6`) fixes by content 76 files (the code and
+(SHA-256 `433edd5d633777c575e81302423c19b8646c566e20ceb0a9698b7250c1634225`) fixes by content 76 files (the code and
 configs of E, E5, BM25 and the evaluation, the S4 plan, and the construction's code, inputs and
 templates), the corpus snapshot and chunk layer, and the identity of every model runtime: the
 requested and effective Claude model and its binary, and the MLX packages, model files and host
@@ -476,8 +480,8 @@ construction (SQLite, an append-only event log). What is published is its commit
 `data/benchmark/test-commitment.json` (hashes, counts and distributions, no text), pushed before
 S4 runs any system. No TEST need is ready yet.
 
-Two earlier constructions were aborted and are kept privately, whole, as provenance; nothing of
-them is reused (the contract's `aborted_runs`). The first, under contract
+Three earlier constructions were aborted and are kept privately, whole, as provenance; nothing
+of them is reused (the contract's `aborted_runs`). The first, under contract
 `fe18917551276d676a6f3e0c5c20d14ee34f2f4a66c9de18407f264366a858f9` (commit `3226afa`), stopped
 with no ready need on the diagnostic's recovery policy: Qwen3-8B decodes greedily, so executing it
 again could not repair a malformed answer. Its correction makes such an answer leave the
@@ -489,7 +493,11 @@ its omission audit: a second blind search found evidence judge A had missed, adj
 or more. That rule asks for the evidence search to be corrected for every need alike. The review
 that followed also found control-flow defects. So TEST restarts prospectively under one final
 procedure, the one above, rather than being repaired. The grid, the order, the omission cells,
-the templates, the judges, the thresholds, the systems and the S4 metrics are unchanged.
+the templates, the judges, the thresholds, the systems and the S4 metrics are unchanged. The
+third, under contract `c6b0c6912b67c077c86738e186180c5000d305965e585a74744e5d63b215dbd6`
+(commit `1765ae3`), stopped with 6 ready needs when three independent executions of the metadata
+adjudicator violated the same frozen semantic rule, which technical retries could not repair;
+the transition for that class was then defined prospectively, as described above.
 
 DEV keeps its historical qrels, built from one search per need; TEST's come from two. The paired
 comparison of the systems within TEST, on one common set of qrels, is not affected; the absolute
@@ -594,7 +602,7 @@ retrieval candidate.
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
-- CI skips the 186 `corpus` tests, so the full corpus is only validated where it is present.
+- CI skips the 209 `corpus` tests, so the full corpus is only validated where it is present.
 - The DEV benchmark holds 30 judged questions in two batches (27 evaluable), so a difference
   between two retrievers needs to be large to be told apart from noise (about 0.08 of nDCG@10).
   The retrieval iterations selected on DEV, so their numbers are development numbers; an

@@ -256,6 +256,24 @@ CHECKS: dict[str, Check] = {
             "final_metadata)",
         ),
         Check(
+            "semantic_admissibility",
+            "methodological_eligibility",
+            "model_output",
+            ("judge_a", "second_search", "metadata"),
+            "semantic_inadmissible",
+            "the person's rule of 2026-10-21: an answer that ended normally, passed its audit and "
+            "has the right form, but violates a frozen semantic invariant tying its labels to "
+            "the need's evidence or answerability (the metadata's type, gap drivers, negation "
+            "and drivers against the final grades; a search's answerability against its own "
+            "grades: ingest/holdout_admission.py), is one failed technical execution; when the "
+            "stage's three executions all violate the same invariant (the check and its codes, "
+            "never the text), the need or its adjudication cannot give an admissible answer: "
+            "the attempt is rejected, nothing is inferred, repaired or substituted, and the "
+            "cell gets a new blind attempt (at most three). A failure of the role's contract "
+            "(form, fields, types, vocabulary, a reference it was not shown) stays technical, "
+            "and so does search C's, whose audit cells get no rejection the others do not get",
+        ),
+        Check(
             "final_qrels_unambiguous",
             "methodological_eligibility",
             "assembled_records",
