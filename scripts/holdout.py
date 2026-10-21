@@ -17,6 +17,8 @@
     PYTHONPATH=. .venv/bin/python scripts/holdout.py freeze --contract <pinned sha256>
     PYTHONPATH=. .venv/bin/python scripts/holdout.py record-amendment-commit <sha>
     PYTHONPATH=. .venv/bin/python scripts/holdout.py amend --contract <amended sha256>
+    PYTHONPATH=. .venv/bin/python scripts/holdout.py controller --contract <pinned sha256> \
+        --policy holdout-controller.v1 --start | --resume
 
 init creates data/benchmark/test/, which git ignores, with a local git history of its own
 that refuses to push. grid writes the coverage grid and refuses to overwrite a different
@@ -39,6 +41,9 @@ freeze.json and the public commitment. isolation-test and broker-test run the pi
 synthetic packets only, never on TEST. An amended contract (CONSTRUCTION_AMENDMENT_1) has its
 public commit recorded with record-amendment-commit, and amend records the amendment in the
 durable state at the point it names, after a replay under the amended code that runs no model.
+controller runs START or RESUME unattended and RESUME again only under its own policy
+(ingest/holdout_controller.py), for the person who typed the pinned contract's SHA-256 and the
+policy's id; it never freezes.
 
 Nothing here runs a retriever, a reranker or an embedding model.
 """
@@ -59,6 +64,7 @@ from ingest import benchmark as bm
 from ingest import holdout as ho
 from ingest import holdout_isolation as hi
 from ingest import holdout_launcher as hla
+from ingest import holdout_process as hproc
 from ingest import holdout_state as hs
 
 REPO = Path.cwd()
@@ -547,6 +553,40 @@ def pre_authoring_freeze(directory: Path) -> int:
     return 0
 
 
+def controller(paths: hla.Paths, contract: str, policy: str, first: str) -> int:
+    """The unattended controller (ingest/holdout_controller.py): START or RESUME, then RESUME
+    again only under its policy, until it stops. It never freezes. 0 when the construction is
+    complete, 3 for any other stop; the code is printed and logged."""
+    from ingest import holdout_controller as hct
+
+    if policy != hct.POLICY:
+        print(f"STOP: the controller's policy is {hct.POLICY}, typed again")
+        return 3
+    frozen, problems = hla.contract_problems(paths)
+    if frozen is None or problems or frozen.contract_sha256 != contract:
+        print("STOP: the pinned contract is not the one typed, or it does not verify")
+        return 3
+
+    def validate() -> list[str]:
+        report = hla.validate(paths)
+        found = [*report["problems"], *report.get("public_commit_problems", [])]
+        return found if report["public_commit"] else [*found, "no public commit recorded"]
+
+    run = hct.Controller(
+        paths.test,
+        paths.raw,
+        contract,
+        validate,
+        hla.run_auditor(paths, frozen),
+        hct.child_command(contract, REPO, paths),
+        hct.LOG_DIR,
+        cwd=REPO,
+    )
+    code = run.run(first)
+    print(f"CONTROLLER STOPPED: {code}")
+    return 0 if code.startswith("complete") else 3
+
+
 def hi_strip(text: str) -> str:
     stripped = text.strip()
     if stripped.startswith("```"):
@@ -586,6 +626,14 @@ def main(argv: list[str] | None = None) -> int:
         action = sub.add_parser(name, help=text)
         action.add_argument("--contract", required=True, help="the pinned contract's SHA-256")
     sub.add_parser("validate", help="every check of the launcher, building nothing")
+    ctl = sub.add_parser(
+        "controller", help="START or RESUME unattended, under the controller's policy only"
+    )
+    ctl.add_argument("--contract", required=True, help="the pinned contract's SHA-256")
+    ctl.add_argument("--policy", required=True, help="the controller policy's id, typed again")
+    first = ctl.add_mutually_exclusive_group(required=True)
+    first.add_argument("--start", action="store_true", help="begin with START (no state)")
+    first.add_argument("--resume", action="store_true", help="begin with RESUME (a state)")
     pub = sub.add_parser("record-public-commit", help="the pushed pre-authoring commit's SHA")
     pub.add_argument("commit")
     apub = sub.add_parser("record-amendment-commit", help="the pushed amended contract's SHA")
@@ -623,9 +671,13 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "overlap-evidence":
         overlap_evidence(directory)
     elif args.command == "start":
+        hproc.install_termination()  # SIGTERM ends every child's group on the way out
         hla.start(paths, args.contract)
     elif args.command == "resume":
+        hproc.install_termination()
         hla.resume(paths, args.contract)
+    elif args.command == "controller":
+        return controller(paths, args.contract, args.policy, "start" if args.start else "resume")
     elif args.command == "freeze":
         print(json.dumps(hla.freeze(paths, args.contract)["files"], indent=1))
     elif args.command == "validate":

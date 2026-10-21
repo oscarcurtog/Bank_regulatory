@@ -164,11 +164,17 @@ def test_the_contract_carries_every_new_identity_and_no_account(contract):
     admissible = checks["diagnostic_admissible"]
     assert (admissible["kind"], admissible["retriable"]) == ("diagnostic_only", False)
     assert "diagnostic_defects" in admissible["rule"] and "not agreement" in admissible["rule"]
-    # the construction this contract replaces, aborted with no ready need, and why
-    (aborted,) = contract["aborted_runs"]
-    assert aborted["status"] == "ABORTED_PROTOCOL_DEFECT_QWEN_DIAGNOSTIC"
-    assert aborted["contract_sha256"].startswith("fe1891755127") and aborted["ready_needs"] == 0
-    assert aborted["public_commit"] == "3226afad8fdb8f424b6486f540312e31cb16278a"
+    # the constructions this contract replaces, aborted, and why
+    first, second = contract["aborted_runs"]
+    assert first["status"] == "ABORTED_PROTOCOL_DEFECT_QWEN_DIAGNOSTIC"
+    assert first["contract_sha256"].startswith("fe1891755127") and first["ready_needs"] == 0
+    assert first["public_commit"] == "3226afad8fdb8f424b6486f540312e31cb16278a"
+    assert second["status"] == "ABORTED_PROTOCOL_DEVELOPMENT_RUN"
+    assert second["contract_sha256"].startswith("e45ccb1125f6")
+    assert second["base_contract_sha256"].startswith("d4f3a1f2826d")
+    assert second["public_commit"] == "73bfb18f2ca90a8b7d5c32d0e57ed6896f078f48"
+    assert second["base_public_commit"] == "57ec4c9f3370a76f1125304112e58a04a0c2566b"
+    assert second["ready_needs"] == 8 and "omission audit" in second["reason"]
     with pytest.raises(hc.ContractError, match="account"):
         hc.construction(
             Path("config/holdout/s4-analysis-plan.md"),
@@ -293,22 +299,23 @@ def test_verification_is_content_based_and_never_reads_git(contract, tmp_path, m
         hc.verify(digest, path, copy, check_corpus=False)
 
 
-def test_the_contract_carries_its_amendment_frozen_by_content(contract):
-    """CONSTRUCTION_AMENDMENT_1: the amendment file is a construction input, so its content is
-    frozen with the rest, and the contract names its base, its point in the log, the identities
-    it may change and the first transition the amended code must make."""
-    amends = contract["amends"]
-    assert amends["amendment"] == "CONSTRUCTION_AMENDMENT_1"
-    assert hc.AMENDMENT_PATH.as_posix() in hc.frozen_files(contract)
-    assert amends["amendment_sha256"] == hc.frozen_files(contract)[hc.AMENDMENT_PATH.as_posix()]
-    assert amends["base_contract_sha256"].startswith("d4f3a1f2826d")
-    assert amends["base_public_commit"].startswith("57ec4c9f3370")
-    assert amends["identity_changes"] == ["construction_code", "pre_authoring_contract"]
-    assert amends["first_transition"]["outcome"] == "concept_invalid"
+def test_the_clean_restart_amends_nothing_and_freezes_its_procedure(contract):
+    """The clean restart is a new construction under one final procedure: no amendment, the
+    evidence discovery and every reachable failure frozen by content as construction inputs,
+    and the amendment of the second, aborted construction kept as its public history."""
+    assert "amends" not in contract
+    frozen = hc.frozen_files(contract)
+    assert hc.EVIDENCE_PATH.as_posix() in frozen and hc.FAILURES_PATH.as_posix() in frozen
+    assert hc.AMENDMENT_PATH.as_posix() not in frozen and hc.AMENDMENT_PATH.exists()
+    for module in ("holdout_admission", "holdout_process", "holdout_controller"):
+        assert f"ingest/{module}.py" in contract["construction"]["code_sha256"]
+    assert "scripts/mlx_prompt_tokens.py" in contract["construction"]["code_sha256"]
+    discovery = contract["construction"]["evidence_discovery"]
+    assert discovery["searches"] == {"A": "judge_a", "B": "second_search"}
+    assert discovery["audit_search"] == {"C": "omission_search", "cells": 12}
+    assert ">= 1" in discovery["audit_threshold"]
+    assert contract["construction"]["controller_policy"] == "holdout-controller.v1"
+    deadlines = contract["construction"]["process_deadlines_seconds"]
+    assert deadlines["broker_run"] >= deadlines["broker_turn"] > 0
     record = json.loads(hc.AMENDMENT_PATH.read_text(encoding="utf-8"))
-    assert record["reason"] == (
-        "An already-frozen anti-copy guard had no defined state transition when triggered "
-        "during real packet construction."
-    )
-    for kept in ("grid", "cell order", "prompts and templates", "S4 metrics and analysis plan"):
-        assert kept in record["unchanged"]
+    assert record["id"] == "CONSTRUCTION_AMENDMENT_1"

@@ -49,6 +49,7 @@ _MODEL_STAGES = (
     "overlap_gate",
     "query_formulation",
     "judge_a",
+    "second_search",
     "omission_search",
     "judge_b",
     "judge_c",
@@ -57,6 +58,7 @@ _MODEL_STAGES = (
     "metadata",
     "evidence_gate",
 )
+_SEARCHES = ("judge_a", "second_search", "omission_search")
 CHECKS: dict[str, Check] = {
     c.name: c
     for c in (
@@ -84,7 +86,7 @@ CHECKS: dict[str, Check] = {
             "broker_protocol",
             "technical_integrity",
             "model_output",
-            ("judge_a", "omission_search"),
+            _SEARCHES,
             "protocol",
             "the third invalid reply ends the run (ingest/holdout_broker.py, D-054)",
         ),
@@ -92,7 +94,7 @@ CHECKS: dict[str, Check] = {
             "broker_ceiling",
             "technical_integrity",
             "model_output",
-            ("judge_a", "omission_search"),
+            _SEARCHES,
             "resource",
             "32 requests are the technical ceiling (ingest/holdout_broker.py, Codex Gate 2 P1.3)",
         ),
@@ -102,8 +104,10 @@ CHECKS: dict[str, Check] = {
             "model_output",
             ("concept", "statement", "overlap_gate", "evidence_gate"),
             "malformed_session",
-            "the fields the role's template asks for, a statement not empty, a verdict from "
-            "the gatekeeper's list naming only a need it was shown",
+            "the complete contract of the answer before it is admitted (ingest/"
+            "holdout_admission.py, P1 #1): the fields its consumers read, with their types and "
+            "non-empty text (a concept, its facts as a list of text, the fit; a statement; a "
+            "verdict from the gatekeeper's list naming only a need it was shown)",
         ),
         Check(
             "query_formulations",
@@ -160,7 +164,7 @@ CHECKS: dict[str, Check] = {
             "record_assembly",
             "technical_integrity",
             "assembled_records",
-            ("lock", "adjudication", "metadata", "evidence_gate", "ready"),
+            ("lock", "evidence_union", "adjudication", "metadata", "evidence_gate", "ready"),
             "stop",
             "the records the code assembles from admitted outputs (the draft and final need and "
             "queries, the adjudications and qrels with their gap notes, the evidence pairs, the "
@@ -172,11 +176,57 @@ CHECKS: dict[str, Check] = {
             "judge_answer_complete",
             "technical_integrity",
             "model_output",
-            ("judge_a", "omission_search", "judge_b", "judge_c", "judge_d"),
+            (*_SEARCHES, "judge_b", "judge_c", "judge_d"),
             "malformed_session",
-            "every candidate graded, once, and only the candidates, and every item answered, "
-            "by the protocol's labels (ingest/holdout_judging.py judge_a_problems, "
-            "disagreements, judge_d_outcome); the diagnostic's is diagnostic_admissible",
+            "the complete contract of a search's or a judge's answer before it is admitted "
+            "(ingest/holdout_admission.py, P1 #1): every candidate graded once and only the "
+            "candidates, every item answered once, grades 0 to 3, true or false ambiguity, an "
+            "answerability of the protocol, the rationale every label needs, the gap note a "
+            "partial or none answerability needs, each label one the adjudication record can "
+            "hold, and the protocol's rules on a search's file (judge_a_problems); a search "
+            "that declares a problem needs its text only. The diagnostic's is "
+            "diagnostic_admissible",
+        ),
+        Check(
+            "execution_deadline",
+            "technical_integrity",
+            "model_output",
+            _MODEL_STAGES,
+            "timeout",
+            "every execution is bounded (ingest/holdout_process.py, P1 #7): at its deadline its "
+            "process group gets SIGTERM, a grace period, SIGKILL, is reaped and verified gone; "
+            "only then is the failed execution recorded, and another may follow",
+        ),
+        Check(
+            "process_cleanup",
+            "technical_integrity",
+            "state",
+            _MODEL_STAGES,
+            "stop",
+            "a process group that cannot be verified gone after SIGKILL: no execution may "
+            "follow it, the stage is pending_technical_unresolved and the construction stops "
+            "for a person (ingest/holdout_process.py, P1 #7)",
+        ),
+        Check(
+            "diagnostic_preflight",
+            "technical_integrity",
+            "model_output",
+            ("diagnostic",),
+            "malformed_session",
+            "the diagnostic's record carries the token count of its prompt, made by the frozen "
+            "tokenizer and chat template before any generation, against the frozen limit, and "
+            "a generation exactly when the prompt fits (P1 #6)",
+        ),
+        Check(
+            "unclassified_failure",
+            "technical_integrity",
+            "state",
+            ("construction",),
+            "stop",
+            "any failure the construction does not classify is recorded as a stop for a person "
+            "before the process ends, naming its kind and place, never its text; only a failure "
+            "of the state itself (integrity, identities, lock, a replay's refused write) or of "
+            "its medium leaves it unwritten",
         ),
         Check(
             "model_identity",
@@ -257,7 +307,9 @@ CHECKS: dict[str, Check] = {
             "recorded",
             "an answer of Qwen3-8B, from a run that ended normally under the frozen runtime, is "
             "a diagnostic only if it is one JSON object grading every candidate once with the "
-            "protocol's labels (ingest/holdout_judging.py diagnostic_defects); otherwise the "
+            "protocol's labels (ingest/holdout_judging.py diagnostic_defects), and a prompt that "
+            "does not fit the frozen limit is never generated (input_exceeds_context, P1 #6); "
+            "otherwise the "
             "diagnostic is unavailable: the answer stays with its run, never read again, with "
             "no vote and no label, and a blind judge D grades every candidate and the "
             "answerability by the rule of a discrepancy. Unavailable is not agreement. Greedy "
@@ -309,6 +361,12 @@ ROLE_VERDICTS = (
     ),
     RoleVerdict("judge_a", "a problem with the need", "judge_problem", "judge_a.v2"),
     RoleVerdict(
+        "second_searcher",
+        "a problem with the need, before any of its candidates is read",
+        "judge_problem",
+        "judge_a.v2: search B is part of every need's evidence, under search A's rule",
+    ),
+    RoleVerdict(
         "judge_d",
         "does not hold the final label, or finds the item ambiguous",
         "adjudication_uncertain",
@@ -316,7 +374,12 @@ ROLE_VERDICTS = (
     ),
 )
 STOP_RULES = (
-    "an omission found by the second search adjudicated grade >= 1 (Codex Gate 2 P1.4)",
+    "an omission found by the audit's search C, new to the union of searches A and B, "
+    "adjudicated grade >= 1 (Codex Gate 2 P1.4; config/holdout/evidence-discovery.md)",
+    "the audit's search C declares a problem: the audit cannot be completed "
+    "(omission_audit_incomplete, before any of its candidates is read)",
+    "a process group not verified gone after SIGKILL (process_cleanup)",
+    "a failure the construction does not classify (unclassified_failure)",
     "fewer than 50 evaluable needs still reachable (D-054 decision 3)",
     "a problem found at an operational checkpoint (D-055)",
     "a technical stage failed three executions: pending_technical_unresolved (D-055)",

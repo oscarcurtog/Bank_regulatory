@@ -221,6 +221,10 @@ def real_runs(world) -> dict[str, hr.RoleRun]:
         "judge_d": run_of("judge_d", judge_d),
         "metadata_adjudicator": run_of("metadata_adjudicator", metadata),
         "judge_a": run_of("judge_a", judge_a, judge.replies, broker.sent, broker.log),
+        # search B: search A's packet and broker, in a run of its own
+        "second_searcher": run_of(
+            "second_searcher", judge_a, judge.replies, broker.sent, broker.log
+        ),
     }
     messages = hp.diagnostic_messages(corpus, need, candidates, {}, ref=ref)
     local = hr.RoleRun(

@@ -65,7 +65,9 @@ PARTIAL = [
     ("DORA:19.3", 0),
 ]
 NONE = [("MiCA:149.2", 1), ("MiCA:149.1", 1), ("DORA:64", 0)]
-EXTRA_NODE = "MiCA:143.3"  # what the second search adds in a scenario
+EXTRA_NODE = "MiCA:143.3"  # what the omission audit's search C adds in a scenario
+B_EXTRA_NODE = "MiCA:143.2"  # what search B adds to search A's candidates in a scenario
+OVER_LIMIT = 20000  # a token count over the diagnostic's frozen limit
 CONTAMINATION = " The E5 baseline reached Recall@10 0.824."
 # The model the stand-in reports, in the shape of the authenticated runtime's own report
 FAKE_EFFECTIVE: dict[str, Any] = {
@@ -136,9 +138,10 @@ def session(
     extra: tuple = (),
     workdir: str = "/tmp/tmp.x",
     identity: Mapping[str, Any] | None = None,
+    records_extra: tuple = (),
 ) -> dict[str, str]:
     """A session as the runtime records it; identity is the model it reports (FAKE_EFFECTIVE
-    unless another is given)."""
+    unless another is given); records_extra, more transcript records after the conversation."""
     model = dict(identity or FAKE_EFFECTIVE)
     attachments = [
         {"type": "environment", "snapshot": {**hi._SNAPSHOT, "workingDirectory": workdir}},
@@ -171,6 +174,7 @@ def session(
             text = [{"type": "text", "text": replies[i]}]
             answer = {"model": model["assistant_model"], "content": text}
             records.append({"type": "assistant", "message": answer})
+    records += list(records_extra)
     init = {
         "type": "system",
         "subtype": "init",
@@ -216,6 +220,16 @@ class Scenario:
     # (cell, role): the response reaches the spool, then the orchestrator dies, once
     die_after: tuple[str, str] | None = None
     extra_grade: dict[str, int] = field(default_factory=dict)  # cell -> grade of EXTRA_NODE
+    b_extra: dict[str, int] = field(default_factory=dict)  # cell -> grade of B_EXTRA_NODE
+    # (cell, role) -> a node of the evidence that search does not list
+    drop: dict[tuple[str, str], str] = field(default_factory=dict)
+    # (cell, role) -> the problem a search declares, with no candidates at all
+    problem: dict[tuple[str, str], str] = field(default_factory=dict)
+    qwen_overlength: set[str] = field(default_factory=set)  # cells whose prompt is too long
+    # (cell, role) -> transcript records its sessions carry, while it fails technically
+    records: dict[tuple[str, str], list[dict[str, Any]]] = field(default_factory=dict)
+    # (cell, attempt) where judge D finds every item ambiguous: adjudication_uncertain
+    d_uncertain: set[tuple[str, int]] = field(default_factory=set)
     qwen_crosses: set[str] = field(default_factory=set)  # cells where the diagnostic disagrees
     d_answer: dict[str, dict[str, Any]] = field(default_factory=dict)  # cell -> D's item fields
     # (cell, role) -> a reply that replaces the usual one, for a valid answer of another kind
@@ -299,6 +313,16 @@ class FakeExecutor:
         _, _, answerability = self._where()
         return {"complete": COMPLETE, "partial": PARTIAL, "none": NONE}[answerability]
 
+    def _truth(self) -> dict[str, int]:
+        """Every node's grade as the judges see it: the evidence and the scenario's additions."""
+        cell, _, _ = self._where()
+        grades = dict(self._evidence())
+        if cell in self.scenario.extra_grade:
+            grades[EXTRA_NODE] = self.scenario.extra_grade[cell]
+        if cell in self.scenario.b_extra:
+            grades[B_EXTRA_NODE] = self.scenario.b_extra[cell]
+        return grades
+
     def _enter(self, role: str, packet: str) -> tuple[str, int, str, bool]:
         """Record the call, die if the scenario says so, and say whether it fails."""
         cell, number, answerability = self._where()
@@ -323,7 +347,15 @@ class FakeExecutor:
         cell, _, _ = self._where()
         identity = self.runtime["claude_runtime"]["effective"]
         identity = {**identity, **self.scenario.model.get((cell, role), {})}
-        return session(sent, replies, reminder=reminder, workdir=self.workdir, identity=identity)
+        extra = self.scenario.records.get((cell, role), []) if failing else []
+        return session(
+            sent,
+            replies,
+            reminder=reminder,
+            workdir=self.workdir,
+            identity=identity,
+            records_extra=tuple(extra),
+        )
 
     def headless(self, role: str, run_id: str, packet: str) -> hpl.Session:
         cell, number, answerability, failing = self._enter(role, packet)
@@ -390,9 +422,7 @@ class FakeExecutor:
         if role == "gatekeeper_evidence":
             return {"proposal_id": ref, "verdict": "independent", "closest": None, "reason": "x"}
         if role == "judge_b":
-            grades = dict(self._evidence())
-            if cell in s.extra_grade:
-                grades[EXTRA_NODE] = s.extra_grade[cell]
+            grades = self._truth()
             nodes = _refs_in(packet, "CANDIDATES (document order)")
             return {
                 "need_id": ref,
@@ -414,9 +444,7 @@ class FakeExecutor:
             # the evidence as judges A and B see it: D holds the consensus unless told otherwise
             section = packet.split("ITEMS TO GRADE", 2)[-1]
             items = [t.rstrip(":") for t in re.findall(r"^ITEM \d+: (\S+)", section, re.M)]
-            grades = dict(self._evidence())
-            if cell in s.extra_grade:
-                grades[EXTRA_NODE] = s.extra_grade[cell]
+            grades = self._truth()
             base: dict[str, Any] = {"ambiguous": False, "scope_basis": [], "reason": "D"}
 
             def item(target: str) -> dict[str, Any]:
@@ -424,8 +452,12 @@ class FakeExecutor:
                 if target == bm.ANSWERABILITY_TARGET:
                     found = {"grade": None, "answerability": answerability}
                 else:
-                    found = {"grade": grades.get(target, 0), "answerability": None}
-                return {**base, **found, **s.d_answer.get(cell, {}), "target": target}
+                    grade = grades.get(target, 0)
+                    found = {"grade": grade, "answerability": None}
+                    if grade == 0:
+                        found["scope_basis"] = [target]
+                uncertain = {"ambiguous": True} if (cell, number) in s.d_uncertain else {}
+                return {**base, **found, **s.d_answer.get(cell, {}), **uncertain, "target": target}
 
             return {"need_id": ref, "items": [item(t) for t in items]}
         if role == "metadata_adjudicator":
@@ -438,7 +470,29 @@ class FakeExecutor:
                 "reason": "x",
             }
         if role == "judge_c":
-            return {"need_id": ref, "items": []}
+            # each item decided by the evidence, as the other judges see it
+            grades = self._truth()
+            items = []
+            for m in re.finditer(r"^ITEM (\d+)(.*)\n(.*)$", packet, re.M):
+                number = int(m.group(1))
+                if m.group(2).startswith(": the answerability"):
+                    target, grade, answer = bm.ANSWERABILITY_TARGET, None, answerability
+                else:
+                    found = re.match(r"\[((?:DORA|MiCA|PSD2):[^\]]+)\]", m.group(3))
+                    target = found.group(1) if found else "?"
+                    grade, answer = grades.get(target, 0), None
+                items.append(
+                    {
+                        "item": number,
+                        "target": target,
+                        "grade": grade,
+                        "ambiguous": False,
+                        "answerability": answer,
+                        "scope_basis": [target] if grade == 0 else [],
+                        "reason": "C",
+                    }
+                )
+            return {"need_id": ref, "items": items}
         raise AssertionError(role)
 
     def broker(self, role: str, run_id: str, packet: str, tools: hb.Tools) -> hpl.BrokerSession:
@@ -447,9 +501,15 @@ class FakeExecutor:
         kind = self.scenario.technical_kind
         if failing and kind in ("raise", "malformed"):
             raise RuntimeError("the stream-json process died")
+        s = self.scenario
         evidence = list(self._evidence())
-        if role == "omission_searcher" and cell in self.scenario.extra_grade:
-            evidence.append((EXTRA_NODE, self.scenario.extra_grade[cell]))
+        if role == "omission_searcher" and cell in s.extra_grade:
+            evidence.append((EXTRA_NODE, s.extra_grade[cell]))
+        if role in ("second_searcher", "omission_searcher") and cell in s.b_extra:
+            # search B's addition, which search C finds too
+            evidence.append((B_EXTRA_NODE, s.b_extra[cell]))
+        dropped = s.drop.get((cell, role))
+        evidence = [(n, g) for n, g in evidence if n != dropped]
         ref = _ref_of(packet)
         final: dict[str, Any] = {
             "need_id": ref,
@@ -470,6 +530,9 @@ class FakeExecutor:
             "drivers": {},
             "problem": None,
         }
+        if (cell, role) in s.problem:
+            # a declared problem, and nothing else: its transition comes before any candidate
+            final = {"need_id": ref, "problem": s.problem[(cell, role)]}
         ask = json.dumps({"request": {"op": "nodes", "args": {"refs": [evidence[0][0]]}}})
         if failing and kind == "resource":
             replies = [ask] * 33 + [json.dumps({"final": final})]
@@ -496,9 +559,7 @@ class FakeExecutor:
         cell, number, answerability, failing = self._enter(role, messages[0]["content"])
         if failing:
             raise RuntimeError("MLX ran out of memory")
-        grades = dict(self._evidence())
-        if cell in self.scenario.extra_grade:
-            grades[EXTRA_NODE] = self.scenario.extra_grade[cell]
+        grades = self._truth()
         if cell in self.scenario.qwen_crosses:
             grades = {n: (0 if g >= 2 else g) for n, g in grades.items()}
         nodes = _refs_in(messages[0]["content"], "CANDIDATES (document order)")
@@ -517,10 +578,18 @@ class FakeExecutor:
         changed = self.scenario.local_runtime.get(cell)
         if changed:
             runtime = {**runtime, **changed}
+        limit = self.runtime["mlx_runtime"]["generation"]["max_prompt_tokens"]
+        tokens = OVER_LIMIT if cell in self.scenario.qwen_overlength else 1000
         record = {
             "messages": messages,
             "prompt_sha256": digest,
-            "output": output,
+            "preflight": {
+                "prompt_tokens": tokens,
+                "max_prompt_tokens": limit,
+                "fits": tokens <= limit,
+            },
+            # a prompt over the limit is never generated
+            "output": output if tokens <= limit else None,
             "versions": hrt.generator_versions(runtime),
             "runtime": runtime,
         }

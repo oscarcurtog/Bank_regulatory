@@ -253,3 +253,42 @@ def test_every_user_message_of_the_session_was_sent_by_the_broker():
         )
     )
     assert hb.foreign_user_messages(planted, sent) == ["read data/benchmark/dev/qrels.jsonl"]
+
+
+# ---------------------------------------------------------------------------
+# what the review before the clean restart found: every corpus operation bounded and classified
+# ---------------------------------------------------------------------------
+
+
+class SlowTools(FakeTools):
+    def search(self, scope: str, pattern: str, in_titles: bool) -> str:
+        import time
+
+        time.sleep(30)  # a backtracking pattern on a real node, stood in for
+        return ""
+
+
+class BrokenTools(FakeTools):
+    def nodes(self, refs: Sequence[str]) -> str:
+        raise KeyError("a node the tools cannot read")
+
+
+def test_a_pattern_python_cannot_compile_is_a_protocol_error_for_the_judge():
+    """re.compile raises OverflowError, not re.error, on a huge repetition count."""
+    for pattern in ("a{99999999999}", "(", "x" * 201):
+        with pytest.raises(hb.RequestError) as error:
+            hb.validate({"op": "search", "args": {"scope": "ALL", "pattern": pattern}})
+        assert error.value.code == "E4"
+
+
+def test_a_corpus_operation_past_its_deadline_ends_the_run(monkeypatch):
+    monkeypatch.setattr(hb.hproc, "OPERATION_SECONDS", 1)
+    judge = Scripted([req("search", scope="ALL", pattern="x"), FINAL])
+    with pytest.raises(hb.hproc.OperationTimeout):
+        hb.run_judge_a(judge, "PACKET", SlowTools())
+
+
+def test_a_corpus_operation_that_fails_is_the_brokers_never_the_judges():
+    judge = Scripted([req("nodes", refs=["DORA:1"]), FINAL])
+    with pytest.raises(hb.BrokerFailure, match="KeyError"):
+        hb.run_judge_a(judge, "PACKET", BrokenTools())

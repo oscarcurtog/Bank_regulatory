@@ -5,12 +5,22 @@ model's output is consumed only after it passes its role's audit (ingest/holdout
 
     concept (blind concept author) -> statement (blind statement writer) -> overlap_gate (DEV,
     fixtures, ready TEST) -> statement_validation (the existing rules, by code) ->
-    query_formulation (blind query writer) -> lock (statement and queries) -> judge_a (through
-    the evidence broker) -> omission_search (a second blind search, in the omission audit's
+    query_formulation (blind query writer) -> lock (statement and queries) -> judge_a (search
+    A, through the evidence broker) -> second_search (search B, blind and independent, for
+    every need) -> omission_search (the audit's search C, blind, in the omission audit's 12
     cells) -> judge_b -> judge_c (on every disagreement) -> adjudication -> diagnostic
     (Qwen3-8B) -> judge_d (on a material discrepancy, or on every candidate and the
     answerability when the diagnostic is unavailable) -> metadata (blind adjudicator) ->
     evidence_gate (each DEV need that shares grade-3 evidence) -> validators -> READY
+
+The evidence of every need is discovered the same way (config/holdout/evidence-discovery.md):
+search A and search B, each a fresh isolated context with the same frozen packet
+(judge_a.v2) built from the locked need alone, neither seeing the other's candidates, path,
+labels or output; their candidates joined into one set; one adjudication on it. In the 12
+cells of the omission audit a third blind search, C, looks for what that set lacks: a node new
+to C goes through the same adjudication, and one adjudicated grade >= 1 stops the construction
+before the freeze. A search that declares a problem: A or B, the need is not judgeable
+(judge_problem); C, the audit cannot be completed, and the construction stops for a person.
 
 No person reads or approves a statement before the lock (the person's decision of
 2026-10-19): the person knows E, DEV and their failure modes, and any wording of theirs would
@@ -45,10 +55,18 @@ again, with no vote and no label; judge D, blind, grades every candidate and the
 in its place, by the rule of a discrepancy. A failure of the process or of the runtime (a
 crash, memory, an interruption, another runtime or host) is still technical.
 
-An omission found by the second search and adjudicated grade >= 1 stops the construction
+An omission found by the audit's search C and adjudicated grade >= 1 stops the construction
 before the freeze; so do fewer than 50 reachable evaluable needs. After the 20th, 40th and 60th
 cell of the order a checkpoint verifies the state, makes a verified backup and records a report
 of counts: it changes nothing, and a problem it finds stops the construction.
+
+Every answer is admitted only after its complete contract holds (ingest/holdout_admission.py):
+nothing admitted can fail later in a consumer for a reason of shape. Every execution is
+bounded (ingest/holdout_process.py): at its deadline its process group is ended, reaped and
+verified gone before the failure is recorded; a group that cannot be verified gone stops the
+construction. Any other failure the construction does not classify is recorded as a stop for a
+person (unclassified_failure) before the process ends, never a silent death; only a failure of
+the state itself (its integrity, its identities, its lock or its medium) leaves it unwritten.
 """
 
 from __future__ import annotations
@@ -57,6 +75,8 @@ import dataclasses
 import functools
 import hashlib
 import json
+import sqlite3
+import traceback
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -65,12 +85,14 @@ from typing import Any, Literal, Protocol, TypeVar
 
 from ingest import benchmark as bm
 from ingest import holdout as ho
+from ingest import holdout_admission as ha
 from ingest import holdout_broker as hb
 from ingest import holdout_checks as hk
 from ingest import holdout_isolation as hi
 from ingest import holdout_judging as hj
 from ingest import holdout_ledger as hl
 from ingest import holdout_packets as hp
+from ingest import holdout_process as hproc
 from ingest import holdout_roles as hr
 from ingest import holdout_runtime as hrt
 from ingest import holdout_state as hs
@@ -101,6 +123,8 @@ TechnicalReason = Literal[
     "protocol",
     "interrupted",
     "runtime_identity",
+    "timeout",
+    "process_cleanup",
 ]
 VARIANTS = [("en", "formal"), ("en", "natural"), ("es", "natural")]
 T = TypeVar("T")
@@ -121,6 +145,9 @@ EXECUTOR_FAILURE: dict[str, TechnicalReason] = {
 }
 
 
+# The searches of a need's evidence, in their order: search A, search B (every need) and the
+# omission audit's search C (its 12 cells); every later stage is built from what they admitted
+SEARCHES = ("judge_a", "second_search", "omission_search")
 # The check that covers an answer of a shape its stage cannot read, by stage
 SHAPE_CHECK = {
     "concept": "answer_fields",
@@ -376,6 +403,9 @@ def parse_queries(text: str, need_id: str) -> list[bm.Query]:
             found[(parts[0], parts[1])] = question.strip()
     if set(found) != set(VARIANTS):
         raise technical("query_formulations", "the queries are not the three formulations")
+    # the dataset's validators refuse two queries of the same text (bm.dataset_problems)
+    if len({bm._normalized(q) for q in found.values()}) != len(found):
+        raise technical("query_formulations", "two formulations have the same text")
     numbers: Counter[str] = Counter()
     queries = []
     for lang, style in VARIANTS:
@@ -402,6 +432,9 @@ def statement_problems(statement: str, forbidden: Sequence[str]) -> dict[str, li
     try:
         bm.render_query_prompt(statement, [("en", "formal")])
     except bm.BenchmarkError as error:
+        # the frozen query template itself must render: if it does not, that is the packet's
+        # failure (packet_construction), never the statement's
+        bm.render_query_prompt("A firm asks a question.", [("en", "formal")])
         cites.append(str(error))
     return {
         "statement_cites_no_provision": cites,
@@ -449,23 +482,43 @@ def _assembled(record: Mapping[str, Any]) -> hj.Assembled:
     )
 
 
-def _fields(*names: str) -> Callable[[Any], Any]:
-    """An answer that must be a JSON object with these fields."""
+def _admitted(check: str, problems: Callable[[Any], list[str]]) -> Callable[[Any], Any]:
+    """An answer admitted only if its complete contract holds (ingest/holdout_admission.py);
+    otherwise one failed technical execution of its stage, by the check named."""
 
     def admit(value: Any) -> Any:
-        if not isinstance(value, dict) or any(n not in value for n in names):
-            raise technical("answer_fields", f"the answer lacks one of {names}")
+        found = problems(value)
+        if found:
+            raise technical(check, f"the answer breaks its contract: {found[:3]}")
         return value
 
     return admit
 
 
-def _statement(value: Any) -> Any:
-    """The writer's answer: its fields, and a statement that is not empty."""
-    _fields("primary")(value)
-    if not str(value["primary"]).strip():
-        raise technical("answer_fields", "the statement is empty")
-    return value
+def role_run(role: str, run_id: str, packet: str, doc: Mapping[str, Any]) -> hr.RoleRun:
+    """What one recorded run received and returned, in the shape its role's audit reads: the
+    pipeline's admission and the controller's re-audit build it the same way."""
+    sha = _sha(packet)
+    if doc["kind"] == "headless":
+        return hr.RoleRun(
+            role, run_id, packet, sha, [packet], [doc["reply"]], session=doc["session"]
+        )
+    if doc["kind"] == "broker":
+        run = doc["run"]
+        return hr.RoleRun(
+            role,
+            run_id,
+            packet,
+            sha,
+            list(run["sent"]),
+            list(doc["replies"]),
+            session=doc["session"],
+            broker_log=list(run["log"]),
+        )
+    record = doc["record"]
+    return hr.RoleRun(
+        role, run_id, packet, sha, [packet], [record.get("output") or ""], local=record
+    )
 
 
 class Pipeline:
@@ -574,6 +627,34 @@ class Pipeline:
             refused = self._integrity("record_assembly", "ready", None, error)
             self._stopped(refused)
             raise refused from error
+        except (TechnicalStop, hs.StateError, sqlite3.Error):
+            # a failed execution, recorded already; or the state itself (its integrity, its
+            # identities, its lock, a write refused by a replay, its medium: hs.MediumError and
+            # SQLite's own errors): nothing more can be written
+            raise
+        except Exception as error:
+            # no failure kills the construction unrecorded: a stop for a person, naming the
+            # kind of failure and where, never its text (unclassified_failure)
+            unclassified = self._unclassified(error)
+            self._stopped(unclassified)
+            raise unclassified from error
+
+    def _unclassified(self, error: Exception) -> ConstructionStop:
+        cell_id = proposal_id = stage = None
+        if self.ledger.attempts:
+            last = self.ledger.attempts[-1]
+            cell_id, proposal_id = last.cell_id, last.proposal_id
+            row = next((c for c in self.store.cells() if c["cell_id"] == cell_id), None)
+            stage = row["stage"] if row else None
+        frames = traceback.extract_tb(error.__traceback__)
+        place = f"{Path(frames[-1].filename).name}:{frames[-1].name}" if frames else "?"
+        return ConstructionStop(
+            f"unclassified_failure at {stage}: {type(error).__name__} in {place}",
+            reason="unclassified_failure",
+            cell_id=cell_id,
+            proposal_id=proposal_id,
+            stage=stage,
+        )
 
     def _stopped(self, stop: Exception) -> None:
         detail: dict[str, Any] = {"reason": "minimum", "detail": str(stop), "cell_state": None}
@@ -826,10 +907,13 @@ class Pipeline:
             # whose answer nobody read
             try:
                 recovered = recall(open_runs[0]["run_id"])
-            except Exception as error:
+            except TechnicalFailure as failure:
                 raise self._failed(
-                    open_runs[0], "infrastructure", f"the spool cannot be read: {error}", None
-                ) from error
+                    open_runs[0], failure.reason, failure.detail, None, failure.check
+                ) from failure
+            except Exception as error:
+                detail = f"the spool cannot be read: {type(error).__name__}: {error}"
+                raise self._failed(open_runs[0], "infrastructure", detail, None) from error
             if recovered is not None:
                 self._responded(open_runs[0], recovered, recovered=True)
                 return self._audit_and_admit(store.runs(pid, stage)[-1], role, packet, admit)
@@ -880,6 +964,9 @@ class Pipeline:
             raise self._failed(
                 run, failure.reason, failure.detail, None, failure.check
             ) from failure
+        except hproc.CleanupFailed as error:
+            # a process group that could not be verified gone: no execution may follow
+            raise self._cleanup_stop(run, role, error) from error
         except Exception as error:  # the model, the API, the process or the transport
             reason = EXECUTOR_FAILURE[contract.mechanism]
             raise self._failed(run, reason, f"{role}: {error}", None) from error
@@ -893,12 +980,18 @@ class Pipeline:
         event that names both. recovered: it was read back from the executor's spool after a
         crash, not returned by the call."""
         # as received, key order included: an audit hashes some of it (the local prompt)
-        raw = json.dumps(document, ensure_ascii=False)
+        try:
+            raw = json.dumps(document, ensure_ascii=False)
+            raw.encode("utf-8")
+        except (TypeError, ValueError) as error:  # a lone surrogate, a value JSON cannot hold
+            detail = f"the response cannot be recorded as text: {type(error).__name__}"
+            raise self._failed(run, "malformed_session", detail, None) from error
         session = document.get("session") or {}
         try:
             kept = hi.redact(raw, hi.identity_values(hi.parse_records(session)))
-        except RuntimeError as error:
-            raise self._failed(run, "infrastructure", str(error), None) from error
+        except Exception as error:
+            detail = f"the session cannot be redacted: {type(error).__name__}: {error}"
+            raise self._failed(run, "infrastructure", detail, None) from error
         raw_sha, raw_bytes = self.store.put(raw, "raw")
         kept_sha, kept_bytes = self.store.put(kept, "kept")
         self.store.record(
@@ -920,27 +1013,7 @@ class Pipeline:
         )
 
     def _role_run(self, role: str, run_id: str, packet: str, doc: Mapping[str, Any]) -> hr.RoleRun:
-        sha = _sha(packet)
-        if doc["kind"] == "headless":
-            return hr.RoleRun(
-                role, run_id, packet, sha, [packet], [doc["reply"]], session=doc["session"]
-            )
-        if doc["kind"] == "broker":
-            run = doc["run"]
-            return hr.RoleRun(
-                role,
-                run_id,
-                packet,
-                sha,
-                list(run["sent"]),
-                list(doc["replies"]),
-                session=doc["session"],
-                broker_log=list(run["log"]),
-            )
-        record = doc["record"]
-        return hr.RoleRun(
-            role, run_id, packet, sha, [packet], [record.get("output", "")], local=record
-        )
+        return role_run(role, run_id, packet, doc)
 
     def _audit_and_admit(
         self,
@@ -951,7 +1024,12 @@ class Pipeline:
     ) -> Any:
         pid, stage = run["proposal_id"], run["stage"]
         document = json.loads(self.store.text(json.loads(run["response"])["raw"], "raw"))
-        audit = self._audit(self._role_run(role, run["run_id"], packet, document), pid)
+        try:
+            audit = self._audit(self._role_run(role, run["run_id"], packet, document), pid)
+        except Exception as error:
+            # a run its audit cannot read is never admitted: fail closed, as a failed audit
+            detail = f"{role}: the audit could not read the run: {type(error).__name__}"
+            raise self._failed(run, "isolation", detail, None, "role_audit") from error
         audit_record = {"ok": audit.ok, "problems": audit.problems}
         if not audit.ok:
             detail = f"{role}: {audit.problems[:3]}"
@@ -970,7 +1048,17 @@ class Pipeline:
             raise self._failed(
                 run, shape.reason, shape.detail, audit_record, shape.check
             ) from error
-        normalized = json.loads(hs.canonical(value))
+        try:
+            normalized = json.loads(hs.canonical(value))
+            hs.canonical(normalized).encode("utf-8")  # what the state will write
+        except (TypeError, ValueError) as error:  # a lone surrogate from a JSON escape
+            shape = technical(
+                SHAPE_CHECK.get(stage_kind(stage), "judge_answer_complete"),
+                f"{role}: the answer cannot be recorded as text: {type(error).__name__}",
+            )
+            raise self._failed(
+                run, shape.reason, shape.detail, audit_record, shape.check
+            ) from error
         normalized = self._consume(Audited(role, run["run_id"], normalized, audit))
         self.store.record(
             "stage_admitted",
@@ -996,16 +1084,18 @@ class Pipeline:
         detail: str,
         audit: Mapping[str, Any] | None,
         check: str | None = None,
+        unresolved: bool = False,
     ) -> TechnicalStop:
         """One failed technical execution, recorded with the state it leaves: pending_technical,
-        or pending_technical_unresolved after the third. Nothing of it is ever consumed.
-        Returns the stop the caller raises."""
+        or pending_technical_unresolved after the third (or at once, when unresolved: no
+        execution may follow it). Nothing of it is ever consumed. Returns the stop the caller
+        raises."""
         pid, stage = run["proposal_id"], run["stage"]
         cell_id = self.ledger.get(pid).cell_id
         failed = sum(r["status"] == "failed" for r in self.store.runs(pid, stage)) + 1
         state: CellState = (
             "pending_technical_unresolved"
-            if failed >= hs.MAX_TECHNICAL_RUNS
+            if unresolved or failed >= hs.MAX_TECHNICAL_RUNS
             else "pending_technical"
         )
         self.store.record(
@@ -1027,6 +1117,22 @@ class Pipeline:
         return TechnicalStop(
             f"{cell_id} is {state} at {stage}, technical execution {failed} of "
             f"{hs.MAX_TECHNICAL_RUNS}: {reason}: {detail[:200]}"
+        )
+
+    def _cleanup_stop(
+        self, run: Mapping[str, Any], role: str, error: hproc.CleanupFailed
+    ) -> ConstructionStop:
+        """The execution whose process group could not be verified gone: recorded failed and
+        unresolved, and the construction stops for a person (process_cleanup)."""
+        self._failed(run, "process_cleanup", f"{role}: {error}", None, "process_cleanup", True)
+        cell_id = self.ledger.get(run["proposal_id"]).cell_id
+        return ConstructionStop(
+            f"process_cleanup at {run['stage']}: {role}'s process group was not verified gone",
+            reason="process_cleanup",
+            cell_id=cell_id,
+            proposal_id=run["proposal_id"],
+            stage=run["stage"],
+            cell_state="pending_technical_unresolved",
         )
 
     def _decide(self, pid: str, stage: str, inputs: Mapping[str, str], value: Any) -> Any:
@@ -1161,8 +1267,9 @@ class Pipeline:
             problems = hrt.local_problems(doc["record"], self.world.local_runtime)
             if problems:
                 raise technical("runtime_identity", f"{role}: {problems[:3]}")
-            # the raw answer: what it is worth is the stage's to decide (diagnostic_admissible)
-            return admit(doc["record"].get("output", ""))
+            # the record with its preflight and raw answer: what it is worth is the stage's to
+            # decide (diagnostic_admissible)
+            return admit(doc["record"])
 
         packet = messages[0]["content"]
         return self._model(role, pid, stage, packet, ref, inputs, call, recall, check)
@@ -1184,7 +1291,7 @@ class Pipeline:
             ),
             ref,
             {},
-            _fields("concept", "facts", "fit"),
+            _admitted("answer_fields", ha.concept_problems),
         )
         if str(concept.get("fit", "")).strip().lower() != "fits":
             raise Rejected("concept_unfit", "concept")
@@ -1210,15 +1317,18 @@ class Pipeline:
             writer_packet,
             ref,
             self._inputs(pid, "concept"),
-            _statement,
+            _admitted("answer_fields", ha.statement_problems),
         )
         statement = str(written["primary"]).strip()
         self._gate(pid, statement)
-        validation = self._decide(
-            pid,
+        found = self._built(
+            "packet_construction",
             "statement_validation",
-            self._inputs(pid, "statement"),
-            {"problems": statement_problems(statement, w.forbidden)},
+            pid,
+            lambda: statement_problems(statement, w.forbidden),
+        )
+        validation = self._decide(
+            pid, "statement_validation", self._inputs(pid, "statement"), {"problems": found}
         )
         for name, found in sorted(validation["problems"].items()):
             if found:
@@ -1283,13 +1393,7 @@ class Pipeline:
         ready_test = hs.sha_value([hs.sha_value(r.record()) for r in self.ready.values()])
 
         def admit(verdict: Any) -> Any:
-            _fields("verdict")(verdict)
-            v = verdict["verdict"]
-            if v != "independent" and v not in hl.VERDICT_OUTCOME:
-                raise technical("answer_fields", f"gatekeeper verdict {v!r}")
-            if v not in ("independent", "uncertain") and verdict.get("closest") not in source:
-                raise technical("answer_fields", "the gatekeeper names a need it was not shown")
-            return verdict
+            return _admitted("answer_fields", lambda v: ha.gate_problems(v, list(source)))(verdict)
 
         ref = self._ref("gatekeeper", pid)
         verdict = self._headless(
@@ -1336,65 +1440,61 @@ class Pipeline:
             return found
 
         def admit_search(value: Any) -> Any:
-            found = a_file_of(value)
-            if found.get("problem") in (None, "", "null"):
-                problems = hj.judge_a_problems(found, w.texts, w.excluded_psd2)
-                if problems:
-                    detail = f"a search's answer: {problems[:3]}"
-                    raise technical("judge_answer_complete", detail)
-                hj.a_judgments(found)
+            # the complete contract of a search's answer, or of the problem it declares
+            problems = ha.search_problems(a_file_of(value), w.texts, w.excluded_psd2)
+            if problems:
+                raise technical("judge_answer_complete", f"a search's answer: {problems[:3]}")
             return value
 
-        a_ref = self._ref("judge_a", pid)
-        judged_a = self._broker(
-            "judge_a",
-            pid,
-            "judge_a",
-            self._built(
-                "packet_construction",
-                "judge_a",
+        def search(role: str, stage: str) -> tuple[dict[str, Any], dict[str, Any]]:
+            """One blind search: a fresh context, the frozen packet built from the locked
+            need alone (never another search's candidates, path, labels or output)."""
+            ref = self._ref(role, pid)
+            value = self._broker(
+                role,
                 pid,
-                lambda: hp.judge_a_broker_packet(draft, cell, ref=a_ref),
-            ),
-            a_ref,
-            self._inputs(pid, "lock"),
-            admit_search,
-        )
-        a_file = a_file_of(judged_a)
-        if a_file.get("problem") not in (None, "", "null"):
-            raise Rejected("judge_problem", "judge_a")
-        a = hj.a_judgments(a_file)
-        a_nodes = [c["node"] for c in a_file["candidates"]]
-        scope = {c["node"]: c.get("scope", []) for c in a_file["candidates"]}
-        additional: list[str] = []
-        if cell.cell_id in w.omission:
-            s_ref = self._ref("omission_searcher", pid)
-            searched = self._broker(
-                "omission_searcher",
-                pid,
-                "omission_search",
+                stage,
                 self._built(
                     "packet_construction",
-                    "omission_search",
+                    stage,
                     pid,
-                    lambda: hp.judge_a_broker_packet(draft, cell, ref=s_ref),
+                    lambda: hp.judge_a_broker_packet(draft, cell, ref=ref),
                 ),
-                s_ref,
+                ref,
                 self._inputs(pid, "lock"),
                 admit_search,
             )
-            s_file = a_file_of(searched)
-            s = hj.a_judgments(s_file)
-            for c in s_file["candidates"]:
-                if c["node"] not in a_nodes:
-                    additional.append(c["node"])
-                    a[c["node"]] = s[c["node"]]
-                    scope[c["node"]] = c.get("scope", [])
-        candidates = w.corpus.sort(list(dict.fromkeys([*a_nodes, *additional])))
+            return value, a_file_of(value)
 
-        def admit_b(answer: Any) -> Any:
-            hj.disagreements(candidates, a, hj.b_judgments(answer))  # every candidate graded
-            return answer
+        # search A, then search B: a declared problem is the need's, before any candidate
+        judged_a, a_file = search("judge_a", "judge_a")
+        if ha.declared_problem(a_file) is not None:
+            raise Rejected("judge_problem", "judge_a")
+        searched_b, b_file = search("second_searcher", "second_search")
+        if ha.declared_problem(b_file) is not None:
+            raise Rejected("judge_problem", "second_search")
+        c_file = None
+        if cell.cell_id in w.omission:
+            _, c_file = search("omission_searcher", "omission_search")
+            if ha.declared_problem(c_file) is not None:
+                raise ConstructionStop(
+                    f"the omission audit's search of {cell.cell_id} declares a problem: the "
+                    "audit cannot be completed; a person decides",
+                    reason="omission_audit_incomplete",
+                    cell_id=cell.cell_id,
+                    proposal_id=pid,
+                    stage="omission_search",
+                )
+        discovery = self._built(
+            "record_assembly",
+            "evidence_union",
+            pid,
+            lambda: hj.evidence_union(a_file, b_file, c_file),
+        )
+        a, scope, additional = discovery.first, discovery.scope, discovery.additional
+        candidates = self._built(
+            "record_assembly", "evidence_union", pid, lambda: w.corpus.sort(list(discovery.nodes))
+        )
 
         b_ref = self._ref("judge_b", pid)
         b_answer = self._headless(
@@ -1408,11 +1508,13 @@ class Pipeline:
                 lambda: hp.judge_b_packet(w.corpus, draft, candidates, scope, ref=b_ref),
             ),
             b_ref,
-            self._inputs(pid, "lock", "judge_a", "omission_search"),
-            admit_b,
+            self._inputs(pid, "lock", *SEARCHES),
+            _admitted("judge_answer_complete", lambda v: ha.judge_b_problems(v, candidates)),
         )
-        b = hj.b_judgments(b_answer)
-        disputed = hj.disagreements(candidates, a, b)
+        b = self._built("record_assembly", "adjudication", pid, lambda: hj.b_judgments(b_answer))
+        disputed = self._built(
+            "record_assembly", "adjudication", pid, lambda: hj.disagreements(candidates, a, b)
+        )
         c_answers: dict[str, Any] = {}
         if disputed.nodes or disputed.answerability:
             c_ref = self._ref("judge_c", pid)
@@ -1432,12 +1534,7 @@ class Pipeline:
                     ref=c_ref,
                 ),
             )
-
-            def admit_c(reply: Any) -> Any:
-                answered = {i["item"] for i in reply.get("items", [])}
-                if any(item.item not in answered for item in items):
-                    raise technical("judge_answer_complete", "judge C left an item out")
-                return reply
+            admit_c = _admitted("judge_answer_complete", lambda v: ha.judge_c_problems(v, items))
 
             c_reply = self._headless(
                 "judge_c",
@@ -1445,7 +1542,7 @@ class Pipeline:
                 "judge_c",
                 packet,
                 c_ref,
-                self._inputs(pid, "lock", "judge_a", "omission_search", "judge_b"),
+                self._inputs(pid, "lock", *SEARCHES, "judge_b"),
                 admit_c,
             )
             by_item = {i["item"]: i for i in c_reply.get("items", [])}
@@ -1463,7 +1560,7 @@ class Pipeline:
             self._decide(
                 pid,
                 "adjudication",
-                self._inputs(pid, "judge_a", "omission_search", "judge_b", "judge_c"),
+                self._inputs(pid, *SEARCHES, "judge_b", "judge_c"),
                 _assembled_record(assembled),
             )
         )
@@ -1471,9 +1568,12 @@ class Pipeline:
             raise self._ineligible("final_qrels_unambiguous", "adjudication")
         omitted = [q for q in final.qrels if f"{q.act}:{q.path}" in additional]
         if cell.cell_id in w.omission:
+            # bound to this attempt: the audit of the attempt that becomes READY is the one a
+            # checkpoint and the freeze read; an earlier attempt's stays as provenance
             self.omission_log.append(
                 {
                     "cell_id": cell.cell_id,
+                    "proposal_id": pid,
                     "need_id": need_id,
                     "additional_nodes": additional,
                     "additional_final_grades": {f"{q.act}:{q.path}": q.grade for q in omitted},
@@ -1481,15 +1581,36 @@ class Pipeline:
             )
             if any(q.grade >= 1 for q in omitted):
                 raise ConstructionStop(
-                    f"the omission audit of {cell.cell_id} found evidence judge A missed, "
-                    "adjudicated grade >= 1: stop before the freeze and review the procedure",
+                    f"the omission audit of {cell.cell_id} found evidence the union of searches "
+                    "A and B missed, adjudicated grade >= 1: stop before the freeze and review "
+                    "the procedure",
                     reason="omission_audit",
                     cell_id=cell.cell_id,
                     proposal_id=pid,
                     stage="adjudication",
                 )
 
-        def admit_q(output: str) -> Any:
+        limit = w.local_runtime["generation"]["max_prompt_tokens"]
+
+        def admit_q(record: Mapping[str, Any]) -> Any:
+            # P1 #6: the prompt's length, counted by the frozen tokenizer before generation. A
+            # prompt that does not fit the frozen limit is never generated, truncated or run
+            # again: the diagnostic is unavailable (diagnostic_admissible), deterministically
+            preflight = record.get("preflight")
+            tokens = preflight.get("prompt_tokens") if isinstance(preflight, Mapping) else None
+            if (
+                not isinstance(tokens, int)
+                or isinstance(tokens, bool)
+                or preflight.get("max_prompt_tokens") != limit  # type: ignore[union-attr]
+            ):
+                raise technical("diagnostic_preflight", "no token count against the frozen limit")
+            output = record.get("output")
+            if tokens > limit:
+                if output is not None:
+                    raise technical("diagnostic_preflight", "a generation over the limit")
+                return hj.unavailable_diagnostic(["input_exceeds_context"])
+            if not isinstance(output, str):
+                raise technical("diagnostic_preflight", "a prompt that fits, and no generation")
             # every expected candidate, from the stage's own input, and only those. An answer
             # that is not that, from a run that ended normally, is no diagnostic: never read
             # again, no vote, no label, no replacement; the run keeps it, and judge D grades
@@ -1514,7 +1635,7 @@ class Pipeline:
                 lambda: hp.diagnostic_messages(w.corpus, draft, candidates, scope, ref=q_ref),
             ),
             q_ref,
-            self._inputs(pid, "lock", "judge_a", "omission_search"),
+            self._inputs(pid, "lock", *SEARCHES),
             admit_q,
         )
         unavailable = hj.diagnostic_unavailable(diagnostic)
@@ -1528,12 +1649,7 @@ class Pipeline:
             targets = discrepancies
         d_outcome: dict[str, str] = {}
         if targets:
-
-            def admit_d(reply: Any) -> Any:
-                outcome = hj.judge_d_outcome(final, reply.get("items", []))
-                if set(outcome) != set(targets):
-                    raise technical("judge_answer_complete", "judge D did not answer every item")
-                return reply
+            admit_d = _admitted("judge_answer_complete", lambda v: ha.judge_d_problems(v, targets))
 
             d_ref = self._ref("judge_d", pid)
             d_packet = self._built(
@@ -1565,6 +1681,7 @@ class Pipeline:
             raise Rejected("adjudication_uncertain", "judge_d")
 
         def admit_m(reply: Any) -> Any:
+            _admitted("metadata_answer", ha.metadata_shape_problems)(reply)
             hj.final_metadata(reply, final.qrels, final.answerability, cell.acts)
             return reply
 
@@ -1606,14 +1723,21 @@ class Pipeline:
         self._evidence_gate(pid, need, final.qrels)
         others = list(self.ready.values())
         refused = {
-            "dataset_records": bm.dataset_problems(
-                [*(r.need for r in others), need],
-                [*(q for r in others for q in r.queries), *queries],
-                [*(q for r in others for q in r.qrels), *final.qrels],
-                "test",
-                w.excluded_psd2,
+            "dataset_records": self._built(
+                "dataset_records",
+                "validators",
+                pid,
+                lambda: bm.dataset_problems(
+                    [*(r.need for r in others), need],
+                    [*(q for r in others for q in r.queries), *queries],
+                    [*(q for r in others for q in r.qrels), *final.qrels],
+                    "test",
+                    w.excluded_psd2,
+                ),
             ),
-            "qrel_texts": bm.qrel_problems(final.qrels, w.texts),
+            "qrel_texts": self._built(
+                "qrel_texts", "validators", pid, lambda: bm.qrel_problems(final.qrels, w.texts)
+            ),
         }
         for name, problems in refused.items():
             if problems:
@@ -1634,24 +1758,31 @@ class Pipeline:
             self._inputs(pid, "lock", "adjudication", "metadata"),
             {"problems": []},
         )
-        consumption = judged_a["consumption"]
-        return ReadyNeed(
-            cell.cell_id,
+        return self._built(
+            "record_assembly",
+            "ready",
             pid,
-            need,
-            queries,
-            final.qrels,
-            final.adjudications,
-            meta,
-            {
-                "cell_id": cell.cell_id,
-                "proposal_id": pid,
-                "attempt": attempt.number,
-                "judge_a_consumption": consumption,
-                "omission_audit": cell.cell_id in w.omission,
-                "deviations": hl.deviations(cell, need),
-                "metadata_source": meta.source,
-            },
+            lambda: ReadyNeed(
+                cell.cell_id,
+                pid,
+                need,
+                queries,
+                final.qrels,
+                final.adjudications,
+                meta,
+                {
+                    "cell_id": cell.cell_id,
+                    "proposal_id": pid,
+                    "attempt": attempt.number,
+                    "judge_a_consumption": judged_a["consumption"],
+                    "second_search_consumption": searched_b["consumption"],
+                    # which search found each candidate, and the counts of the union
+                    "evidence_discovery": discovery.record(),
+                    "omission_audit": cell.cell_id in w.omission,
+                    "deviations": hl.deviations(cell, need),
+                    "metadata_source": meta.source,
+                },
+            ),
         )
 
     def _evidence_gate(self, pid: str, need: bm.Need, qrels: Sequence[bm.Qrel]) -> None:
@@ -1690,12 +1821,7 @@ class Pipeline:
                 ),
             )
 
-            def admit(verdict: Any) -> Any:
-                _fields("verdict")(verdict)
-                v = verdict["verdict"]
-                if v != "independent" and v not in hl.VERDICT_OUTCOME:
-                    raise technical("answer_fields", f"gatekeeper verdict {v!r}")
-                return verdict
+            admit = _admitted("answer_fields", ha.evidence_gate_problems)
 
             verdict = self._headless(
                 "gatekeeper_evidence",
@@ -1738,8 +1864,15 @@ class Pipeline:
                 f"checkpoint {position}: the backup could not be verified: {error}",
                 reason="checkpoint",
             ) from error
+        try:
+            report = self.report()
+        except Exception as error:
+            raise ConstructionStop(
+                f"checkpoint {position}: the report could not be made: {type(error).__name__}",
+                reason="checkpoint",
+            ) from error
         self.store.record(
-            "checkpoint", key, {"position": position, "report": self.report(), "backup": backup}
+            "checkpoint", key, {"position": position, "report": report, "backup": backup}
         )
 
     def progress_problems(self, cells: Sequence[str]) -> list[str]:
@@ -1785,13 +1918,17 @@ class Pipeline:
             ):
                 problems.append(f"{r.need.need_id}: judging outputs missing")
         problems += self._audit_problems()
+        # the omission audit of the attempt that became READY (P1 #3): an earlier attempt's
+        # audit of the same cell is provenance and never stands for it, or against it
+        ready_attempt = {r.cell_id: r.proposal_id for r in self.ready.values()}
         for cell_id in self.world.omission:
-            if self.states.get(cell_id) in READY:
-                logged = [o for o in self.omission_log if o["cell_id"] == cell_id]
-                if len(logged) != 1:
-                    problems.append(f"{cell_id}: its omission audit is not complete")
-                elif any(g >= 1 for g in logged[0]["additional_final_grades"].values()):
-                    problems.append(f"{cell_id}: its omission audit did not pass")
+            if cell_id not in ready_attempt:
+                continue
+            logged = [o for o in self.omission_log if o["proposal_id"] == ready_attempt[cell_id]]
+            if len(logged) != 1:
+                problems.append(f"{cell_id}: the omission audit of its READY attempt is not one")
+            elif any(g >= 1 for g in logged[0]["additional_final_grades"].values()):
+                problems.append(f"{cell_id}: its omission audit did not pass")
         problems += self._ledger_problems()
         gate_ids = {g["proposal_id"] for g in self.gate_log if g["stage"] == "statement"}
         if {a.proposal_id for a in accepted} - gate_ids:
@@ -1941,6 +2078,7 @@ class Pipeline:
                 "gatekeeper",
                 "query_writer",
                 "judge_a",
+                "second_searcher",
                 "judge_b",
                 "qwen_diagnostic",
                 "metadata_adjudicator",
@@ -1979,6 +2117,8 @@ class Pipeline:
         cells = {c.cell_id: c for c in self.world.grid.cells}
         rejected = [a for a in self.ledger.attempts if a.outcome not in (None, "accepted")]
         summary = self.store.summary()
+        ready_attempts = {r.proposal_id for r in self.ready.values()}
+        audited = [o for o in self.omission_log if o["proposal_id"] in ready_attempts]
         return {
             "plan_against_realized": hl.plan_against_realized(self.world.grid, needs, cell_of),
             "ledger": self.ledger.summary(self.world.grid),
@@ -1988,13 +2128,16 @@ class Pipeline:
                 "by_act": dict(Counter("+".join(cells[a.cell_id].acts) for a in rejected)),
             },
             "gate": dict(Counter(f"{g['stage']}:{g['verdict']}" for g in self.gate_log)),
+            # the audits of the READY attempts; every attempt audited, as provenance
             "omission_audit": {
-                "cells": len(self.omission_log),
-                "additional_nodes": sum(len(o["additional_nodes"]) for o in self.omission_log),
+                "cells": len(audited),
+                "additional_nodes": sum(len(o["additional_nodes"]) for o in audited),
                 "grade_0_additions": sum(
-                    g == 0 for o in self.omission_log for g in o["additional_final_grades"].values()
+                    g == 0 for o in audited for g in o["additional_final_grades"].values()
                 ),
+                "attempts_audited": len(self.omission_log),
             },
+            "evidence_discovery": self._discovery_report(),
             "diagnostic": {
                 "needs": len(self.diagnostic_log),
                 "with_discrepancies": sum(bool(d["discrepancies"]) for d in self.diagnostic_log),
@@ -2021,6 +2164,28 @@ class Pipeline:
                 "failures_by_reason": summary["technical_failures"],
             },
         }
+
+    def _discovery_report(self) -> dict[str, Any]:
+        """What the two searches found across the READY needs, as counts: how many candidates
+        each listed, how many only search B listed, and how many of those the adjudication
+        made relevant (grade >= 2, not ambiguous) or grade >= 1."""
+        out: Counter[str] = Counter()
+        for r in self.ready.values():
+            found = r.provenance.get("evidence_discovery", {})
+            grades = {f"{q.act}:{q.path}": q for q in r.qrels}
+            for key in ("search_a", "search_b", "both", "only_b", "union"):
+                out[key] += int(found.get(key, 0))
+            only_b = [
+                n for n, by in found.get("found_by", {}).items() if "B" in by and "A" not in by
+            ]
+            out["only_b_grade_1_or_more"] += sum(
+                n in grades and grades[n].grade >= 1 for n in only_b
+            )
+            out["only_b_relevant"] += sum(
+                n in grades and hj.relevant(grades[n].grade, grades[n].ambiguous) for n in only_b
+            )
+            out["answerability_a_b_agree"] += bool(found.get("answerability_a_b_agree"))
+        return {"needs": len(self.ready), **dict(sorted(out.items()))}
 
     def freeze(
         self,

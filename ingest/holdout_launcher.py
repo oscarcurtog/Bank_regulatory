@@ -402,6 +402,28 @@ def build_world(paths: Paths, frozen: Frozen, probes: Probes | None) -> hpl.Worl
     )
 
 
+def run_auditor(
+    paths: Paths, frozen: Frozen, probes: Probes | None = None
+) -> Callable[[hr.RoleRun], hr.RoleAudit]:
+    """The frozen audit of a recorded run, with exactly the arguments the pipeline gives it
+    (hpl.Pipeline._audit): what the unattended controller runs again on a failed isolation
+    run before it may resume (ingest/holdout_controller.py)."""
+    w = build_world(paths, frozen, probes)
+
+    def audit(run: hr.RoleRun) -> hr.RoleAudit:
+        return hr.audit_role_run(
+            run,
+            w.terms,
+            w.frozen_templates,
+            w.forbidden,
+            pin=w.pin,
+            tmp_root=w.tmp_root,
+            tools=w.tools,
+        )
+
+    return audit
+
+
 def real_executor(frozen: Frozen, paths: Paths) -> hpl.Executor:
     """The executor of the real construction: every command asks for the contract's requested
     model, and the diagnostic runs only under the contract's MLX runtime."""

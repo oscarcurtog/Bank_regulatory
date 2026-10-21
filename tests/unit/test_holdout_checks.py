@@ -29,8 +29,8 @@ def test_every_check_has_a_kind_and_a_consequence_of_that_kind():
 
 def test_the_pipeline_names_only_classified_checks_and_decides_none_itself():
     source = Path(hpl.__file__).read_text(encoding="utf-8")
-    named = set(re.findall(r'(?:technical|_ineligible)\(\s*"([a-z_]+)"', source))
-    named |= set(re.findall(r'"([a-z_]+)": bm\.(?:dataset|qrel)_problems', source))
+    named = set(re.findall(r'(?:technical|_ineligible|_admitted|_built)\(\s*"([a-z_]+)"', source))
+    named |= set(re.findall(r'_failed\([^)]*?"([a-z_]+)"\)', source))
     named |= set(hpl.SHAPE_CHECK.values())
     assert named and named <= set(hk.CHECKS)
     # a methodological rejection comes from a role's verdict or from the table, never ad hoc
@@ -54,15 +54,23 @@ def test_a_technical_failure_is_built_only_from_a_check_on_a_model_output():
 
 def test_at_the_diagnostic_only_the_process_and_its_runtime_are_technical():
     """A greedy local model gives the same answer to the same prompt: what is wrong with the
-    answer is diagnostic_admissible's, never retried; only the role audit of the run and the
-    runtime it ran under are technical there (the first START, aborted on 2026-10-20)."""
+    answer is diagnostic_admissible's, never retried, and so is a prompt over the frozen limit
+    (P1 #6); only the role audit of the run, the runtime it ran under, its deadline and its
+    preflight record are technical there (the first START, aborted on 2026-10-20)."""
     at = {n: c for n, c in hk.CHECKS.items() if "diagnostic" in c.stages}
     retried = {n for n, c in at.items() if c.retriable}
-    assert retried == {"role_audit", "runtime_identity"}
-    # what the code builds before the model runs is an integrity stop, never a retry
-    assert {n for n, c in at.items() if c.kind == "technical_integrity"} - retried == {
-        "packet_construction"
+    assert retried == {
+        "role_audit",
+        "runtime_identity",
+        "execution_deadline",
+        "diagnostic_preflight",
     }
+    # what the code builds before the model runs, and a process not verified gone, stop
+    assert {n for n, c in at.items() if c.kind == "technical_integrity"} - retried == {
+        "packet_construction",
+        "process_cleanup",
+    }
+    assert "input_exceeds_context" in hk.check("diagnostic_admissible").rule
     admissible = hk.check("diagnostic_admissible")
     assert (admissible.kind, admissible.consequence) == ("diagnostic_only", "recorded")
     assert not admissible.retriable
@@ -73,4 +81,21 @@ def test_the_record_carries_every_check_with_its_retry_rule():
     assert set(record["checks"]) == set(hk.CHECKS)
     assert record["checks"]["role_audit"]["retriable"] is True
     assert record["checks"]["final_qrels_unambiguous"]["kind"] == "methodological_eligibility"
-    assert len(record["stop_rules"]) == 4
+    assert len(record["stop_rules"]) == 7
+    assert any("search C" in r and ">= 1" in r for r in record["stop_rules"])
+    # search B's declared problem is the need's, like search A's
+    assert {v.role for v in hk.ROLE_VERDICTS if v.outcome == "judge_problem"} == {
+        "judge_a",
+        "second_searcher",
+    }
+
+
+def test_every_search_stage_has_the_searches_checks():
+    for name in ("broker_protocol", "broker_ceiling", "judge_answer_complete"):
+        assert set(hpl.SEARCHES) <= set(hk.check(name).stages), name
+    timeout = hk.check("execution_deadline")
+    assert (timeout.consequence, timeout.retriable) == ("timeout", True)
+    cleanup = hk.check("process_cleanup")
+    assert (cleanup.consequence, cleanup.retriable) == ("stop", False)
+    unclassified = hk.check("unclassified_failure")
+    assert (unclassified.consequence, unclassified.retriable) == ("stop", False)

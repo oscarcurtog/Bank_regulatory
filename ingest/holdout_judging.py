@@ -85,6 +85,75 @@ def a_judgments(data: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     return out
 
 
+@dataclass(frozen=True)
+class Discovery:
+    """The candidates of one need and their first judgment (config/holdout/evidence-discovery.md).
+
+    nodes: every node search A or search B listed, once (by its exact ACT:path), then the
+    audit's nodes new to search C; the caller puts them in document order.
+    first: each node's first judgment, the one the adjudication compares with judge B: search
+    A's own label when A listed the node, else search B's, else search C's; and the
+    answerability, its reason and the gap note, search A's. Search B's label on a node A also
+    listed, and its answerability, are kept in found_by's record only, as provenance: no vote.
+    scope: the provisions that fix each node's scope, from the search whose label is first.
+    found_by: which searches listed each node.
+    additional: the nodes only search C listed: what the omission audit adds."""
+
+    nodes: list[str]
+    first: dict[str, dict[str, Any]]
+    scope: dict[str, list[str]]
+    found_by: dict[str, list[str]]
+    additional: list[str]
+    b_answerability: str
+
+    def record(self) -> dict[str, Any]:
+        """Counts, and which search listed each candidate."""
+        by = self.found_by
+        return {
+            "search_a": sum("A" in s for s in by.values()),
+            "search_b": sum("B" in s for s in by.values()),
+            "both": sum("A" in s and "B" in s for s in by.values()),
+            "only_b": sum("B" in s and "A" not in s for s in by.values()),
+            "union": sum("A" in s or "B" in s for s in by.values()),
+            "audit_additional": len(self.additional),
+            "answerability_a_b_agree": self.first[bm.ANSWERABILITY_TARGET]["answerability"]
+            == self.b_answerability,
+            "found_by": {n: list(s) for n, s in sorted(by.items())},
+        }
+
+
+def evidence_union(
+    a_file: Mapping[str, Any],
+    b_file: Mapping[str, Any],
+    c_file: Mapping[str, Any] | None = None,
+) -> Discovery:
+    """Search A's and search B's candidates joined, with the first judgment of each, and the
+    audit's search C's nodes new to that union. Each file is admitted already, with no declared
+    problem (ingest/holdout_admission.py search_problems)."""
+    first: dict[str, dict[str, Any]] = {}
+    scope: dict[str, list[str]] = {}
+    found_by: dict[str, list[str]] = {}
+    additional: list[str] = []
+    for letter, data in (("A", a_file), ("B", b_file), ("C", c_file)):
+        if data is None:
+            continue
+        labels = a_judgments(data)
+        for c in data["candidates"]:
+            node = c["node"]
+            if node in first:
+                if letter not in found_by[node]:
+                    found_by[node].append(letter)
+                continue
+            if letter == "C" and node not in additional:
+                additional.append(node)
+            first[node] = labels[node]
+            scope[node] = list(c.get("scope", []))
+            found_by[node] = [letter]
+    first[bm.ANSWERABILITY_TARGET] = a_judgments(a_file)[bm.ANSWERABILITY_TARGET]
+    nodes = [n for n in first if n != bm.ANSWERABILITY_TARGET]
+    return Discovery(nodes, first, scope, found_by, additional, str(b_file["answerability"]))
+
+
 def b_judgments(data: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {
         g["node"]: {
@@ -129,6 +198,12 @@ def disagreements(
 # ---------------------------------------------------------------------------
 # assembly
 # ---------------------------------------------------------------------------
+
+
+def as_judgment(j: Mapping[str, Any]) -> bm.Judgment:
+    """A judge's label as the adjudication record holds it: what admission builds before an
+    output is admitted (ingest/holdout_admission.py), and assembly again after."""
+    return _judgment(j)
 
 
 def _judgment(j: Mapping[str, Any]) -> bm.Judgment:
@@ -375,6 +450,9 @@ def diagnostic_problems(candidates: Sequence[str], diagnostic: Any) -> list[str]
 # START, aborted on 2026-10-20, showed that the greedy local model gives the same answer to the
 # same prompt, so another execution of it repairs nothing.
 DIAGNOSTIC_DEFECTS = (
+    # the prompt, exactly as frozen, does not fit the model's frozen limit: found by the
+    # preflight before any generation (P1 #6), never truncated, never run three times
+    "input_exceeds_context",
     "not_json",
     "not_an_object",
     "no_grades",

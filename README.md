@@ -38,9 +38,9 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   BM25 come out level there, and E could not complete: its frozen reranker ran out of memory on
   long articles
 - **Internal TEST set (S3):** its construction and S4's analysis plan are frozen by content in a
-  pre-authoring contract, committed before any TEST need is written. A first construction was
-  aborted with no ready need on a defect of the frozen protocol, which was corrected and frozen
-  again; TEST itself is not built yet
+  pre-authoring contract, committed before any TEST need is written. Two constructions were
+  aborted and are kept as provenance; TEST restarts under one final evidence procedure for every
+  need (two blind searches, their union adjudicated once), and is not built yet
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -97,7 +97,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 1239 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 1381 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -146,7 +146,7 @@ uv pip install --require-hashes --no-deps -r requirements-embed.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest skips the 156 tests marked `corpus`: they need `data/raw/`, which is
+Without the corpus, pytest skips the 186 tests marked `corpus`: they need `data/raw/`, which is
 not in the repository (see [Data and reproducibility](#data-and-reproducibility)). The 31 tests
 marked `embedding_model` need the `embed` extra and the weights of the three embedding models and
 the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`); two of them also
@@ -161,7 +161,7 @@ against a service container of the same pinned image. The one test marked
 does not exist; every other test of the internal TEST set makes a synthetic one. One contract
 test needs the history back to E's DEV result and is skipped in a shallow clone such as CI's,
 and the host identity test runs on macOS only. In CI (no corpus, no model, PostgreSQL up)
-pytest reports `1048 passed, 191 skipped`.
+pytest reports `1160 passed, 221 skipped`.
 
 ## Docker
 
@@ -205,7 +205,7 @@ same way, neither image installs torch or the embedding model, and the test imag
   integrity rules on every push.
 - `runtime-image`: builds the runtime image and runs `ci/check_runtime_image.py` inside it.
 
-The runner does not have the corpus, so the 156 `corpus` tests are skipped there. A green run does
+The runner does not have the corpus, so the 186 `corpus` tests are skipped there. A green run does
 not validate the full 331-article corpus. The `evaluator` tests do run there: CI checks the
 benchmark machinery on synthetic data, while evaluation against the real corpus runs locally.
 
@@ -229,7 +229,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 | `data/external/` | no | the external benchmark of T4 (third-party data, CC BY-NC-SA 4.0) and everything derived from it |
 
-Without the corpus you can run the test suite (in CI, 1048 tests pass and 191 are skipped with
+Without the corpus you can run the test suite (in CI, 1160 tests pass and 221 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported` and PostgreSQL up), the linters and
 type checks, and both Docker images. The vector index is derived data too: it lives in a Docker
 volume and is rebuilt from `data/chunks/` and `data/embeddings/`.
@@ -447,16 +447,28 @@ access to the systems, DEV or their results write each need's concept and statem
 gatekeeper drops what overlaps DEV, judges grade the evidence, and a local Qwen3-8B gives a
 diagnostic. No person reads or approves a statement.
 
+Every need's evidence is found the same way (`config/holdout/evidence-discovery.md`): two
+blind searches, A and B, each a fresh isolated context with the same frozen packet, reading the
+corpus only through an evidence broker and seeing nothing of the other; their candidates are
+joined, and one adjudication grades the union. In 12 cells fixed before authoring, a third blind
+search, C, is the omission audit: a node new to C that the adjudication grades 1 or more stops the
+construction before the freeze. Every answer is admitted only after its complete contract holds
+(`ingest/holdout_admission.py`), every execution is bounded and its processes verified gone
+(`ingest/holdout_process.py`), and every reachable failure has a classified, durable outcome
+(`config/holdout/failure-paths.md`). An unattended controller (`ingest/holdout_controller.py`)
+may run START or RESUME and resume again only under its own policy: a technical failure that
+the invocation just produced, of a kind the protocol retries. It never freezes.
+
 Before the first need, the construction is frozen. `config/holdout/pre-authoring-contract.json`
-(SHA-256 `d4f3a1f2826d5a18ff8a1e43ac8ae62347b99a20b07a24121591e5e63956b381`, commit `57ec4c9`) fixed by
-content 70 files (the code and configs of E, E5, BM25 and the evaluation, the S4 plan, and the
-construction's code, inputs and templates), the corpus snapshot and chunk layer, and the identity
-of every model runtime: the requested and effective Claude model and its binary, and the MLX
-packages, model files and host (macOS version and build, Mac model) of the diagnostic. It holds
-no account data. The commit that adds it is the public timestamp of that freeze: the launcher
-(`ingest/holdout_launcher.py`) does not start before that commit is recorded, and stops before
-any model whenever a frozen identity differs. `start` and `resume` are the only commands that run
-a model on TEST, and each needs the contract's full SHA-256 typed again.
+(SHA-256 `63f6032e1a5f752d5e72ce6a55169c3239aad4b29a600783dd3f94054f5a1fd2`) fixes by content 76 files (the code and
+configs of E, E5, BM25 and the evaluation, the S4 plan, and the construction's code, inputs and
+templates), the corpus snapshot and chunk layer, and the identity of every model runtime: the
+requested and effective Claude model and its binary, and the MLX packages, model files and host
+(macOS version and build, Mac model) of the diagnostic. It holds no account data. The commit
+that adds it is the public timestamp of that freeze: the launcher (`ingest/holdout_launcher.py`)
+does not start before that commit is recorded, and stops before any model whenever a frozen
+identity differs. `start` and `resume` are the only commands that run a model on TEST, and each
+needs the contract's full SHA-256 typed again.
 
 TEST lives in `data/benchmark/test/`, which is not versioned: a local git history of its own
 that refuses every push, verified backups outside the repository, and the durable state of the
@@ -464,34 +476,25 @@ construction (SQLite, an append-only event log). What is published is its commit
 `data/benchmark/test-commitment.json` (hashes, counts and distributions, no text), pushed before
 S4 runs any system. No TEST need is ready yet.
 
-A first START, under contract `fe18917551276d676a6f3e0c5c20d14ee34f2f4a66c9de18407f264366a858f9`
-(commit `3226afa`), was aborted with 0 ready needs on a defect of the frozen protocol, found at
-the first execution of the diagnostic. Its recovery policy assumed that executing the diagnostic
-again could give another answer, but Qwen3-8B decodes greedily: an answer that was valid JSON of
-the wrong outer shape, with incomplete candidate coverage, would come back the same. The correction
-changes that failure semantics only. An answer of a normally ended run that is not one JSON
-object grading every candidate once makes the diagnostic unavailable: it stays with its run,
-with no vote and no label, and a blind judge D grades every candidate and the answerability by
-the rule of a discrepancy (`diagnostic_admissible` in `ingest/holdout_checks.py`). A crash or a
-runtime mismatch is still a technical stop. The grid, the order, the prompts, the judges, the
-systems and the S4 plan are unchanged; the new contract records the aborted run
-(`aborted_runs`), whose state is kept privately and never reused.
+Two earlier constructions were aborted and are kept privately, whole, as provenance; nothing of
+them is reused (the contract's `aborted_runs`). The first, under contract
+`fe18917551276d676a6f3e0c5c20d14ee34f2f4a66c9de18407f264366a858f9` (commit `3226afa`), stopped
+with no ready need on the diagnostic's recovery policy: Qwen3-8B decodes greedily, so executing it
+again could not repair a malformed answer. Its correction makes such an answer leave the
+diagnostic unavailable, and a blind judge D then grades every candidate and the answerability.
+The second, under contract `d4f3a1f2826d5a18ff8a1e43ac8ae62347b99a20b07a24121591e5e63956b381`
+(commit `57ec4c9`), amended once (`CONSTRUCTION_AMENDMENT_1`,
+`config/holdout/construction-amendment-1.json`, commit `73bfb18`), stopped with 8 ready needs on
+its omission audit: a second blind search found evidence judge A had missed, adjudicated grade 1
+or more. That rule asks for the evidence search to be corrected for every need alike. The review
+that followed also found control-flow defects. So TEST restarts prospectively under one final
+procedure, the one above, rather than being repaired. The grid, the order, the omission cells,
+the templates, the judges, the thresholds, the systems and the S4 metrics are unchanged.
 
-The second START is amended once while it runs, with no result of any system on TEST seen
-(`CONSTRUCTION_AMENDMENT_1`, `config/holdout/construction-amendment-1.json`): "An
-already-frozen anti-copy guard had no defined state transition when triggered during real
-packet construction." The guard and its threshold of eight words are unchanged; the amendment
-defines what its firing means. When a blind author's concept carries words of DEV or the
-fixtures into the statement writer's packet, the attempt is rejected methodologically
-(`concept_invalid`), never retried, and the cell gets a new blind attempt that learns nothing of
-it. Every other failure of a packet or record the code builds, 29 paths inspected and 18 of them
-with no transition before, is now an integrity stop for a person. The amended contract
-(`e45ccb1125f6a648759493876f7ebe0c32364a24c438f2ff4ea0961705ed9e26`) changes only the
-construction's code and records the amendment's hash; grid, order, prompts, judges, systems
-and the S4 plan are those of the base. The durable state records the amendment as one event
-after its event 367: the needs ready before it stay bound to the base contract and are never
-built again, and the launcher accepted it only after the amended code had replayed the whole
-log, with every write refused, up to that exact point. The freeze names both contracts.
+DEV keeps its historical qrels, built from one search per need; TEST's come from two. The paired
+comparison of the systems within TEST, on one common set of qrels, is not affected; the absolute
+difference between DEV's metrics and TEST's cannot be attributed to overfitting alone
+(`config/holdout/s4-analysis-plan.md`, section 5).
 
 ### Retrieval iteration
 
@@ -591,7 +594,7 @@ retrieval candidate.
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
-- CI skips the 156 `corpus` tests, so the full corpus is only validated where it is present.
+- CI skips the 186 `corpus` tests, so the full corpus is only validated where it is present.
 - The DEV benchmark holds 30 judged questions in two batches (27 evaluable), so a difference
   between two retrievers needs to be large to be told apart from noise (about 0.08 of nDCG@10).
   The retrieval iterations selected on DEV, so their numbers are development numbers; an

@@ -74,9 +74,11 @@ CODE_FILES = (
 CONSTRUCTION_FILES = (
     "ingest/corpus_tools.py",
     "ingest/holdout.py",
+    "ingest/holdout_admission.py",
     "ingest/holdout_broker.py",
     "ingest/holdout_checks.py",
     "ingest/holdout_contract.py",
+    "ingest/holdout_controller.py",
     "ingest/holdout_executor.py",
     "ingest/holdout_isolation.py",
     "ingest/holdout_judging.py",
@@ -84,6 +86,7 @@ CONSTRUCTION_FILES = (
     "ingest/holdout_ledger.py",
     "ingest/holdout_packets.py",
     "ingest/holdout_pipeline.py",
+    "ingest/holdout_process.py",
     "ingest/holdout_roles.py",
     "ingest/holdout_runtime.py",
     "ingest/holdout_spool.py",
@@ -91,16 +94,22 @@ CONSTRUCTION_FILES = (
     "ingest/psd2_exclusions.py",
     "scripts/evidence_tools.py",
     "scripts/holdout.py",
+    "scripts/mlx_prompt_tokens.py",
 )
 # What else decides how TEST is built, read by that code: the protocol (the judges' rules,
-# the rubric, the areas), the diagnostic judge's config, and DEV and the fixtures (the
-# gatekeeper's comparisons, the authors' forbidden wording)
-# A documented amendment of the construction, public and frozen with the rest: what it
-# changes, from which point of the durable state's log, and why (CONSTRUCTION_AMENDMENT_1)
+# the rubric, the areas), the evidence discovery of every need (searches A and B, the omission
+# audit's search C), every reachable failure with its classification, the diagnostic judge's
+# config, and DEV and the fixtures (the gatekeeper's comparisons, the authors' forbidden
+# wording)
+EVIDENCE_PATH = Path("config/holdout/evidence-discovery.md")
+FAILURES_PATH = Path("config/holdout/failure-paths.md")
+# The amendment of the second, aborted construction (CONSTRUCTION_AMENDMENT_1): public
+# history, kept beside its run's record (ABORTED_RUNS); the clean restart amends nothing
 AMENDMENT_PATH = Path("config/holdout/construction-amendment-1.json")
 CONSTRUCTION_INPUTS = (
     "data/benchmark/PROTOCOL.md",
-    AMENDMENT_PATH.as_posix(),
+    EVIDENCE_PATH.as_posix(),
+    FAILURES_PATH.as_posix(),
     "config/retrieval/qwen3-8b-mlx.json",
     *(
         f"data/benchmark/{split}/{name}"
@@ -350,6 +359,8 @@ def construction(
         raise ContractError("a runtime identity carries the account's identity: never public")
     from ingest import holdout_broker as hb
     from ingest import holdout_checks as hk
+    from ingest import holdout_controller as hct
+    from ingest import holdout_process as hproc
     from ingest import holdout_roles as hr
     from ingest import holdout_state as hs
 
@@ -374,6 +385,23 @@ def construction(
         "state_schema": hs.SCHEMA,
         "operational_checkpoints": list(hs.CHECKPOINTS),
         "statement_review": "code and blind roles only; no person edits or approves a statement",
+        "evidence_discovery": {
+            "spec": EVIDENCE_PATH.as_posix(),
+            "searches": {"A": "judge_a", "B": "second_search"},
+            "audit_search": {"C": "omission_search", "cells": len(plan["omission_audit"]["cells"])},
+            "first_judgment": "search A's label where A listed the node, else search B's, else "
+            "search C's; the answerability, search A's",
+            "audit_threshold": "a node new to search C adjudicated grade >= 1 stops",
+        },
+        "process_deadlines_seconds": {
+            "headless": hproc.HEADLESS_SECONDS,
+            "broker_turn": hproc.BROKER_TURN_SECONDS,
+            "broker_run": hproc.BROKER_RUN_SECONDS,
+            "diagnostic_generation": hproc.LOCAL_SECONDS,
+            "diagnostic_token_count": hproc.TOKEN_COUNT_SECONDS,
+            "termination_grace": hproc.GRACE_SECONDS,
+        },
+        "controller_policy": hct.POLICY,
         "code_sha256": {f: _sha(Path(f)) for f in CONSTRUCTION_FILES},
         "inputs_sha256": {f: _sha(Path(f)) for f in CONSTRUCTION_INPUTS},
         "template_files": {n: hr.template_path(n).as_posix() for n in hr.template_hashes()},
@@ -400,6 +428,36 @@ ABORTED_RUNS = (
         ),
         "change": "the diagnostic's failure semantics only (holdout_checks.py "
         "diagnostic_admissible); sampling, grid, order, prompts, judges and systems unchanged",
+    },
+    {
+        "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+        "contract_sha256": "e45ccb1125f6a648759493876f7ebe0c32364a24c438f2ff4ea0961705ed9e26",
+        "base_contract_sha256": (
+            "d4f3a1f2826d5a18ff8a1e43ac8ae62347b99a20b07a24121591e5e63956b381"
+        ),
+        "public_commit": "73bfb18f2ca90a8b7d5c32d0e57ed6896f078f48",
+        "base_public_commit": "57ec4c9f3370a76f1125304112e58a04a0c2566b",
+        "amendments": ["config/holdout/construction-amendment-1.json"],
+        "ready_needs": 8,
+        "reason": (
+            "The omission audit's hard stop: a second blind search found evidence judge A had "
+            "missed, adjudicated grade >= 1, so that the frozen rule called for the evidence "
+            "search to be corrected for every need alike. The review that followed also found "
+            "control-flow defects (outputs admitted without their full contract, a second "
+            "searcher's declared problem with no transition, audits bound to the wrong attempt, "
+            "unbounded processes, a controller that could act on a stale failure). The run is "
+            "kept whole as a protocol-development run, and TEST restarts prospectively under one "
+            "final procedure for every need, rather than being repaired."
+        ),
+        "change": (
+            "evidence discovery: two blind searches for every need, their union adjudicated "
+            "once, and the omission audit as a third blind search (config/holdout/"
+            "evidence-discovery.md); complete admission of every output; bounded processes with "
+            "verified cleanup; the diagnostic's token preflight; every reachable failure "
+            "classified (config/holdout/failure-paths.md); the unattended controller in the "
+            "repository. Sampling, grid, order, omission cells, templates, judges, thresholds, "
+            "systems and the S4 metrics unchanged"
+        ),
     },
 )
 
@@ -434,7 +492,6 @@ def build(
         "evaluation": evaluation(),
         "analysis": analysis(),
         "aborted_runs": [dict(r) for r in ABORTED_RUNS],
-        "amends": amends(),
         "derived_at_freeze_only": [
             "dataset hashes",
             "final counts",

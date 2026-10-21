@@ -136,6 +136,25 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
             banned_in_packet=hp.BANNED_FOR_JUDGE_A,
         ),
         RoleContract(
+            # search B of every need: search A's packet and rules, in a context of its own
+            "second_searcher",
+            "judge_a.v2",
+            ("judge_a.v2",),
+            "headless_broker",
+            ("broker_result", "protocol_error"),
+            "the corpus, only through the evidence broker",
+            (
+                "search A's candidates, grades, path, logs and output",
+                "DEV",
+                "qrels",
+                *_SYSTEMS,
+                *_PROJECT,
+            ),
+            rules_field="rules",
+            banned_in_packet=hp.BANNED_FOR_JUDGE_A,
+        ),
+        RoleContract(
+            # the omission audit's search C, in its 12 cells
             "omission_searcher",
             "judge_a.v2",
             ("judge_a.v2",),
@@ -143,7 +162,7 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
             ("broker_result", "protocol_error"),
             "the corpus, only through the evidence broker",
             (
-                "judge A's candidates, grades, searches and logs",
+                "search A's and search B's candidates, grades, paths, logs and outputs",
                 "DEV",
                 "qrels",
                 *_SYSTEMS,
@@ -159,7 +178,7 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
             "headless",
             (),
             "every candidate with its legal context and scope provisions, from the corpus",
-            ("judge A's labels", "DEV", *_SYSTEMS, *_PROJECT),
+            ("the searches' labels (A, B and C)", "DEV", *_SYSTEMS, *_PROJECT),
             rules_field="rules",
             banned_in_packet=hp.BANNED_FOR_B_AND_C,
         ),
@@ -221,7 +240,7 @@ MESSAGE_SCHEMAS = {
 def authorized_rules(role: str) -> str:
     """The exact rules text a judge role may receive: judge A's without DEV examples, judges
     B, C, D and the diagnostic with DEV batch 2's removals, the metadata rubric's drivers."""
-    if role in ("judge_a", "omission_searcher"):
+    if role in ("judge_a", "second_searcher", "omission_searcher"):
         return hp.judge_a_rules()
     if role == "metadata_adjudicator":
         return hp.driver_rubric()

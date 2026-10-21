@@ -403,3 +403,21 @@ def test_a_stopped_construction_is_never_amended(tmp_path):
     store.record("construction_stopped", "stopped", {"reason": "rule", "detail": "x"})
     with pytest.raises(hs.IntegrityError, match="stopped"):
         store.amend(amendment(store))
+
+
+def test_a_failure_of_the_medium_mid_transaction_writes_nothing(tmp_path, monkeypatch):
+    """SQLite failing between the event's insert and its projection: the whole transaction is
+    rolled back, the log and the tables stay what they were, and the state still verifies."""
+    with new(tmp_path) as store:
+        pid = open_attempt(store)
+        before = store.verify()
+
+        def disk_failure(db: sqlite3.Connection, e: hs.Event) -> None:
+            raise sqlite3.OperationalError("disk I/O error")
+
+        monkeypatch.setattr(hs, "_apply", disk_failure)
+        with pytest.raises(sqlite3.OperationalError):
+            start_run(store, pid)
+        monkeypatch.undo()
+        assert store.verify() == before
+        assert [e.kind for e in store.events()] == ["created", "attempt_opened"]

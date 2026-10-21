@@ -88,6 +88,11 @@ class IntegrityError(StateError):
     """The state does not verify: the database, the event log or an artifact."""
 
 
+class MediumError(StateError):
+    """The state's medium failed (a file of the state that cannot be written or read): never
+    written over, never taken for a failure of the construction."""
+
+
 class ReplayDiverged(IntegrityError):
     """Replaying the construction decides differently from what was recorded."""
 
@@ -679,26 +684,37 @@ class Store:
         return root / digest[:2] / digest
 
     def put(self, text: str, place: Place) -> tuple[str, int]:
-        """A text into its place, named by its hash; written once, atomically."""
+        """A text into its place, named by its hash; written once, atomically. A failure of the
+        medium is MediumError."""
         data = text.encode("utf-8")
         digest = hashlib.sha256(data).hexdigest()
         path = self.artifact_path(digest, place)
-        if path.exists():
-            if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
-                raise IntegrityError(f"{path} does not hold its hash")
-            return digest, len(data)
-        mode = 0o700 if place == "raw" else 0o755
-        for folder in (path.parent.parent, path.parent):
-            if not folder.exists():
-                folder.mkdir(parents=True, mode=mode)
-        write_atomic(path, data)
+        try:
+            if path.exists():
+                if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+                    raise IntegrityError(f"{path} does not hold its hash")
+                return digest, len(data)
+            mode = 0o700 if place == "raw" else 0o755
+            for folder in (path.parent.parent, path.parent):
+                if not folder.exists():
+                    folder.mkdir(parents=True, mode=mode)
+            write_atomic(path, data)
+        except OSError as error:
+            raise MediumError(
+                f"the {place} artifact {digest[:12]} cannot be written: {error}"
+            ) from error
         return digest, len(data)
 
     def text(self, digest: str, place: Place) -> str:
         path = self.artifact_path(digest, place)
         if not path.exists():
             raise IntegrityError(f"the {place} artifact {digest[:12]} is missing")
-        data = path.read_bytes()
+        try:
+            data = path.read_bytes()
+        except OSError as error:
+            raise MediumError(
+                f"the {place} artifact {digest[:12]} cannot be read: {error}"
+            ) from error
         if hashlib.sha256(data).hexdigest() != digest:
             raise IntegrityError(f"the {place} artifact {digest[:12]} does not hold its hash")
         return data.decode("utf-8")

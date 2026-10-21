@@ -51,6 +51,8 @@ HF_CACHE = Path(".cache/huggingface/hub")
 # Room for judge B's JSON over a long candidate list; a cut answer is a malformed session,
 # a technical failure, never a judgment.
 DIAGNOSTIC_MAX_NEW_TOKENS = 2048
+# the probes of the host and of the MLX environment are short commands: bounded all the same
+PROBE_SECONDS = 120
 # The packages whose code runs between the diagnostic's prompt and its text, found by tracing
 # scripts/mlx_generate.py's imports and its path (D-055); the others the process imports
 # (networking, progress bars, numpy, sentencepiece for SentencePiece models) do not touch it.
@@ -235,8 +237,10 @@ def host_identity() -> dict[str, str]:
     found = {}
     for name, command in HOST_FIELDS.items():
         try:
-            done = subprocess.run(command, capture_output=True, text=True, check=False)
-        except OSError as error:
+            done = subprocess.run(
+                command, capture_output=True, text=True, check=False, timeout=PROBE_SECONDS
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
             raise RuntimeIdentityError(f"the host's {name} cannot be read: {error}") from error
         value = done.stdout.strip()
         if done.returncode != 0 or not value:
@@ -275,15 +279,22 @@ def mlx_runtime(
     model."""
     if not python.exists():
         raise RuntimeIdentityError(f"{python} does not exist: the MLX environment is missing")
-    done = subprocess.run(
-        [str(python), "-I", "-c", _PROBE, json.dumps(sorted(MLX_PACKAGES))],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        done = subprocess.run(
+            [str(python), "-I", "-c", _PROBE, json.dumps(sorted(MLX_PACKAGES))],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=PROBE_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise RuntimeIdentityError(f"the MLX environment cannot be read: {error}") from error
     if done.returncode != 0:
         raise RuntimeIdentityError(f"the MLX environment cannot be read: {done.stderr[-300:]}")
-    found: dict[str, Any] = json.loads(done.stdout)
+    try:
+        found: dict[str, Any] = json.loads(done.stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeIdentityError(f"the MLX environment's report is not JSON: {error}") from error
     config = json.loads(config_path.read_text(encoding="utf-8"))
     return found | {
         "host": dict(host()),

@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import re
+import signal
 import stat
-import subprocess
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -122,19 +124,51 @@ def _changed(path: tuple[str, ...], value: object) -> dict:
     return other
 
 
-def _generator(monkeypatch, versions: dict) -> list[list[str]]:
-    """scripts/mlx_generate.py, stood in for: it appends its output with its versions."""
-    calls: list[list[str]] = []
+MLX_STAND_IN = """import argparse, json, sys, time
+parser = argparse.ArgumentParser()
+for flag in ("--config", "--prompts", "--out", "--max-new-tokens"):
+    parser.add_argument(flag)
+args = parser.parse_args()
+with open(%(log)r, "a") as log:
+    log.write(%(name)r + "\\n")
+time.sleep(%(sleep)r)
+row = json.loads(open(args.prompts).read().splitlines()[0])
+line = %(line)s
+with open(args.out, "a") as out:
+    out.write(json.dumps(line) + "\\n")
+"""
 
-    def run(command, **kwargs):
-        calls.append(command)
-        out = Path(command[command.index("--out") + 1])
-        line = {"id": out.parent.name, "prompt_sha256": "p", "output": "{}", "versions": versions}
-        out.write_text(json.dumps(line) + "\n")
-        return subprocess.CompletedProcess(command, 0)
 
-    monkeypatch.setattr(hx.subprocess, "run", run)
-    return calls
+def _generator(
+    monkeypatch, tmp_path: Path, versions: dict, tokens: int = 1000, sleep: float = 0
+) -> Path:
+    """scripts/mlx_prompt_tokens.py and scripts/mlx_generate.py, stood in for by two real
+    processes: the counter appends the prompt's tokens, the generator its output, each with
+    its versions. Returns the log of the processes that ran, one name per line."""
+    log = tmp_path / "mlx-calls.log"
+    log.touch()
+    counter_line = (
+        f'{{"id": row["id"], "prompt_sha256": "p", "prompt_tokens": {tokens}, '
+        f'"max_prompt_tokens": 16384, "versions": {versions!r}}}'
+    )
+    generator_line = (
+        f'{{"id": row["id"], "prompt_sha256": "p", "output": "{{}}", "versions": {versions!r}}}'
+    )
+    for name, line, wait in (
+        ("counter", counter_line, 0),
+        ("generator", generator_line, sleep),
+    ):
+        script = tmp_path / f"stand-in-{name}.py"
+        script.write_text(
+            MLX_STAND_IN % {"log": str(log), "name": name, "sleep": wait, "line": line}
+        )
+        monkeypatch.setattr(hx, "TOKEN_COUNTER" if name == "counter" else "GENERATOR", str(script))
+    monkeypatch.setattr(hx, "MLX_PYTHON", Path(sys.executable))
+    return log
+
+
+def _ran(log: Path) -> list[str]:
+    return log.read_text().split()
 
 
 @pytest.mark.parametrize(
@@ -151,19 +185,20 @@ def _generator(monkeypatch, versions: dict) -> list[list[str]]:
 )
 def test_the_diagnostic_never_runs_under_another_mlx_runtime(tmp_path, monkeypatch, path):
     run = executor(tmp_path, fake_binary(tmp_path), live=_changed(path, "9.9.9"))
-    calls = _generator(monkeypatch, hrt.generator_versions(FAKE_MLX))
+    log = _generator(monkeypatch, tmp_path, hrt.generator_versions(FAKE_MLX))
     with pytest.raises(hpl.TechnicalFailure, match="another") as failure:
         run.local("qwen_diagnostic", "R-6", [{"role": "user", "content": "PACKET"}])
-    assert failure.value.reason == "runtime_identity" and calls == []
+    assert failure.value.reason == "runtime_identity" and _ran(log) == []
     assert not (tmp_path / "raw" / "spool" / "R-6").exists()
 
 
 def test_the_diagnostic_keeps_the_runtime_that_produced_it(tmp_path, monkeypatch):
     run = executor(tmp_path, fake_binary(tmp_path))
-    calls = _generator(monkeypatch, hrt.generator_versions(FAKE_MLX))
+    log = _generator(monkeypatch, tmp_path, hrt.generator_versions(FAKE_MLX))
     messages = [{"role": "user", "content": "PACKET"}]
     record = run.local("qwen_diagnostic", "R-5", messages)
-    assert len(calls) == 1 and record["runtime"] == FAKE_MLX
+    assert _ran(log) == ["counter", "generator"] and record["runtime"] == FAKE_MLX
+    assert record["preflight"] == {"prompt_tokens": 1000, "max_prompt_tokens": 16384, "fits": True}
     assert record["versions"] == hrt.generator_versions(FAKE_MLX)
     spool = tmp_path / "raw" / "spool" / "R-5"
     assert json.loads((spool / "runtime.json").read_text()) == FAKE_MLX  # before the run
@@ -201,3 +236,166 @@ def test_only_the_launcher_builds_the_real_executor_or_an_orchestrator():
         "RealExecutor(": {"ingest/holdout_launcher.py"},
         "Pipeline(": {"ingest/holdout_launcher.py"},
     }
+
+
+# ---------------------------------------------------------------------------
+# P1 #6: the diagnostic's preflight; P1 #7: every execution bounded, its group verified gone
+# ---------------------------------------------------------------------------
+
+MESSAGES = [{"role": "user", "content": "PACKET"}]
+# a stand-in binary that never answers: it starts a child of its own group and waits
+HANG = """#!/bin/sh
+if [ "$1" = "--version" ]; then echo "2.1.301 (Claude Code)"; exit 0; fi
+sleep 300 &
+echo $! > "%s"
+cat > /dev/null
+sleep 300
+"""
+
+
+def hanging_binary(folder: Path) -> tuple[Path, Path]:
+    path, child = folder / "claude", folder / "child.pid"
+    path.write_text(HANG % child)
+    path.chmod(0o755)
+    return path, child
+
+
+def gone(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    return False
+
+
+def test_a_prompt_over_the_frozen_limit_is_counted_and_never_generated(tmp_path, monkeypatch):
+    run = executor(tmp_path, fake_binary(tmp_path))
+    log = _generator(monkeypatch, tmp_path, hrt.generator_versions(FAKE_MLX), tokens=20000)
+    record = run.local("qwen_diagnostic", "R-7", MESSAGES)
+    assert _ran(log) == ["counter"]  # one deterministic count, no generation, no retry
+    assert record["output"] is None
+    assert record["preflight"] == {
+        "prompt_tokens": 20000,
+        "max_prompt_tokens": 16384,
+        "fits": False,
+    }
+    assert hrt.local_problems(record, FAKE_MLX) == []  # the counter writes the frozen versions
+    assert run.recover_local("qwen_diagnostic", "R-7", MESSAGES) == record
+
+
+def test_a_generation_past_its_deadline_is_ended_and_verified_gone(tmp_path, monkeypatch):
+    run = executor(tmp_path, fake_binary(tmp_path))
+    _generator(monkeypatch, tmp_path, hrt.generator_versions(FAKE_MLX), sleep=60)
+    monkeypatch.setattr(hx.hproc, "LOCAL_SECONDS", 1)
+    monkeypatch.setattr(hx.hproc, "GRACE_SECONDS", 1)
+    with pytest.raises(hpl.TechnicalFailure) as failure:
+        run.local("qwen_diagnostic", "R-8", MESSAGES)
+    assert (failure.value.reason, failure.value.check) == ("timeout", "execution_deadline")
+    registry = json.loads((tmp_path / "raw" / "spool" / "R-8" / "process.json").read_text())
+    assert not hx.hproc.group_alive(registry["pgid"])
+
+
+def test_a_headless_run_past_its_deadline_leaves_no_process_of_its_group(tmp_path, monkeypatch):
+    binary, child = hanging_binary(tmp_path)
+    run = executor(tmp_path, binary)
+    monkeypatch.setattr(hx.hproc, "HEADLESS_SECONDS", 2)
+    monkeypatch.setattr(hx.hproc, "GRACE_SECONDS", 1)
+    with pytest.raises(hpl.TechnicalFailure) as failure:
+        run.headless("judge_b", "R-9", "PACKET")
+    assert (failure.value.reason, failure.value.check) == ("timeout", "execution_deadline")
+    registry = json.loads((tmp_path / "raw" / "spool" / "R-9" / "process.json").read_text())
+    assert not hx.hproc.group_alive(registry["pgid"])
+    assert gone(int(child.read_text()))  # the child it started, ended with its group
+
+
+def test_a_broker_turn_past_its_deadline_ends_the_judge_and_its_children(tmp_path, monkeypatch):
+    binary, child = hanging_binary(tmp_path)
+    run = executor(tmp_path, binary)
+    monkeypatch.setattr(hx.hproc, "BROKER_TURN_SECONDS", 2)
+    monkeypatch.setattr(hx.hproc, "GRACE_SECONDS", 1)
+    with pytest.raises(hpl.TechnicalFailure) as failure:
+        run.broker("judge_a", "R-10", "PACKET", FakeTools())
+    assert (failure.value.reason, failure.value.check) == ("timeout", "execution_deadline")
+    registry = json.loads((tmp_path / "raw" / "spool" / "R-10" / "process.json").read_text())
+    assert not hx.hproc.group_alive(registry["pgid"])
+    assert gone(int(child.read_text()))
+
+
+def test_a_judge_that_will_not_exit_is_ended_at_close(tmp_path, monkeypatch):
+    """A broker run whose judge answered and then does not exit when its input ends."""
+    script = tmp_path / "claude"
+    script.write_text(
+        "#!/bin/sh\n"
+        'if [ "$1" = "--version" ]; then echo "2.1.301 (Claude Code)"; exit 0; fi\n'
+        "trap '' TERM\n"  # it ignores SIGTERM: only SIGKILL ends it
+        "read line\n"
+        'echo \'{"type": "result", "result": "{\\"final\\": {}}", "is_error": false}\'\n'
+        "while true; do sleep 1; done\n"
+    )
+    script.chmod(0o755)
+    monkeypatch.setattr(hb, "CLOSE_SECONDS", 1)
+    monkeypatch.setattr(hx.hproc, "GRACE_SECONDS", 1)
+    pin = hi.binary_identity(script)
+    conversation = hb.StreamJsonConversation(script, "m", pin, spool=tmp_path / "spool")
+    assert json.loads(conversation.send("PACKET")) == {"final": {}}
+    session = conversation.close()
+    assert session["returncode"] == -signal.SIGKILL
+    assert not hx.hproc.group_alive(conversation.process.pid)
+
+
+def test_a_changed_binary_is_a_runtime_identity_mismatch_never_a_transport(tmp_path):
+    binary = fake_binary(tmp_path)
+    pin = {**hi.binary_identity(binary), "sha256": "0" * 64}
+    run = hx.RealExecutor(
+        binary, "m", pin, [], tmp_path / "raw" / "spool", FAKE_MLX, lambda: FAKE_MLX
+    )
+    for call in (
+        lambda: run.headless("judge_b", "R-11", "PACKET"),
+        lambda: run.broker("judge_a", "R-12", "PACKET", FakeTools()),
+    ):
+        with pytest.raises(hpl.TechnicalFailure) as failure:
+            call()
+        assert failure.value.reason == "runtime_identity"
+    assert not (tmp_path / "raw" / "spool" / "R-11").exists()
+
+
+@pytest.mark.parametrize(
+    ("raised", "reason"),
+    [
+        (lambda: hb.hproc.OperationTimeout("x"), "timeout"),
+        (lambda: hb.BrokerFailure("x"), "broker"),
+    ],
+)
+def test_a_broker_failure_is_classified_and_its_judge_ended(tmp_path, monkeypatch, raised, reason):
+    binary, child = hanging_binary(tmp_path)
+    run = executor(tmp_path, binary)
+    monkeypatch.setattr(hx.hproc, "GRACE_SECONDS", 1)
+
+    def failing(*args, **kwargs):
+        child_pid = None
+        for _ in range(100):
+            if child.exists() and child.read_text().strip():
+                child_pid = int(child.read_text())
+                break
+            __import__("time").sleep(0.05)
+        assert child_pid is not None
+        raise raised()
+
+    monkeypatch.setattr(hx.hb, "run_judge_a", failing)
+    with pytest.raises(hpl.TechnicalFailure) as failure:
+        run.broker("judge_a", "R-13", "PACKET", FakeTools())
+    assert failure.value.reason == reason
+    assert gone(int(child.read_text()))
+
+
+def test_a_recovered_judge_that_exited_with_an_error_gives_no_answer(tmp_path):
+    run = executor(tmp_path, fake_binary(tmp_path))
+    spool = tmp_path / "raw" / "spool" / "R-14"
+    _stream(spool, [FINAL])
+    hsp.end(spool, 1)
+    with pytest.raises(hpl.TechnicalFailure) as failure:
+        run.recover_broker("judge_a", "R-14", "PACKET", FakeTools())
+    assert failure.value.reason == "transport"
+    unobserved = tmp_path / "raw" / "spool" / "R-15"
+    _stream(unobserved, [FINAL])  # the orchestrator died: no exit was observed
+    assert run.recover_broker("judge_a", "R-15", "PACKET", FakeTools()) is not None

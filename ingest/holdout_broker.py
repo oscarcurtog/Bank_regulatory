@@ -32,12 +32,14 @@ import re
 import subprocess
 import tempfile
 import threading
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Protocol, TextIO
 
 from ingest import holdout_isolation as hi
+from ingest import holdout_process as hproc
 from ingest import holdout_spool as hsp
 from ingest.corpus_tools import CorpusTools
 
@@ -47,6 +49,8 @@ MAX_PAYLOAD = 8000
 MAX_VIOLATIONS = 2
 MAX_REFS = 20
 MAX_PATTERN = 200
+# how long a judge may take to exit once its input has ended, before its group is ended
+CLOSE_SECONDS = 120
 ACTS = ("DORA", "MiCA", "PSD2")
 _ARTICLE = re.compile(r"^\d{1,3}[a-z]?$")
 _NODE = re.compile(r"^(DORA|MiCA|PSD2):\d{1,3}[a-z]?(\.[A-Za-z0-9_]{1,12}){0,6}$")
@@ -74,6 +78,10 @@ ERRORS = {
     "E5": "the page does not exist",
 }
 Outcome = Literal["final", "pending_technical_resource", "judge_a_protocol_failure"]
+
+
+class BrokerFailure(RuntimeError):
+    """A corpus operation that a valid request made fail: the broker's, never the judge's."""
 
 
 class RequestError(Exception):
@@ -167,7 +175,7 @@ def validate(request: Any) -> Request:
             raise RequestError("E4")
         try:
             re.compile(pattern)
-        except re.error:
+        except (re.error, OverflowError, RecursionError, ValueError):
             raise RequestError("E4") from None
     page = args.get("page", 1)
     if page < 1:
@@ -284,7 +292,16 @@ def run_judge_a(
             if requests >= max_requests:
                 run.outcome = "pending_technical_resource"
                 return run
-            pages = paginate(execute(tools, value), max_payload)
+            try:
+                # a corpus operation in this process, under its own deadline
+                with hproc.alarm(hproc.OPERATION_SECONDS):
+                    pages = paginate(execute(tools, value), max_payload)
+            except (RequestError, hproc.OperationTimeout):
+                raise
+            except Exception as error:
+                raise BrokerFailure(
+                    f"the corpus operation failed: {type(error).__name__}"
+                ) from error
             if value.page > len(pages):
                 raise RequestError("E5")
         except RequestError as error:
@@ -343,7 +360,12 @@ class StreamJsonConversation:
 
     With a spool, every line of the stream is written to a private file and flushed as it is
     read, and the standard error goes straight to another: the judge's replies survive the
-    death of this process, and the broker's side follows from them (recover_conversation)."""
+    death of this process, and the broker's side follows from them (recover_conversation).
+
+    The process is the leader of a group of its own (ingest/holdout_process.py), registered in
+    the spool. Each turn has a deadline, and so has the whole run: at either, the group is
+    ended, reaped and verified gone, and ExecutionTimeout is raised. close() and abort() leave
+    no member of the group alive, or raise CleanupFailed."""
 
     def __init__(
         self,
@@ -351,16 +373,22 @@ class StreamJsonConversation:
         model: str,
         pinned: Mapping[str, str],
         extra_env: Sequence[str] = (),
-        timeout: int = 600,
+        timeout: float | None = None,
         spool: Path | None = None,
+        deadline: float | None = None,
+        command: Sequence[str] | None = None,
     ) -> None:
-        hi.check_pinned(binary, pinned)
+        if command is None:
+            hi.check_pinned(binary, pinned)
         self.workdir = Path(tempfile.mkdtemp(prefix="tmp."))
         found = hi.agents_md_problems(self.workdir)
         if found:
             self.workdir.rmdir()
             raise RuntimeError(f"an AGENTS.md could reach the judge: {found}")
-        self.timeout = timeout
+        self.timeout = hproc.BROKER_TURN_SECONDS if timeout is None else timeout
+        self.ends_at = time.monotonic() + (
+            hproc.BROKER_RUN_SECONDS if deadline is None else deadline
+        )
         self.lines: list[str] = []
         self.spool = spool
         self._stream: TextIO | None = None
@@ -370,9 +398,13 @@ class StreamJsonConversation:
             self._stream = open(spool / "stream", "w", encoding="utf-8")  # noqa: SIM115
             stderr = open(spool / "stderr", "w", encoding="utf-8")  # noqa: SIM115
         self._stderr = stderr
-        self.command = [*hi.headless_command(binary, model), "--input-format", "stream-json"]
-        self.process = subprocess.Popen(
+        # a stand-in command only in the tests of the transport's deadlines and cleanup
+        self.command = list(
+            command or [*hi.headless_command(binary, model), "--input-format", "stream-json"]
+        )
+        self.process = hproc.spawn(
             self.command,
+            None if spool is None else spool / hproc.REGISTRY,
             cwd=self.workdir,
             env=hi.clean_environment(extra_env),
             stdin=subprocess.PIPE,
@@ -382,7 +414,11 @@ class StreamJsonConversation:
             bufsize=1,
         )
         self._queue: queue.Queue[str | None] = queue.Queue()
-        threading.Thread(target=self._read, daemon=True).start()
+        try:
+            threading.Thread(target=self._read, daemon=True).start()
+        except BaseException:
+            hproc.end_group(self.process)
+            raise
 
     def _read(self) -> None:
         assert self.process.stdout is not None
@@ -403,7 +439,14 @@ class StreamJsonConversation:
         self.process.stdin.write(json.dumps(message) + "\n")
         self.process.stdin.flush()
         while True:
-            line = self._queue.get(timeout=self.timeout)
+            wait = min(self.timeout, self.ends_at - time.monotonic())
+            try:
+                if wait <= 0:
+                    raise queue.Empty
+                line = self._queue.get(timeout=wait)
+            except queue.Empty:
+                hproc.end_group(self.process)
+                raise hproc.ExecutionTimeout("a turn or the run reached its deadline") from None
             if line is None:
                 raise RuntimeError("the judge's process ended in the middle of a turn")
             self.lines.append(line)
@@ -416,13 +459,39 @@ class StreamJsonConversation:
                     raise RuntimeError(f"the turn failed: {str(event.get('result'))[:200]}")
                 return str(event.get("result") or "")
 
+    def abort(self) -> None:
+        """After a failure: the group ended and verified gone (CleanupFailed otherwise), the
+        files closed and the directory removed if it is empty. Nothing is collected."""
+        try:
+            hproc.end_group(self.process)
+        finally:
+            hproc.close_quietly(self.process.stdin, self._stream)
+            if self._stderr is not subprocess.PIPE:
+                hproc.close_quietly(self._stderr)
+            try:
+                hsp.remove_empty(self.workdir)
+            except (RuntimeError, OSError):
+                pass
+
     def close(self) -> dict[str, Any]:
-        """End the process and collect what it left; the directory is removed."""
+        """End the process and collect what it left; the directory is removed. A judge that
+        does not exit within the grace period after its input ends is ended; either way its
+        group is verified gone before anything is read."""
         assert self.process.stdin is not None
-        self.process.stdin.close()
-        self.process.wait(timeout=self.timeout)
-        while (line := self._queue.get(timeout=self.timeout)) is not None:
-            self.lines.append(line)
+        try:
+            self.process.stdin.close()
+        except OSError:
+            pass
+        try:
+            self.process.wait(timeout=CLOSE_SECONDS)
+        except subprocess.TimeoutExpired:
+            hproc.end_group(self.process)
+        hproc.finish(self.process)
+        try:
+            while (line := self._queue.get(timeout=self.timeout)) is not None:
+                self.lines.append(line)
+        except queue.Empty:
+            raise RuntimeError("the judge's output did not end with its process") from None
         if self.spool is not None:
             assert self._stream is not None
             for f in (self._stream, self._stderr):

@@ -18,13 +18,13 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import tempfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 from ingest import holdout_isolation as hi
+from ingest import holdout_process as hproc
 
 UNOBSERVED = -1  # the exit code of a process that ended after the orchestrator died
 
@@ -123,10 +123,13 @@ def run_headless(
     pinned: Mapping[str, str],
     spool: Path,
     extra_env: Sequence[str] = (),
-    timeout: int = 900,
+    timeout: float | None = None,
 ) -> hi.HeadlessRun:
     """ingest/holdout_isolation.py run_headless, with the output written into the spool while
-    the run lasts: the same checks, command, environment and directory."""
+    the run lasts: the same checks, command, environment and directory. The process runs in a
+    group of its own under its deadline, and its group is verified gone whatever happens
+    (ingest/holdout_process.py): ExecutionTimeout at the deadline, CleanupFailed if it cannot
+    be ended."""
     hi.check_pinned(binary, pinned)
     workdir = Path(tempfile.mkdtemp(prefix="tmp."))
     if any(workdir.iterdir()):
@@ -141,25 +144,32 @@ def run_headless(
             open(spool / "stdout", "w", encoding="utf-8") as out,
             open(spool / "stderr", "w", encoding="utf-8") as err,
         ):
-            done = subprocess.run(
-                hi.headless_command(binary, model),
-                input=packet,
-                cwd=workdir,
-                env=hi.clean_environment(extra_env),
-                stdout=out,
-                stderr=err,
-                text=True,
-                timeout=timeout,
-                check=False,
-            )
-            for f in (out, err):
-                f.flush()
-                os.fsync(f.fileno())
-        end(spool, done.returncode)
-    finally:
-        remove_empty(workdir)
+            try:
+                returncode = hproc.run(
+                    hi.headless_command(binary, model),
+                    hproc.HEADLESS_SECONDS if timeout is None else timeout,
+                    registry=spool / hproc.REGISTRY,
+                    stdin_text=packet,
+                    cwd=workdir,
+                    env=hi.clean_environment(extra_env),
+                    stdout=out,
+                    stderr=err,
+                )
+            finally:
+                for f in (out, err):
+                    f.flush()
+                    os.fsync(f.fileno())
+        end(spool, returncode)
+    except BaseException:
+        # the run's own failure is what is recorded: a directory it left is not
+        try:
+            remove_empty(workdir)
+        except (RuntimeError, OSError):
+            pass
+        raise
+    remove_empty(workdir)
     workdirs = [str(workdir.resolve()), str(workdir)]
-    return _collected(workdirs, done.returncode, text(spool, "stdout"), text(spool, "stderr"))
+    return _collected(workdirs, returncode, text(spool, "stdout"), text(spool, "stderr"))
 
 
 def recover_headless(spool: Path) -> hi.HeadlessRun | None:

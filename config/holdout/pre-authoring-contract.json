@@ -14,7 +14,7 @@
    "sha256": "f0d3279e86f43f4db3808e3c59793631744cb356d5f6b6b10b878bbcfce3da4e",
    "cells": 12
   },
-  "role_contracts_sha256": "147e71068548c8b6660003b1b8a9204da159b487b708473ee981120d9552483b",
+  "role_contracts_sha256": "f8f777fa51c49a0d3484e34e53baac1031320a49a0e6eaaedb10bb971b510e97",
   "templates_sha256": {
    "attempt_frames.v2": "9b1bc7fd6eebd393b8ae1d164fca5215dcfa28249d04ab2fb35373fcd8d56411",
    "concept_author.v1": "6a4ca085ed7067153ac7d55504c51a98820df66f4e9f5d16095f8409694c1eca",
@@ -45,30 +45,57 @@
    60
   ],
   "statement_review": "code and blind roles only; no person edits or approves a statement",
+  "evidence_discovery": {
+   "spec": "config/holdout/evidence-discovery.md",
+   "searches": {
+    "A": "judge_a",
+    "B": "second_search"
+   },
+   "audit_search": {
+    "C": "omission_search",
+    "cells": 12
+   },
+   "first_judgment": "search A's label where A listed the node, else search B's, else search C's; the answerability, search A's",
+   "audit_threshold": "a node new to search C adjudicated grade >= 1 stops"
+  },
+  "process_deadlines_seconds": {
+   "headless": 900,
+   "broker_turn": 600,
+   "broker_run": 3600,
+   "diagnostic_generation": 1800,
+   "diagnostic_token_count": 300,
+   "termination_grace": 10.0
+  },
+  "controller_policy": "holdout-controller.v1",
   "code_sha256": {
    "ingest/corpus_tools.py": "1b6c4c89497c244c707bb02c1c662342a1b526d0ce85bd3e7be2a192eb2bf718",
    "ingest/holdout.py": "57af5d0b70da193707f3bd1f84bfee87194eacda18df15949935318c9900f005",
-   "ingest/holdout_broker.py": "a3ada497a2e8be0b8c255fe9ce718a67f3a072a209db128abbabdd5048d36937",
-   "ingest/holdout_checks.py": "99c36af85441592b0e20112760f196a00f887c0b24c28512de8f4f9607006c09",
-   "ingest/holdout_contract.py": "2e6d5b39a7e2eb5fc2ca19666ba20e38bbf88cc4d96e216b6360b67ef2734212",
-   "ingest/holdout_executor.py": "aeeabb916eb0ecf0995644406fe51a2e8242f7e9161fa2bb5493812aae9151f7",
+   "ingest/holdout_admission.py": "e81dacf927714b1d8f6a57658c6b6f5920948604a108c921ec110b1ebfbecc68",
+   "ingest/holdout_broker.py": "373ecf4ca93180e8bd407b688cddd6b086556a50eadfd13701e66ecb288dd40c",
+   "ingest/holdout_checks.py": "8b2304e30819b01e4ed61d4d6d1fe372d240682c9a2087b19fb708f739b698a4",
+   "ingest/holdout_contract.py": "efd1056899d41b657f728e1e696264ad638758c4e8f87be1aa1f48bfa8400d45",
+   "ingest/holdout_controller.py": "91f86b286c6d17d1e6cfdaec2fd4ace782ec413b531e774359dfdbc686b4c70c",
+   "ingest/holdout_executor.py": "4566f95710961c729c2f27e35def949fec52bc315eb2fa523d709ea869b5f6fa",
    "ingest/holdout_isolation.py": "2e5c69b6566e5d7cd4229dc5ad3b80fa736fded67c6343a6a7593240b58265be",
-   "ingest/holdout_judging.py": "d0793c3b967b9bb66f2eb8c62b624625047c58a2c55fe31c4c92a66fc7c7f18d",
-   "ingest/holdout_launcher.py": "0c0603d0aa95104ada7c72c3ac7568ea7ecd779c250b7313bfb14815a9fff417",
+   "ingest/holdout_judging.py": "c952263ac15c07b2571cf8f65e301906adc33ffef1c0970827add86e4032e9d6",
+   "ingest/holdout_launcher.py": "e611ff224a266c13bf92be32eb6a280426921ed44eded687d1ac8da1b82a56a1",
    "ingest/holdout_ledger.py": "cde61409ef9d0b8826541f3173772ac8fc1dad65a18b85d6b4d09655c8b9b704",
    "ingest/holdout_packets.py": "d6a96dda3133d89d2fa3b81d16f112081c101c6a555dff9cca635db1bea706ee",
-   "ingest/holdout_pipeline.py": "f7d7e062302c4aef98651f49436397eacd6dd07baa82dcbedd7d550f3eaae29c",
-   "ingest/holdout_roles.py": "4d9ea88777d63716319bd6db5faaa34341a1b0a2c4204bb252cf582877ce9c5b",
-   "ingest/holdout_runtime.py": "bb41b3c9b5c5029eecc578110700b2fb85004d4263df0e4f1c54e94dc85b2b51",
-   "ingest/holdout_spool.py": "eed1aa64725f381cde2aaafde2888147fae8b2a1fb44c5443dfc86c0a7ff4a77",
-   "ingest/holdout_state.py": "0d640aeed5f82dc7e4fdba2ede65e9f433e24ba2729b4d0e5ce0565c284e19bb",
+   "ingest/holdout_pipeline.py": "64db0d4aa6b36bdc0ffc5c1278a757451265666c2ae4b89d360b3013341a6d81",
+   "ingest/holdout_process.py": "7d8ba705852133c3aa1346873b423afcc2fc7cbe539f5a62074ff8b5bebbf60e",
+   "ingest/holdout_roles.py": "27e661ae98c99c3b6f1a748edbff6fd5cdb4752e1b826e36eca5d2e53a16e035",
+   "ingest/holdout_runtime.py": "ba0dcc4db48a907c6dd62792c62000151db3a71570aec438c4886238edbdef50",
+   "ingest/holdout_spool.py": "a3b3c311a84b350570ae38ed95bf37f4f734f6e8c377334d8bf3fef7f884f473",
+   "ingest/holdout_state.py": "783ced2b11102f740b8942dd28bd58fea814c80ed24ef0bcc02ade6becd502ae",
    "ingest/psd2_exclusions.py": "9900c494238c4df56f9d1e82d6ca62b920a3d9cf701374c9468b057ed8552065",
    "scripts/evidence_tools.py": "b1ae9a1b1855544324e9d9095be9fb4e19eb4a4c32ee51a428f3d2daa95155ef",
-   "scripts/holdout.py": "618ef700d6a2187fd74c5824bdff26cdb1aeaefdb47594b8cf4296c222bb02f2"
+   "scripts/holdout.py": "14e373e35b08f103f80f2e5ce4625d160a9d6128cdd667e98ab125db8c45ff63",
+   "scripts/mlx_prompt_tokens.py": "28e4763bcda5248a527ff170a2289615be3bf96bf6718ffe0341fdf3979b4942"
   },
   "inputs_sha256": {
    "data/benchmark/PROTOCOL.md": "79cafdda538cf9cfec682817ac77bf75692f562545ad5b21f38d8394df0db1d0",
-   "config/holdout/construction-amendment-1.json": "0823a6d4d4a0b26ba967e9f0cf78abdbb99f1b540992e213ba9be67603d8d083",
+   "config/holdout/evidence-discovery.md": "a32bd3a3de9424d12088099f773f0d49ddc5b96fd9ab24201db17e85ed36a92d",
+   "config/holdout/failure-paths.md": "3f6a07e841b39c1dd54a1fc137cb8fe1cf641c39eb3598b124bdaf361179d0cc",
    "config/retrieval/qwen3-8b-mlx.json": "92836ad88b8529027775f101b3c1e1bf1c47db46434199de271a582e82ac02a4",
    "data/benchmark/dev/manifest.json": "c845b684035dac91dec399604e6623a60c67a9564afba975f177b5d6482fb917",
    "data/benchmark/dev/needs.jsonl": "1c22c80dfb1b1d3092634b795bee5e01e0fca2bc07582d4ea1854d91c07cb791",
@@ -105,7 +132,7 @@
       "evidence_gate"
      ],
      "consequence": "malformed_session",
-     "rule": "the fields the role's template asks for, a statement not empty, a verdict from the gatekeeper's list naming only a need it was shown",
+     "rule": "the complete contract of the answer before it is admitted (ingest/holdout_admission.py, P1 #1): the fields its consumers read, with their types and non-empty text (a concept, its facts as a list of text, the fit; a statement; a verdict from the gatekeeper's list naming only a need it was shown)",
      "retriable": true
     },
     "broker_ceiling": {
@@ -114,6 +141,7 @@
      "reads": "model_output",
      "stages": [
       "judge_a",
+      "second_search",
       "omission_search"
      ],
      "consequence": "resource",
@@ -126,6 +154,7 @@
      "reads": "model_output",
      "stages": [
       "judge_a",
+      "second_search",
       "omission_search"
      ],
      "consequence": "protocol",
@@ -162,8 +191,19 @@
       "diagnostic"
      ],
      "consequence": "recorded",
-     "rule": "an answer of Qwen3-8B, from a run that ended normally under the frozen runtime, is a diagnostic only if it is one JSON object grading every candidate once with the protocol's labels (ingest/holdout_judging.py diagnostic_defects); otherwise the diagnostic is unavailable: the answer stays with its run, never read again, with no vote and no label, and a blind judge D grades every candidate and the answerability by the rule of a discrepancy. Unavailable is not agreement. Greedy decoding gives the same answer again, so it is never executed again (the first START, aborted on 2026-10-20 with no ready need)",
+     "rule": "an answer of Qwen3-8B, from a run that ended normally under the frozen runtime, is a diagnostic only if it is one JSON object grading every candidate once with the protocol's labels (ingest/holdout_judging.py diagnostic_defects), and a prompt that does not fit the frozen limit is never generated (input_exceeds_context, P1 #6); otherwise the diagnostic is unavailable: the answer stays with its run, never read again, with no vote and no label, and a blind judge D grades every candidate and the answerability by the rule of a discrepancy. Unavailable is not agreement. Greedy decoding gives the same answer again, so it is never executed again (the first START, aborted on 2026-10-20 with no ready need)",
      "retriable": false
+    },
+    "diagnostic_preflight": {
+     "name": "diagnostic_preflight",
+     "kind": "technical_integrity",
+     "reads": "model_output",
+     "stages": [
+      "diagnostic"
+     ],
+     "consequence": "malformed_session",
+     "rule": "the diagnostic's record carries the token count of its prompt, made by the frozen tokenizer and chat template before any generation, against the frozen limit, and a generation exactly when the prompt fits (P1 #6)",
+     "retriable": true
     },
     "evidence_overlap_stratum": {
      "name": "evidence_overlap_stratum",
@@ -175,6 +215,29 @@
      "consequence": "recorded",
      "rule": "shared grade-3 evidence with DEV is a stratum for S4, not an exclusion; only the evidence gatekeeper's verdict decides (D-054)",
      "retriable": false
+    },
+    "execution_deadline": {
+     "name": "execution_deadline",
+     "kind": "technical_integrity",
+     "reads": "model_output",
+     "stages": [
+      "concept",
+      "statement",
+      "overlap_gate",
+      "query_formulation",
+      "judge_a",
+      "second_search",
+      "omission_search",
+      "judge_b",
+      "judge_c",
+      "diagnostic",
+      "judge_d",
+      "metadata",
+      "evidence_gate"
+     ],
+     "consequence": "timeout",
+     "rule": "every execution is bounded (ingest/holdout_process.py, P1 #7): at its deadline its process group gets SIGTERM, a grace period, SIGKILL, is reaped and verified gone; only then is the failed execution recorded, and another may follow",
+     "retriable": true
     },
     "final_qrels_unambiguous": {
      "name": "final_qrels_unambiguous",
@@ -193,13 +256,14 @@
      "reads": "model_output",
      "stages": [
       "judge_a",
+      "second_search",
       "omission_search",
       "judge_b",
       "judge_c",
       "judge_d"
      ],
      "consequence": "malformed_session",
-     "rule": "every candidate graded, once, and only the candidates, and every item answered, by the protocol's labels (ingest/holdout_judging.py judge_a_problems, disagreements, judge_d_outcome); the diagnostic's is diagnostic_admissible",
+     "rule": "the complete contract of a search's or a judge's answer before it is admitted (ingest/holdout_admission.py, P1 #1): every candidate graded once and only the candidates, every item answered once, grades 0 to 3, true or false ambiguity, an answerability of the protocol, the rationale every label needs, the gap note a partial or none answerability needs, each label one the adjudication record can hold, and the protocol's rules on a search's file (judge_a_problems); a search that declares a problem needs its text only. The diagnostic's is diagnostic_admissible",
      "retriable": true
     },
     "material_discrepancy": {
@@ -234,6 +298,7 @@
       "overlap_gate",
       "query_formulation",
       "judge_a",
+      "second_search",
       "omission_search",
       "judge_b",
       "judge_c",
@@ -255,6 +320,7 @@
       "overlap_gate",
       "query_formulation",
       "judge_a",
+      "second_search",
       "omission_search",
       "judge_b",
       "judge_c",
@@ -276,6 +342,29 @@
      ],
      "consequence": "recorded",
      "rule": "the grid is a target, not a quota: departures are recorded (D-054 decision 8)",
+     "retriable": false
+    },
+    "process_cleanup": {
+     "name": "process_cleanup",
+     "kind": "technical_integrity",
+     "reads": "state",
+     "stages": [
+      "concept",
+      "statement",
+      "overlap_gate",
+      "query_formulation",
+      "judge_a",
+      "second_search",
+      "omission_search",
+      "judge_b",
+      "judge_c",
+      "diagnostic",
+      "judge_d",
+      "metadata",
+      "evidence_gate"
+     ],
+     "consequence": "stop",
+     "rule": "a process group that cannot be verified gone after SIGKILL: no execution may follow it, the stage is pending_technical_unresolved and the construction stops for a person (ingest/holdout_process.py, P1 #7)",
      "retriable": false
     },
     "qrel_texts": {
@@ -306,6 +395,7 @@
      "reads": "assembled_records",
      "stages": [
       "lock",
+      "evidence_union",
       "adjudication",
       "metadata",
       "evidence_gate",
@@ -323,6 +413,7 @@
       "concept",
       "statement",
       "overlap_gate",
+      "second_search",
       "omission_search",
       "judge_b",
       "judge_c",
@@ -344,6 +435,7 @@
       "overlap_gate",
       "query_formulation",
       "judge_a",
+      "second_search",
       "omission_search",
       "judge_b",
       "judge_c",
@@ -402,6 +494,17 @@
      "consequence": "statement_invalid",
      "rule": "D-054: no legal wording and no run of eight words of DEV or the fixtures (ingest/holdout_packets.py author_leaks)",
      "retriable": false
+    },
+    "unclassified_failure": {
+     "name": "unclassified_failure",
+     "kind": "technical_integrity",
+     "reads": "state",
+     "stages": [
+      "construction"
+     ],
+     "consequence": "stop",
+     "rule": "any failure the construction does not classify is recorded as a stop for a person before the process ends, naming its kind and place, never its text; only a failure of the state itself (integrity, identities, lock, a replay's refused write) or of its medium leaves it unwritten",
+     "retriable": false
     }
    },
    "role_verdicts": [
@@ -430,6 +533,12 @@
      "rule": "judge_a.v2"
     },
     {
+     "role": "second_searcher",
+     "verdict": "a problem with the need, before any of its candidates is read",
+     "outcome": "judge_problem",
+     "rule": "judge_a.v2: search B is part of every need's evidence, under search A's rule"
+    },
+    {
      "role": "judge_d",
      "verdict": "does not hold the final label, or finds the item ambiguous",
      "outcome": "adjudication_uncertain",
@@ -437,7 +546,10 @@
     }
    ],
    "stop_rules": [
-    "an omission found by the second search adjudicated grade >= 1 (Codex Gate 2 P1.4)",
+    "an omission found by the audit's search C, new to the union of searches A and B, adjudicated grade >= 1 (Codex Gate 2 P1.4; config/holdout/evidence-discovery.md)",
+    "the audit's search C declares a problem: the audit cannot be completed (omission_audit_incomplete, before any of its candidates is read)",
+    "a process group not verified gone after SIGKILL (process_cleanup)",
+    "a failure the construction does not classify (unclassified_failure)",
     "fewer than 50 evaluable needs still reachable (D-054 decision 3)",
     "a problem found at an operational checkpoint (D-055)",
     "a technical stage failed three executions: pending_technical_unresolved (D-055)"
@@ -577,7 +689,7 @@
   }
  },
  "code": {
-  "built_on_commit": "57ec4c9f3370a76f1125304112e58a04a0c2566b",
+  "built_on_commit": "73bfb18f2ca90a8b7d5c32d0e57ed6896f078f48",
   "e_result_commit": "7636908bf57c7fbd95cc46b180c9f2e59a41b3f8",
   "files_sha256": {
    "ingest/benchmark.py": "09896f2ff6f2ad8436d7b1e5e5aa05036b15dfed65ab77ba525222da1deb840c",
@@ -822,7 +934,7 @@
  },
  "analysis": {
   "plan_file": "config/holdout/s4-analysis-plan.md",
-  "plan_sha256": "7cbdf77bc2d4e97b5e3f7f51640efc78475bbe170d7430808e697b0810d3df43",
+  "plan_sha256": "5882b730330a26b2969a19b064e4b53ad359bfe0f8966162f0b86c4b791ca191",
   "primary_comparison": "E against E5",
   "bootstrap": {
    "function": "ingest/run_report.py paired_bootstrap",
@@ -842,29 +954,21 @@
    "ready_needs": 0,
    "reason": "The frozen Qwen diagnostic recovery policy assumed that a repeated technical execution could produce a different semantic output. In the real S3 run Qwen3-8B was running greedy deterministic decoding, so a structurally malformed but successfully generated response was likely reproducible. Retrying the identical semantic execution was therefore not a meaningful recovery strategy.",
    "change": "the diagnostic's failure semantics only (holdout_checks.py diagnostic_admissible); sampling, grid, order, prompts, judges and systems unchanged"
+  },
+  {
+   "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+   "contract_sha256": "e45ccb1125f6a648759493876f7ebe0c32364a24c438f2ff4ea0961705ed9e26",
+   "base_contract_sha256": "d4f3a1f2826d5a18ff8a1e43ac8ae62347b99a20b07a24121591e5e63956b381",
+   "public_commit": "73bfb18f2ca90a8b7d5c32d0e57ed6896f078f48",
+   "base_public_commit": "57ec4c9f3370a76f1125304112e58a04a0c2566b",
+   "amendments": [
+    "config/holdout/construction-amendment-1.json"
+   ],
+   "ready_needs": 8,
+   "reason": "The omission audit's hard stop: a second blind search found evidence judge A had missed, adjudicated grade >= 1, so that the frozen rule called for the evidence search to be corrected for every need alike. The review that followed also found control-flow defects (outputs admitted without their full contract, a second searcher's declared problem with no transition, audits bound to the wrong attempt, unbounded processes, a controller that could act on a stale failure). The run is kept whole as a protocol-development run, and TEST restarts prospectively under one final procedure for every need, rather than being repaired.",
+   "change": "evidence discovery: two blind searches for every need, their union adjudicated once, and the omission audit as a third blind search (config/holdout/evidence-discovery.md); complete admission of every output; bounded processes with verified cleanup; the diagnostic's token preflight; every reachable failure classified (config/holdout/failure-paths.md); the unattended controller in the repository. Sampling, grid, order, omission cells, templates, judges, thresholds, systems and the S4 metrics unchanged"
   }
  ],
- "amends": {
-  "amendment": "CONSTRUCTION_AMENDMENT_1",
-  "amendment_file": "config/holdout/construction-amendment-1.json",
-  "amendment_sha256": "0823a6d4d4a0b26ba967e9f0cf78abdbb99f1b540992e213ba9be67603d8d083",
-  "base_contract_sha256": "d4f3a1f2826d5a18ff8a1e43ac8ae62347b99a20b07a24121591e5e63956b381",
-  "base_public_commit": "57ec4c9f3370a76f1125304112e58a04a0c2566b",
-  "after_event": {
-   "seq": 367,
-   "sha256": "35a3560b9617e519face398bda67a5640594dd7c1572849d6c5623ee82fecc49"
-  },
-  "identity_changes": [
-   "construction_code",
-   "pre_authoring_contract"
-  ],
-  "first_transition": {
-   "refused_write": "attempt_closed",
-   "cell_id": "G21",
-   "proposal_id": "G21-a2",
-   "outcome": "concept_invalid"
-  }
- },
  "derived_at_freeze_only": [
   "dataset hashes",
   "final counts",

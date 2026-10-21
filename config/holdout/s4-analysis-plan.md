@@ -112,11 +112,20 @@ None of them can become the main claim after the results are known.
 
 ## 5. DEV against TEST, described before any drop is interpreted
 
-A difference between DEV and TEST can hold two effects at once:
+A difference between DEV and TEST can hold three effects at once:
 
 1. selection and model-design bias: E was designed while looking at DEV;
 2. author and process shift: TEST's needs come from other authors and a different process
-   (section 7).
+   (section 7);
+3. qrel construction: DEV keeps its historical qrels, built from one evidence search per need;
+   TEST's come from two blind, independent searches per need, adjudicated together
+   (`config/holdout/evidence-discovery.md`). TEST's relevant sets can be more complete than
+   DEV's, and that alone can lower recall and move nDCG.
+
+What TEST supports, then: the paired comparison of E against E5 and BM25 within TEST, on one
+common set of qrels, and the claim that it is a holdout of needs unseen during development,
+built by the declared procedure. What it does not support cleanly: attributing the absolute
+difference between DEV's metrics and TEST's to overfitting or model-selection bias alone.
 
 So before a drop is read as selection bias, the two sets are compared descriptively, with
 `scripts/holdout.py describe` on each, on these features and only these:
@@ -163,9 +172,17 @@ from it.
 - **Technical failures are never rejections.** A transport, broker, session, isolation, model,
   protocol or infrastructure failure, or a process that dies, is one failed execution of the stage
   before any admissible output: the same need stays `pending_technical` and the construction
-  stops; it never produces a new question. Judge A's broker allows 16 requests as the normal run
-  and goes on for the same need up to a technical ceiling of 32 (`resource_escalation`); at 32 the
-  execution ends as `pending_technical_resource`. The freeze refuses any pending need.
+  stops; it never produces a new question. Every execution has a deadline: at it, its process
+  group is ended, reaped and verified gone before the failure is recorded, and a group that
+  cannot be verified gone stops the construction. Each search's broker allows 16 requests as the
+  normal run and goes on for the same need up to a technical ceiling of 32
+  (`resource_escalation`); at 32 the execution ends as `pending_technical_resource`. The freeze
+  refuses any pending need.
+- **Every answer is admitted only whole.** Before an output is admitted, its complete contract is
+  checked: shape, required fields and types, non-empty text, valid grades and answerabilities,
+  the exact candidate set, the rationale every label needs, and every invariant its consumers
+  rely on. An answer that breaks it is a failed technical execution, never a rejection. A failure
+  the construction does not classify is recorded as a stop for a person.
 - **Technical retries and resume.** A resume continues the same cell, the same need and the same
   stage from the same frozen inputs, after verifying again the pre-authoring contract, the
   binary and runtime, every packet, the corpus, snapshot and chunk layer and every admitted
@@ -184,16 +201,29 @@ from it.
   verified, a verified backup is made and a report of counts is recorded. A checkpoint never
   recalibrates a prompt, changes the protocol, the grid or a stop rule, or balances types; a
   problem it finds stops the construction.
+- **Evidence discovery, the same for every need** (`config/holdout/evidence-discovery.md`): two
+  blind, independent searches, A and B, with the same frozen packet and broker, each in its own
+  isolated context, neither seeing the other's candidates, path or labels; their candidates
+  joined, each once; one adjudication on the union, each candidate's first judgment being search
+  A's label where A listed it and search B's otherwise. A search that declares a problem makes
+  the need `judge_problem`. This applies to every need that reaches evidence discovery, whatever
+  its planned answerability.
 - **The omission audit:** 12 cells fixed before authoring (`holdout-omission.v1`, stratified by
-  type and acts) get a second, blind evidence search with the same broker. Its extra candidates go
-  through the same adjudication. Any extra node adjudicated grade >= 1 stops the construction
-  before the freeze, so that the evidence search is corrected for every need alike; grade 0
-  additions are diagnostics.
+  type and acts) get a third blind search, C, with the same broker, which sees nothing of A or
+  B. Its nodes new to the union go through the same adjudication. Any of them adjudicated grade
+  >= 1 stops the construction before the freeze, so that the evidence search is corrected for
+  every need alike; grade 0 additions are diagnostics. The audit that counts is the one of the
+  attempt that becomes READY; a declared problem of search C stops the construction, since the
+  audit cannot be completed.
 - **The diagnostic judge** (Qwen3-8B, local) grades every candidate with judge B's packet and has
   no vote. Where it crosses the relevance line or the answerability of the final label, a blind
   judge D grades the item: if D holds the final label it stays and the discrepancy is recorded; if
   not, or if D finds the item ambiguous, the need is `adjudication_uncertain`, leaves the scored
-  TEST and gets a new blind attempt.
+  TEST and gets a new blind attempt. Its prompt is counted with the frozen tokenizer before any
+  generation; a prompt over the frozen limit, or an answer that is not one complete JSON object,
+  makes the diagnostic unavailable, and judge D then grades every candidate and the
+  answerability. The diagnostic may be unavailable for many needs, or all: the freeze reports
+  how many had it, and judge D running is never reported as a cross-family adjudication.
 
 ## 7. Rules
 
@@ -204,7 +234,8 @@ from it.
 
 ## 8. Known limitations
 
-- **Two effects in one difference** (section 5).
+- **Three effects in one difference** (section 5), one of them the different construction of
+  the qrels: one search per need in DEV, two in TEST.
 - **Process differences from DEV:** in DEV the orchestrating session wrote the scenario of 20 of
   the 30 needs, narrowed 6 more after seeing their evidence, and was judge A of 10. In TEST no
   author has seen the system or DEV, replacements are written blind, and judge A is always a
@@ -225,7 +256,8 @@ from it.
   a different one.
 - **The omission audit covers 12 cells of 60.** It is a control against systematic omissions,
   not a proof of exhaustive evidence.
-- **Judge D** gives independence of context, not of model family.
+- **Judge D** gives independence of context, not of model family. Where the diagnostic is
+  unavailable, no label of TEST had a judge of another family.
 - **The orchestration** that builds the packets and validates the data has seen DEV's evidence and
   knows the systems. It writes no concept, statement, query or label.
 - **No legal expert** adjudicates any label.
