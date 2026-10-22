@@ -96,10 +96,10 @@ answerability is also its own on the whole union.
 
 The adjudication is unchanged, on the union:
 
-1. judge B (`judge_b.v1`, blind to every search's labels) grades every candidate and gives the
+1. judge B (`judge_b.v2`, blind to every search's labels) grades every candidate and gives the
    answerability;
 2. every difference between a candidate's first judgment and judge B's, of grade or ambiguity,
-   and any difference of answerability, goes to judge C (`judge_c.v1`), who decides it
+   and any difference of answerability, goes to judge C (`judge_c.v2`), who decides it
    against the text;
 3. the final label of each candidate is the agreed one or judge C's. A need with an ambiguous
    final qrel leaves TEST and gets a new blind attempt (`final_qrels_unambiguous`);
@@ -108,12 +108,22 @@ The adjudication is unchanged, on the union:
    tokenizer and chat template. A prompt over the frozen limit is never generated or cut, and
    the diagnostic is unavailable (`input_exceeds_context`). An answer that is not one JSON
    object grading every candidate once also makes it unavailable;
-5. judge D (`judge_d.v1`, blind) grades the items where the diagnostic crosses a material line,
+5. judge D (`judge_d.v2`, blind) grades the items where the diagnostic crosses a material line,
    or every candidate and the answerability when the diagnostic is unavailable. A label D does
    not hold makes the need `adjudication_uncertain`: it leaves TEST and gets a new blind
    attempt. Judge D running is not a cross-family adjudication: it is the same model family
    as A, B and C;
 6. the metadata adjudicator, the evidence gate with DEV and the validators, as before.
+
+The identity of what judges B, C and D and the diagnostic grade is the orchestrator's. Each
+candidate, and the answerability, is given under an opaque item id (`C-` and 12 hex digits,
+drawn from the construction's salt, the attempt, the stage and the node), never under its act
+and path, and each entry of the answer names its item by that exact id. The orchestrator alone
+maps an id to its node. An answer whose ids are missing, unknown, repeated or not the ones
+given, or that writes beside an id another node than the id's, breaks the role's contract: a
+failed technical execution (`judge_answer_complete`), never repaired, never bound by its
+position, and never a semantic rejection. Another provision named in a reason or a scope basis
+changes nothing about the item judged.
 
 ## 6. The omission audit's search C
 

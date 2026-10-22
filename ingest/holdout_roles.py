@@ -173,8 +173,8 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
         ),
         RoleContract(
             "judge_b",
-            "judge_b.v1",
-            ("judge_b.v1",),
+            "judge_b.v2",
+            ("judge_b.v2",),
             "headless",
             (),
             "every candidate with its legal context and scope provisions, from the corpus",
@@ -184,8 +184,8 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
         ),
         RoleContract(
             "judge_c",
-            "judge_c.v1",
-            ("judge_c.v1",),
+            "judge_c.v2",
+            ("judge_c.v2",),
             "headless",
             (),
             "the disputed candidates with their context, and the two positions in a drawn order",
@@ -195,8 +195,8 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
         ),
         RoleContract(
             "judge_d",
-            "judge_d.v1",
-            ("judge_d.v1",),
+            "judge_d.v2",
+            ("judge_d.v2",),
             "headless",
             (),
             "every candidate with its context, and the disputed items",
@@ -217,8 +217,8 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
         ),
         RoleContract(
             "qwen_diagnostic",
-            "judge_b.v1",
-            ("judge_b.v1",),
+            "judge_b.v2",
+            ("judge_b.v2",),
             "local_mlx",
             (),
             "judge B's packet",

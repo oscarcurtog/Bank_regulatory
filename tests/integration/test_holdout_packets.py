@@ -132,11 +132,21 @@ def _need(need_id: str = "N101") -> bm.Need:
     )
 
 
+def ids_for(*targets: str) -> dict[str, str]:
+    """An orchestrator's mapping for one stage: target -> opaque id."""
+    return {t: ho.item_id(b"test-salt", "N101:stage", t) for t in targets}
+
+
 def test_judge_b_never_sees_a_grade():
-    packet = hp.judge_b_packet(_corpus(), _need(), ["DORA:19.2", "DORA:19.1"], {})
+    ids = ids_for("DORA:19.2", "DORA:19.1")
+    packet = hp.judge_b_packet(_corpus(), _need(), ["DORA:19.2", "DORA:19.1"], {}, ids)
     candidates = packet.split("CANDIDATES (document order)")[1]
     assert candidates.index("DORA:19.1") < candidates.index("DORA:19.2")
     assert not re.search(r"grade [0-3]|rationale", candidates)
+    # every candidate under its opaque id, which the answer must carry
+    for node, opaque in ids.items():
+        assert f"CANDIDATE {opaque}\n[{node}]" in candidates
+    assert '"item_id": "C-..."' in packet and '"node": "ACT:path"' not in packet
 
 
 def test_judge_c_draws_the_order_per_need():
@@ -149,13 +159,21 @@ def test_judge_c_draws_the_order_per_need():
         "answerability": {"answerability": "partial", "rationale": "B"},
     }
 
+    ids = ids_for("DORA:19.1", "answerability")
+
     def build() -> tuple[str, list[hp.CItem]]:
-        return hp.judge_c_packet(_corpus(), _need(), ["DORA:19.1"], {}, a, b, ["DORA:19.1"], True)
+        return hp.judge_c_packet(
+            _corpus(), _need(), ["DORA:19.1"], {}, a, b, ["DORA:19.1"], True, ids
+        )
 
     text, items = build()
     again, same = build()
     assert (text, items) == (again, same)
     assert [i.target for i in items] == ["DORA:19.1", "answerability"]
+    assert [i.item_id for i in items] == [ids["DORA:19.1"], ids["answerability"]]
+    assert f"ITEM {ids['DORA:19.1']}\n[DORA:19.1]" in text
+    assert f"ITEM {ids['answerability']}: the answerability" in text
+    assert '"item_id": "C-... exactly as given"' in text and '"target"' not in text
     first = items[0].rationale_a_is_judge
     shown = "A says" if first == "A" else "B says"
     assert f"Rationale A: grade {3 if first == 'A' else 2}. {shown}" in text
@@ -178,22 +196,29 @@ def test_the_author_packets_open_for_their_channel(grid, forbidden):
 
 
 def test_judge_d_sees_every_candidate_and_no_label():
+    ids = ids_for("DORA:19.1", "DORA:19.2", "answerability")
     packet = hp.judge_d_packet(
-        _corpus(), _need(), ["DORA:19.1", "DORA:19.2"], {}, ["DORA:19.2", "answerability"]
+        _corpus(), _need(), ["DORA:19.1", "DORA:19.2"], {}, ["DORA:19.2", "answerability"], ids
     )
     items = packet.split("\nITEMS TO GRADE\n")[1].split("ALL THE CANDIDATES")[0]
-    assert "ITEM 1: DORA:19.2" in items and "ITEM 2: answerability" in items
+    assert f"ITEM {ids['DORA:19.2']}: the candidate {ids['DORA:19.2']} below" in items
+    assert f"ITEM {ids['answerability']}: the answerability" in items
+    assert "DORA:19" not in items  # an item names its candidate by id only
     candidates = packet.split("ALL THE CANDIDATES (document order)")[1].split("OUTPUT")[0]
-    assert "[DORA:19.1]" in candidates and "[DORA:19.2]" in candidates
+    assert f"CANDIDATE {ids['DORA:19.1']}\n[DORA:19.1]" in candidates
+    assert f"CANDIDATE {ids['DORA:19.2']}\n[DORA:19.2]" in candidates
     assert not re.search(r"grade [0-3]|Rationale|judge [ABC]\b", candidates)
     assert "$" not in packet and packet.startswith(hp.HEADLESS_OPENING)
 
 
 def test_the_diagnostic_judge_gets_judge_bs_packet():
-    messages = hp.diagnostic_messages(_corpus(), _need(), ["DORA:19.1"], {})
+    ids = ids_for("DORA:19.1")
+    messages = hp.diagnostic_messages(_corpus(), _need(), ["DORA:19.1"], {}, ids)
     assert messages[0]["role"] == "user"
     assert messages[0]["content"].startswith(hp.DIAGNOSTIC_OPENING)
-    same = hp.judge_b_packet(_corpus(), _need(), ["DORA:19.1"], {}, opening=hp.DIAGNOSTIC_OPENING)
+    same = hp.judge_b_packet(
+        _corpus(), _need(), ["DORA:19.1"], {}, ids, opening=hp.DIAGNOSTIC_OPENING
+    )
     assert messages[0]["content"] == same
 
 

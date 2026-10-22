@@ -14,14 +14,14 @@
    "sha256": "f0d3279e86f43f4db3808e3c59793631744cb356d5f6b6b10b878bbcfce3da4e",
    "cells": 12
   },
-  "role_contracts_sha256": "f8f777fa51c49a0d3484e34e53baac1031320a49a0e6eaaedb10bb971b510e97",
+  "role_contracts_sha256": "cdc7c0b79effaadda91025022a4ad7e4ab727ceccfd12cbe2b1104d21b07c6c1",
   "templates_sha256": {
    "attempt_frames.v2": "9b1bc7fd6eebd393b8ae1d164fca5215dcfa28249d04ab2fb35373fcd8d56411",
    "concept_author.v1": "6a4ca085ed7067153ac7d55504c51a98820df66f4e9f5d16095f8409694c1eca",
    "judge_a.v2": "0f9557e1d72ae18940d68de55c3b58f518e1c1d46b2abb05aa02e60bbdbe7d00",
-   "judge_b.v1": "5614761149c2abdfc1eac54e5649055d991fde1c5c3e9435c9f5daca77e5180d",
-   "judge_c.v1": "54b8f341cc0b0adf00cca44a46cbfedaa89f3370e6b0fccae9718e64dacdec66",
-   "judge_d.v1": "a15039ca76ecf7b8ae19238defd962d5fabec74a538262694715c7e9de784107",
+   "judge_b.v2": "f0dbb47aaf9c86377967740e86cd55b0d2d7708e76387f546baf3ea9e589fa78",
+   "judge_c.v2": "920a56f060cfcf862bf0f352308b89d5ae111cd569775959640439f22c99d339",
+   "judge_d.v2": "0785fcf85e1c5601382116aaa627b52c4b3b6a677c8138205c0c15101bb6b7d6",
    "metadata_adjudicator.v1": "f713c3333a7a3645dc7f16d40badef3fddf3c1dce12f152fb0768ddf65a28574",
    "overlap_gate.v1": "d17a342aaa8bfcd22321494daf425eee59d6e81efdd2dd9b789570cec1dd4500",
    "overlap_gate_evidence.v1": "c663bd2c7487e890dd45a13b9922869231b9e78bcf0e1236a14027acb1fb4bb8",
@@ -69,21 +69,21 @@
   "controller_policy": "holdout-controller.v1",
   "code_sha256": {
    "ingest/corpus_tools.py": "1b6c4c89497c244c707bb02c1c662342a1b526d0ce85bd3e7be2a192eb2bf718",
-   "ingest/holdout.py": "57af5d0b70da193707f3bd1f84bfee87194eacda18df15949935318c9900f005",
-   "ingest/holdout_admission.py": "2fdf55bb7c8018c2add36573500feeace7412100a7ca21a742faca0d8a75e83e",
+   "ingest/holdout.py": "4f35d5d87bab7535b280f305cdab630bd7cb77be10f8be892071c9ca17d1ef0c",
+   "ingest/holdout_admission.py": "1e1fb23b634b1faddf1e05dae1005b597b78f6bfebe12ef5dc4d5a7b194f106c",
    "ingest/holdout_broker.py": "373ecf4ca93180e8bd407b688cddd6b086556a50eadfd13701e66ecb288dd40c",
-   "ingest/holdout_checks.py": "29c7f8c36ab07a88d871138fb4475333c9650d0b1e7f942b369804b1852e4f62",
-   "ingest/holdout_contract.py": "de36f6d411a82cd018db2bf799fb64494054e0fd4983b46a9d6b1912ecd56b99",
+   "ingest/holdout_checks.py": "ec5adb35c8825ba41e0acd82a11bf006f87242baab4655c3b7e00b13a3f3ce67",
+   "ingest/holdout_contract.py": "2f5c45da21ccdb780c67ebe29919c2f84cce7fef6e88915013db490608e0e4d6",
    "ingest/holdout_controller.py": "91f86b286c6d17d1e6cfdaec2fd4ace782ec413b531e774359dfdbc686b4c70c",
    "ingest/holdout_executor.py": "4566f95710961c729c2f27e35def949fec52bc315eb2fa523d709ea869b5f6fa",
    "ingest/holdout_isolation.py": "2e5c69b6566e5d7cd4229dc5ad3b80fa736fded67c6343a6a7593240b58265be",
-   "ingest/holdout_judging.py": "c952263ac15c07b2571cf8f65e301906adc33ffef1c0970827add86e4032e9d6",
+   "ingest/holdout_judging.py": "61923e53b858fa32430764eff7e59853e16288df1755667f4684f189f9e2d4b7",
    "ingest/holdout_launcher.py": "e611ff224a266c13bf92be32eb6a280426921ed44eded687d1ac8da1b82a56a1",
    "ingest/holdout_ledger.py": "552e4681a40af6bb3b2ff4072880eaae7c8d4df992d2f8414a926bb9ca3c2904",
-   "ingest/holdout_packets.py": "d6a96dda3133d89d2fa3b81d16f112081c101c6a555dff9cca635db1bea706ee",
-   "ingest/holdout_pipeline.py": "713c8b06dff1b89a1d1972693c5b83e044514a936dd3c49b8a694e9f2c1deb2c",
+   "ingest/holdout_packets.py": "af71ff89cd28ab3bcc98c8d86af58559876fb1a3a3947768ee1d90d67da73444",
+   "ingest/holdout_pipeline.py": "5cb02b65ed68bbe573f5fe74cc10bbff371fcf6ed6128931b809d35cd6cab753",
    "ingest/holdout_process.py": "dd87a17b3ada9ab5502468b769020b3b52769c38a2774cbc32caa8c2a2dc9244",
-   "ingest/holdout_roles.py": "27e661ae98c99c3b6f1a748edbff6fd5cdb4752e1b826e36eca5d2e53a16e035",
+   "ingest/holdout_roles.py": "49215bdc51f95e42b0b67f8ef922bb96a643fb3b26a1f9912dac45e1305855ef",
    "ingest/holdout_runtime.py": "ba0dcc4db48a907c6dd62792c62000151db3a71570aec438c4886238edbdef50",
    "ingest/holdout_spool.py": "a3b3c311a84b350570ae38ed95bf37f4f734f6e8c377334d8bf3fef7f884f473",
    "ingest/holdout_state.py": "07390e77c9c7dfeb8adad5f30a402a857b61384e4b64528fce1f72ac7f513d26",
@@ -94,8 +94,8 @@
   },
   "inputs_sha256": {
    "data/benchmark/PROTOCOL.md": "79cafdda538cf9cfec682817ac77bf75692f562545ad5b21f38d8394df0db1d0",
-   "config/holdout/evidence-discovery.md": "1f995934dd6d508e2cc2fff40f448c41d5af05d862af7203c63703a5c0611119",
-   "config/holdout/failure-paths.md": "750d691f9b6cc41269031c5a2812fc0835bac17b25553ac8ea11a5ee6dbea43a",
+   "config/holdout/evidence-discovery.md": "96aedcb5cbd83874368d395f88551eec275ad50eec1f2079ad1d481bd0ecac34",
+   "config/holdout/failure-paths.md": "e4f92f61337fd23a48c7e0a46d23b6af988babba3c6dd2b22dd815fd6e348a6d",
    "config/retrieval/qwen3-8b-mlx.json": "92836ad88b8529027775f101b3c1e1bf1c47db46434199de271a582e82ac02a4",
    "data/benchmark/dev/manifest.json": "c845b684035dac91dec399604e6623a60c67a9564afba975f177b5d6482fb917",
    "data/benchmark/dev/needs.jsonl": "1c22c80dfb1b1d3092634b795bee5e01e0fca2bc07582d4ea1854d91c07cb791",
@@ -110,9 +110,9 @@
    "attempt_frames.v2": "data/benchmark/templates/holdout/attempt_frames.v2.json",
    "concept_author.v1": "data/benchmark/templates/holdout/concept_author.v1.md",
    "judge_a.v2": "data/benchmark/templates/holdout/judge_a.v2.md",
-   "judge_b.v1": "data/benchmark/templates/holdout/judge_b.v1.md",
-   "judge_c.v1": "data/benchmark/templates/holdout/judge_c.v1.md",
-   "judge_d.v1": "data/benchmark/templates/holdout/judge_d.v1.md",
+   "judge_b.v2": "data/benchmark/templates/holdout/judge_b.v2.md",
+   "judge_c.v2": "data/benchmark/templates/holdout/judge_c.v2.md",
+   "judge_d.v2": "data/benchmark/templates/holdout/judge_d.v2.md",
    "metadata_adjudicator.v1": "data/benchmark/templates/holdout/metadata_adjudicator.v1.md",
    "overlap_gate.v1": "data/benchmark/templates/holdout/overlap_gate.v1.md",
    "overlap_gate_evidence.v1": "data/benchmark/templates/holdout/overlap_gate_evidence.v1.md",
@@ -555,7 +555,7 @@
      "role": "judge_d",
      "verdict": "does not hold the final label, or finds the item ambiguous",
      "outcome": "adjudication_uncertain",
-     "rule": "judge_d.v1 and D-054 decision 7"
+     "rule": "judge_d.v2 and D-054 decision 7"
     }
    ],
    "stop_rules": [
@@ -702,7 +702,7 @@
   }
  },
  "code": {
-  "built_on_commit": "1765ae38f5a5381f5346f095ec55ff710cfcf363",
+  "built_on_commit": "3740fc7911f1f2bcc24d109e6045aef5eda471b9",
   "e_result_commit": "7636908bf57c7fbd95cc46b180c9f2e59a41b3f8",
   "files_sha256": {
    "ingest/benchmark.py": "09896f2ff6f2ad8436d7b1e5e5aa05036b15dfed65ab77ba525222da1deb840c",
@@ -988,6 +988,14 @@
    "ready_needs": 6,
    "reason": "Three independent executions of the metadata adjudicator gave a well-formed answer violating the same frozen semantic rule of its stage, so that technical retries could not repair it and the stage was left pending_technical_unresolved. The transition for that class was defined prospectively, and TEST restarts under it.",
    "change": "a semantic admissibility failure, the same frozen invariant violated in the three executions of search A, search B or the metadata adjudicator, rejects the attempt (semantic_inadmissible); contract failures and search C keep their technical exhaustion. Everything else unchanged"
+  },
+  {
+   "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+   "contract_sha256": "433edd5d633777c575e81302423c19b8646c566e20ceb0a9698b7250c1634225",
+   "public_commit": "3740fc7911f1f2bcc24d109e6045aef5eda471b9",
+   "ready_needs": 5,
+   "reason": "Three executions of judge C answered the item they were given for another legal node, a failure of the role's contract, so that the stage was left pending_technical_unresolved. A candidate's identity was carried by its act and path, which the model wrote back itself, rather than by an id the orchestrator owns.",
+   "change": "the identity of what a judge grades: every candidate of judges B, C and D and of the diagnostic is given under an opaque item id, answered by that exact id and mapped to its node by the orchestrator alone (judge_b.v2, judge_c.v2, judge_d.v2); a missing, unknown, repeated or other id stays a technical contract failure. Rubrics, thresholds, retries and every methodological rule unchanged"
   }
  ],
  "derived_at_freeze_only": [

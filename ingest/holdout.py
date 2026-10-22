@@ -953,6 +953,16 @@ def plan_record(grid: Grid) -> dict[str, Any]:
     }
 
 
+def item_id(salt: bytes, scope: str, target: str) -> str:
+    """The opaque id of one thing a judge grades, a candidate node or the answerability, under
+    one stage of one attempt (scope). The orchestrator owns the mapping from id to node and is
+    the only one that ever resolves it: the judge receives the id with the node's text and
+    answers by it, and never writes the node's identity itself."""
+    import hmac
+
+    return "C-" + hmac.new(salt, f"item:{scope}:{target}".encode(), hashlib.sha256).hexdigest()[:12]
+
+
 def opaque_id(salt: bytes, kind: str, key: str) -> str:
     """An identifier a context can see without learning anything from it: not the cell, the
     attempt, the order or whether it is a retry. HMAC-SHA-256 under a private salt that never

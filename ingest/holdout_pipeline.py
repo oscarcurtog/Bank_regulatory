@@ -869,6 +869,14 @@ class Pipeline:
     def _ref(self, role: str, proposal_id: str) -> str:
         return ho.opaque_id(self.world.salt, f"ref:{role}", proposal_id)
 
+    def _item_ids(self, pid: str, stage: str, targets: Sequence[str]) -> dict[str, str]:
+        """target -> the opaque id a judge answers by, for one stage of one attempt: the
+        orchestrator's own mapping, which only it ever resolves (ingest/holdout.py item_id)."""
+        ids = {t: ho.item_id(self.world.salt, f"{pid}:{stage}", t) for t in targets}
+        if len(set(ids.values())) != len(ids):
+            raise ValueError("two items of one stage under one id")
+        return ids
+
     def _run_id(self, role: str, proposal_id: str, stage: str, n: int) -> str:
         return ho.opaque_id(self.world.salt, f"run:{role}", f"{proposal_id}:{stage}#{n}")
 
@@ -1594,6 +1602,13 @@ class Pipeline:
         )
 
         b_ref = self._ref("judge_b", pid)
+        b_ids = self._built(
+            "packet_construction",
+            "judge_b",
+            pid,
+            lambda: self._item_ids(pid, "judge_b", candidates),
+        )
+        b_by_id = {v: k for k, v in b_ids.items()}
         b_answer = self._headless(
             "judge_b",
             pid,
@@ -1602,19 +1617,22 @@ class Pipeline:
                 "packet_construction",
                 "judge_b",
                 pid,
-                lambda: hp.judge_b_packet(w.corpus, draft, candidates, scope, ref=b_ref),
+                lambda: hp.judge_b_packet(w.corpus, draft, candidates, scope, b_ids, ref=b_ref),
             ),
             b_ref,
             self._inputs(pid, "lock", *SEARCHES),
-            _admitted("judge_answer_complete", lambda v: ha.judge_b_problems(v, candidates)),
+            _admitted("judge_answer_complete", lambda v: ha.judge_b_problems(v, b_by_id)),
         )
-        b = self._built("record_assembly", "adjudication", pid, lambda: hj.b_judgments(b_answer))
+        b = self._built(
+            "record_assembly", "adjudication", pid, lambda: hj.b_judgments(b_answer, b_by_id)
+        )
         disputed = self._built(
             "record_assembly", "adjudication", pid, lambda: hj.disagreements(candidates, a, b)
         )
         c_answers: dict[str, Any] = {}
         if disputed.nodes or disputed.answerability:
             c_ref = self._ref("judge_c", pid)
+            c_targets = [*disputed.nodes, *([bm.ANSWERABILITY_TARGET] * disputed.answerability)]
             packet, items = self._built(
                 "packet_construction",
                 "judge_c",
@@ -1628,6 +1646,7 @@ class Pipeline:
                     b,
                     disputed.nodes,
                     disputed.answerability,
+                    self._item_ids(pid, "judge_c", c_targets),
                     ref=c_ref,
                 ),
             )
@@ -1642,9 +1661,10 @@ class Pipeline:
                 self._inputs(pid, "lock", *SEARCHES, "judge_b"),
                 admit_c,
             )
-            by_item = {i["item"]: i for i in c_reply.get("items", [])}
+            # each decision bound to its item by the opaque id alone, never by position
+            by_item = {i["item_id"]: i for i in c_reply.get("items", [])}
             for item in items:
-                c_answers[item.target] = by_item[item.item]
+                c_answers[item.target] = by_item[item.item_id]
         assembled = self._built(
             "record_assembly",
             "adjudication",
@@ -1688,6 +1708,13 @@ class Pipeline:
                 )
 
         limit = w.local_runtime["generation"]["max_prompt_tokens"]
+        q_ids = self._built(
+            "packet_construction",
+            "diagnostic",
+            pid,
+            lambda: self._item_ids(pid, "diagnostic", candidates),
+        )
+        q_by_id = {v: k for k, v in q_ids.items()}
 
         def admit_q(record: Mapping[str, Any]) -> Any:
             # P1 #6: the prompt's length, counted by the frozen tokenizer before generation. A
@@ -1713,11 +1740,11 @@ class Pipeline:
             # again, no vote, no label, no replacement; the run keeps it, and judge D grades
             # the need in its place (diagnostic_admissible). Executing the greedy model again
             # would give the same answer, so it is no technical failure.
-            defects = hj.diagnostic_defects(candidates, output)
+            defects = hj.diagnostic_defects(q_by_id, output)
             if defects:
                 return hj.unavailable_diagnostic(defects)
             diagnostic = hj.as_json(output)
-            hj.material_discrepancies(candidates, final, diagnostic)
+            hj.material_discrepancies(q_by_id, final, diagnostic)
             return diagnostic
 
         q_ref = self._ref("qwen_diagnostic", pid)
@@ -1729,7 +1756,9 @@ class Pipeline:
                 "packet_construction",
                 "diagnostic",
                 pid,
-                lambda: hp.diagnostic_messages(w.corpus, draft, candidates, scope, ref=q_ref),
+                lambda: hp.diagnostic_messages(
+                    w.corpus, draft, candidates, scope, q_ids, ref=q_ref
+                ),
             ),
             q_ref,
             self._inputs(pid, "lock", *SEARCHES),
@@ -1742,18 +1771,28 @@ class Pipeline:
             # the answerability, and holds the consensus or not by the rule of a discrepancy
             targets = [*candidates, bm.ANSWERABILITY_TARGET]
         else:
-            discrepancies = hj.material_discrepancies(candidates, final, diagnostic).discrepancies
+            discrepancies = hj.material_discrepancies(q_by_id, final, diagnostic).discrepancies
             targets = discrepancies
         d_outcome: dict[str, str] = {}
         if targets:
-            admit_d = _admitted("judge_answer_complete", lambda v: ha.judge_d_problems(v, targets))
+            # every candidate under its id, so that an item names the candidate it grades
+            d_ids = self._built(
+                "packet_construction",
+                "judge_d",
+                pid,
+                lambda: self._item_ids(pid, "judge_d", [*candidates, bm.ANSWERABILITY_TARGET]),
+            )
+            d_by_id = {d_ids[t]: t for t in targets}
+            admit_d = _admitted("judge_answer_complete", lambda v: ha.judge_d_problems(v, d_by_id))
 
             d_ref = self._ref("judge_d", pid)
             d_packet = self._built(
                 "packet_construction",
                 "judge_d",
                 pid,
-                lambda: hp.judge_d_packet(w.corpus, draft, candidates, scope, targets, ref=d_ref),
+                lambda: hp.judge_d_packet(
+                    w.corpus, draft, candidates, scope, targets, d_ids, ref=d_ref
+                ),
             )
             d_reply = self._headless(
                 "judge_d",
@@ -1764,7 +1803,7 @@ class Pipeline:
                 self._inputs(pid, "lock", "adjudication", "diagnostic"),
                 admit_d,
             )
-            d_outcome = hj.judge_d_outcome(final, d_reply.get("items", []))
+            d_outcome = hj.judge_d_outcome(final, d_reply.get("items", []), d_by_id)
         self.diagnostic_log.append(
             {
                 "need_id": need_id,
@@ -2066,8 +2105,15 @@ class Pipeline:
             ]
             if hj.diagnostic_unavailable(diagnostic["value"]):
                 judge_d = self.store.stage(pid, "judge_d")
+                d_by_id = {
+                    v: k
+                    for k, v in self._item_ids(
+                        pid, "judge_d", [*candidates, bm.ANSWERABILITY_TARGET]
+                    ).items()
+                }
                 answered = {
-                    i.get("target") for i in (judge_d or {"value": {}})["value"].get("items", [])
+                    d_by_id.get(i.get("item_id"))
+                    for i in (judge_d or {"value": {}})["value"].get("items", [])
                 }
                 if answered != {*candidates, bm.ANSWERABILITY_TARGET}:
                     problems.append(
@@ -2075,7 +2121,8 @@ class Pipeline:
                         "and the answerability"
                     )
                 continue
-            found = hj.diagnostic_problems(candidates, diagnostic["value"])
+            q_by_id = {v: k for k, v in self._item_ids(pid, "diagnostic", candidates).items()}
+            found = hj.diagnostic_problems(q_by_id, diagnostic["value"])
             if found:
                 problems.append(f"{pid}: an admitted diagnostic is incomplete: {found[:3]}")
         return problems

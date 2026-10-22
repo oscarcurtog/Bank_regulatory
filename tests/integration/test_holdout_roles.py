@@ -183,15 +183,16 @@ def real_runs(world) -> dict[str, hr.RoleRun]:
     )
     existing = [hp.Existing(n.need_id, "DEV", n.statement) for n in world["dev"].needs]
     gate = hp.gate_packet(ref, "A firm asks a question.", existing)
-    judge_b = hp.judge_b_packet(corpus, need, candidates, {}, ref=ref)
+    ids = {t: ho.item_id(b"test-salt", "N101:stage", t) for t in [*candidates, "answerability"]}
+    judge_b = hp.judge_b_packet(corpus, need, candidates, {}, ids, ref=ref)
     a = {c: {"grade": 1, "ambiguous": False, "rationale": "A"} for c in candidates}
     b = {c: {"grade": 2, "ambiguous": False, "rationale": "B"} for c in candidates}
     a["answerability"] = {"answerability": "complete", "rationale": "A"}
     b["answerability"] = {"answerability": "complete", "rationale": "B"}
     judge_c, _ = hp.judge_c_packet(
-        corpus, need, candidates, {}, a, b, candidates[:1], False, ref=ref
+        corpus, need, candidates, {}, a, b, candidates[:1], False, ids, ref=ref
     )
-    judge_d = hp.judge_d_packet(corpus, need, candidates, {}, candidates[:1], ref=ref)
+    judge_d = hp.judge_d_packet(corpus, need, candidates, {}, candidates[:1], ids, ref=ref)
     metadata = hp.metadata_packet(
         corpus, need, world["fixtures"].qrels_of(need.need_id), "complete", None, ref=ref
     )
@@ -226,7 +227,7 @@ def real_runs(world) -> dict[str, hr.RoleRun]:
             "second_searcher", judge_a, judge.replies, broker.sent, broker.log
         ),
     }
-    messages = hp.diagnostic_messages(corpus, need, candidates, {}, ref=ref)
+    messages = hp.diagnostic_messages(corpus, need, candidates, {}, ids, ref=ref)
     local = hr.RoleRun(
         "qwen_diagnostic",
         "R-0",
@@ -349,7 +350,7 @@ def test_the_local_diagnostic_must_answer_its_own_prompt(world):
 
 def test_a_template_changed_after_its_freeze_fails(world):
     run = real_runs(world)["judge_b"]
-    frozen = {**world["frozen"], "judge_b.v1": "0" * 64}
+    frozen = {**world["frozen"], "judge_b.v2": "0" * 64}
     result = hr.audit_role_run(
         run, world["terms"], frozen, world["forbidden"], pin=PIN, tmp_root="/tmp/"
     )

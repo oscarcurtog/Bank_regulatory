@@ -165,7 +165,11 @@ def test_the_contract_carries_every_new_identity_and_no_account(contract):
     assert (admissible["kind"], admissible["retriable"]) == ("diagnostic_only", False)
     assert "diagnostic_defects" in admissible["rule"] and "not agreement" in admissible["rule"]
     # the constructions this contract replaces, aborted, and why
-    first, second, third = contract["aborted_runs"]
+    first, second, third, fourth = contract["aborted_runs"]
+    assert fourth["status"] == "ABORTED_PROTOCOL_DEVELOPMENT_RUN"
+    assert fourth["contract_sha256"].startswith("433edd5d6337")
+    assert fourth["public_commit"] == "3740fc7911f1f2bcc24d109e6045aef5eda471b9"
+    assert fourth["ready_needs"] == 5 and "item id" in fourth["change"]
     assert third["status"] == "ABORTED_PROTOCOL_DEVELOPMENT_RUN"
     assert third["contract_sha256"].startswith("c6b0c6912b67")
     assert third["public_commit"] == "1765ae38f5a5381f5346f095ec55ff710cfcf363"

@@ -154,9 +154,11 @@ def evidence_union(
     return Discovery(nodes, first, scope, found_by, additional, str(b_file["answerability"]))
 
 
-def b_judgments(data: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+def b_judgments(data: Mapping[str, Any], ids: Mapping[str, str]) -> dict[str, dict[str, Any]]:
+    """Judge B's labels by node: each entry's opaque id resolved by the orchestrator's own
+    mapping (ids: id -> node), never by what the judge wrote about the node."""
     out: dict[str, dict[str, Any]] = {
-        g["node"]: {
+        ids[g["item_id"]]: {
             "grade": g.get("grade"),
             "ambiguous": bool(g.get("ambiguous")),
             "scope_basis": g.get("scope_basis", []),
@@ -410,11 +412,12 @@ GRADES = (0, 1, 2, 3)
 ANSWERABILITIES = ("complete", "partial", "none")
 
 
-def diagnostic_problems(candidates: Sequence[str], diagnostic: Any) -> list[str]:
+def diagnostic_problems(ids: Mapping[str, str], diagnostic: Any) -> list[str]:
     """What keeps the diagnostic's answer from being complete, by the rules of judge B's
-    packet, which it receives (judge_b.v1): one entry per candidate, and only those, each with
-    a grade 0 to 3 or null and a true or false "ambiguous"; and an answerability of the
-    protocol. The candidates are the stage's own input, never read from the answer."""
+    packet, which it receives (judge_b.v2): one entry per candidate, by its opaque id, and only
+    those, each with a grade 0 to 3 or null and a true or false "ambiguous"; and an
+    answerability of the protocol. The candidates and their ids are the stage's own input
+    (ids: id -> node), never read from the answer."""
     if not isinstance(diagnostic, Mapping):
         return ["the answer is not a JSON object"]
     problems = []
@@ -423,7 +426,7 @@ def diagnostic_problems(candidates: Sequence[str], diagnostic: Any) -> list[str]
         return ["the answer has no list of grades"]
     nodes = []
     for entry in grades:
-        node = entry.get("node") if isinstance(entry, Mapping) else None
+        node = entry.get("item_id") if isinstance(entry, Mapping) else None
         if not isinstance(node, str):
             problems.append("an entry names no candidate")
             continue
@@ -433,7 +436,7 @@ def diagnostic_problems(candidates: Sequence[str], diagnostic: Any) -> list[str]
             problems.append(f"{node}: grade {grade!r} is not 0 to 3 or null")
         if not isinstance(entry.get("ambiguous"), bool):
             problems.append(f"{node}: no true or false ambiguous")
-    expected = list(candidates)
+    expected = list(ids)
     duplicated = sorted({n for n in nodes if nodes.count(n) > 1})
     unknown = sorted(set(nodes) - set(expected))
     missing = [n for n in expected if n not in nodes]
@@ -489,7 +492,7 @@ def _defect(problem: str) -> str:
     raise ValueError(f"a diagnostic problem of no known class: {problem!r}")
 
 
-def diagnostic_defects(candidates: Sequence[str], output: str) -> list[str]:
+def diagnostic_defects(ids: Mapping[str, str], output: str) -> list[str]:
     """The classes of defect of the diagnostic's raw answer, in DIAGNOSTIC_DEFECTS order: none
     for an answer diagnostic_problems finds complete. Never the answer's content, which names
     TEST's candidates."""
@@ -497,7 +500,7 @@ def diagnostic_defects(candidates: Sequence[str], output: str) -> list[str]:
         answer = as_json(output)
     except (json.JSONDecodeError, IndexError):
         return ["not_json"]
-    found = {_defect(p) for p in diagnostic_problems(candidates, answer)}
+    found = {_defect(p) for p in diagnostic_problems(ids, answer)}
     return [d for d in DIAGNOSTIC_DEFECTS if d in found]
 
 
@@ -518,13 +521,19 @@ def diagnostic_unavailable(value: Any) -> bool:
 
 
 def material_discrepancies(
-    candidates: Sequence[str], final: Assembled, diagnostic: Mapping[str, Any]
+    ids: Mapping[str, str], final: Assembled, diagnostic: Mapping[str, Any]
 ) -> Diagnostic:
     """Where the diagnostic judge (Qwen3-8B, judge B's packet) and the final labels of
     A, B and C fall on different sides: relevance >= 2 against < 2 for a node, or another
-    answerability. It never changes a label; each target found goes to judge D."""
+    answerability. Each entry's opaque id is resolved by the orchestrator (ids: id -> node). It
+    never changes a label; each target found goes to judge D."""
+    candidates = list(ids.values())
     finals = {f"{q.act}:{q.path}": relevant(q.grade, q.ambiguous) for q in final.qrels}
-    graded = {g["node"]: g for g in diagnostic.get("grades", []) if isinstance(g, dict)}
+    graded = {
+        ids[g["item_id"]]: g
+        for g in diagnostic.get("grades", [])
+        if isinstance(g, dict) and g.get("item_id") in ids
+    }
     missing = [r for r in candidates if r not in graded]
     found = [
         r
@@ -538,7 +547,9 @@ def material_discrepancies(
     return Diagnostic(found, missing)
 
 
-def judge_d_outcome(final: Assembled, d_items: Sequence[Mapping[str, Any]]) -> dict[str, str]:
+def judge_d_outcome(
+    final: Assembled, d_items: Sequence[Mapping[str, Any]], ids: Mapping[str, str]
+) -> dict[str, str]:
     """For each target judge D graded: "consensus_held" when D, unambiguous, falls on the side
     of the final label; "adjudication_uncertain" otherwise. Ambiguity takes precedence (Codex
     Gate 2): an ambiguous D never holds the consensus, even when its best grade and the final
@@ -547,7 +558,7 @@ def judge_d_outcome(final: Assembled, d_items: Sequence[Mapping[str, Any]]) -> d
     finals = {f"{q.act}:{q.path}": relevant(q.grade, q.ambiguous) for q in final.qrels}
     out: dict[str, str] = {}
     for item in d_items:
-        target = item["target"]
+        target = ids[item["item_id"]]  # the orchestrator's mapping, never the judge's word
         if item.get("ambiguous"):
             held = False
         elif target == bm.ANSWERABILITY_TARGET:

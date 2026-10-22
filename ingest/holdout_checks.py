@@ -388,7 +388,7 @@ ROLE_VERDICTS = (
         "judge_d",
         "does not hold the final label, or finds the item ambiguous",
         "adjudication_uncertain",
-        "judge_d.v1 and D-054 decision 7",
+        "judge_d.v2 and D-054 decision 7",
     ),
 )
 STOP_RULES = (

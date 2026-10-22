@@ -281,78 +281,91 @@ def _first_label(c: Mapping[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def judge_b_problems(answer: Any, candidates: Sequence[str]) -> list[str]:
-    """Judge B's answer (judge_b.v1): one entry for every candidate shown and only those, each
-    a label the adjudication can hold, and the answerability with what the corpus lacks."""
+def _identity_conflicts(entry: Mapping[str, Any], target: str | None, where: str) -> list[str]:
+    """An identity the answer writes beside the opaque id: the orchestrator owns it, so one
+    that names anything else than the id's own node is a conflict, never a correction."""
+    problems = []
+    for name in ("target", "node"):
+        if name in entry and entry[name] is not None and entry[name] != target:
+            problems.append(f"{where}: an identity other than its id's")
+    return problems
+
+
+def judge_b_problems(answer: Any, ids: Mapping[str, str]) -> list[str]:
+    """Judge B's answer (judge_b.v2): one entry for every candidate shown, by its exact opaque
+    id (ids: id -> node), and only those, each a label the adjudication can hold, and the
+    answerability with what the corpus lacks."""
     if not isinstance(answer, Mapping):
         return ["the answer is not an object"]
     grades = answer.get("grades")
     if not isinstance(grades, list):
         return ["grades: not a list"]
     problems = []
-    nodes = []
+    named = []
     for i, g in enumerate(grades, start=1):
         where = f"entry {i}"
-        if not isinstance(g, Mapping) or not isinstance(g.get("node"), str):
-            problems.append(f"{where}: names no candidate")
+        if not isinstance(g, Mapping) or not isinstance(g.get("item_id"), str):
+            problems.append(f"{where}: names no candidate id")
             continue
-        nodes.append(g["node"])
+        named.append(g["item_id"])
+        problems += _identity_conflicts(g, ids.get(g["item_id"]), where)
         problems += _label_problems(g, where, "reason", grade_nullable=True)
-    problems += _set_problems(nodes, candidates, "grades")
+    problems += _set_problems(named, list(ids), "grades")
     problems += _answerability_problems(answer, "answerability_reason")
     if answer.get("answerability") in ("partial", "none") and not _text(answer.get("missing")):
         problems.append("missing: none for a need that is not complete")
     if not problems:
         # every label exactly as the adjudication record will build it (hj.b_judgments)
-        labels = hj.b_judgments(answer)
+        nodes = [ids[n] for n in named]
+        labels = hj.b_judgments(answer, ids)
         problems += [p for n, j in labels.items() for p in _judgment(j, _place(n, nodes))]
     return problems
 
 
 def judge_c_problems(reply: Any, items: Sequence[Any]) -> list[str]:
-    """Judge C's answer (judge_c.v1): every item it was given, once, each for its own target,
-    with a label the adjudication can hold."""
+    """Judge C's answer (judge_c.v2): every item it was given, once, by its exact opaque id,
+    and no other, each with a label the adjudication can hold. The id alone says which node or
+    answerability an entry decides: never its position, never what it writes about the node."""
     if not isinstance(reply, Mapping) or not isinstance(reply.get("items"), list):
         return ["items: not a list"]
-    expected = {i.item: i.target for i in items}
+    expected = {i.item_id: i.target for i in items}
     problems = []
     seen = []
     for k, entry in enumerate(reply["items"], start=1):
-        where = f"item {k}"
-        if not isinstance(entry, Mapping):
-            problems.append(f"{where}: not an object")
+        where = f"entry {k}"
+        if not isinstance(entry, Mapping) or not isinstance(entry.get("item_id"), str):
+            problems.append(f"{where}: names no item id")
             continue
-        number = entry.get("item")
-        if isinstance(number, bool) or number not in expected:
-            problems.append(f"{where}: not an item it was given")
-            continue
+        number = entry["item_id"]
         seen.append(number)
-        if entry.get("target") != expected[number]:
-            problems.append(f"{where}: another target than its item's")
+        if number not in expected:
+            continue  # counted as unknown below
+        problems += _identity_conflicts(entry, expected[number], where)
         found = _item_problems(entry, expected[number], where)
         # judge C's answer is the label itself: built exactly as the assembly will build it
         problems += found or _judgment(entry, where)
-    counts = Counter(seen)
-    problems += [f"item {n}: answered twice" for n, c in sorted(counts.items()) if c > 1]
-    problems += [f"item {n}: not answered" for n in sorted(set(expected) - set(counts))]
+    problems += _set_problems(seen, list(expected), "items")
     return problems
 
 
-def judge_d_problems(reply: Any, targets: Sequence[str]) -> list[str]:
-    """Judge D's answer (judge_d.v1): every target it was asked, once, and only those."""
+def judge_d_problems(reply: Any, ids: Mapping[str, str]) -> list[str]:
+    """Judge D's answer (judge_d.v2): every item it was asked, once, by its exact opaque id
+    (ids: id -> node or "answerability"), and only those."""
     if not isinstance(reply, Mapping) or not isinstance(reply.get("items"), list):
         return ["items: not a list"]
     problems = []
     seen = []
     for k, entry in enumerate(reply["items"], start=1):
-        where = f"item {k}"
-        if not isinstance(entry, Mapping) or not isinstance(entry.get("target"), str):
-            problems.append(f"{where}: names no target")
+        where = f"entry {k}"
+        if not isinstance(entry, Mapping) or not isinstance(entry.get("item_id"), str):
+            problems.append(f"{where}: names no item id")
             continue
-        seen.append(entry["target"])
-        if entry["target"] in targets:
-            problems += _item_problems(entry, entry["target"], where)
-    problems += _set_problems(seen, targets, "items")
+        seen.append(entry["item_id"])
+        if entry["item_id"] in ids:
+            target = ids[entry["item_id"]]
+            problems += _identity_conflicts(entry, target, where)
+            problems += _item_problems(entry, target, where)
+    problems += _set_problems(seen, list(ids), "items")
     return problems
 
 

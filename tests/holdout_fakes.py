@@ -193,6 +193,48 @@ def session(
     }
 
 
+def _candidates_in(packet: str) -> list[tuple[str, str]]:
+    """(opaque id, node) of every candidate a judge's packet shows (judge_b.v2, judge_d.v2), in
+    its order: what a judge reads, the id it must answer by."""
+    found: list[tuple[str, str]] = re.findall(
+        r"^CANDIDATE (C-[0-9a-f]{12})\n\[((?:DORA|MiCA|PSD2):[^\]]+)\]", packet, re.M
+    )
+    return found
+
+
+IDENTITY_FAULTS = ("wrong", "missing", "unknown", "duplicate", "conflicting_target", "reversed")
+
+
+def misbind(
+    entries: list[dict[str, Any]], how: str, node_of: Mapping[str, str]
+) -> list[dict[str, Any]]:
+    """A judge's entries with their identity broken one way, the way a model could break it:
+    another valid id, no id, an id nobody gave, an entry twice, a node of the same act with other
+    numbers written beside the right id, or the right ids in another order."""
+    entries = [dict(e) for e in entries]
+    first = entries[0]
+    if how == "wrong":
+        others = [i for i in node_of if i != first["item_id"]]
+        first["item_id"] = others[0] if others else "C-" + "f" * 12
+    elif how == "missing":
+        del first["item_id"]
+    elif how == "unknown":
+        first["item_id"] = "C-" + "0" * 12
+    elif how == "duplicate":
+        entries.append(dict(first))
+    elif how == "conflicting_target":
+        node = node_of.get(first["item_id"], "MiCA:1")
+        act, _, path = node.partition(":")
+        article = path.split(".")[0]
+        number = int("".join(ch for ch in article if ch.isdigit()) or "1") + 1
+        first["target"] = f"{act}:{number} (paragraph 2)"
+    elif how == "reversed":
+        entries.reverse()
+    else:
+        raise AssertionError(how)
+    return entries
+
+
 def _refs_in(packet: str, marker: str) -> list[str]:
     part = packet.split(marker, 1)[1] if marker in packet else packet
     return re.findall(r"^\[((?:DORA|MiCA|PSD2):[^\]]+)\]", part, re.M)
@@ -233,6 +275,13 @@ class Scenario:
     # (cell, role) -> replies for its next executions, one per execution, in order: an object
     # (a search's final answer, or a headless role's JSON) or a raw text; then the usual ones
     per_execution: dict[tuple[str, str], list[Any]] = field(default_factory=dict)
+    # (cell, role) -> how judge B, C or D breaks its entries' identity, one per execution, in
+    # order (IDENTITY_FAULTS); then the usual entries
+    identity: dict[tuple[str, str], list[str]] = field(default_factory=dict)
+    # cell -> nodes judge B grades one step off the evidence, so that judge C decides them
+    b_shift: dict[str, list[str]] = field(default_factory=dict)
+    # cell -> a reason judge C gives every item (to name another provision in its text)
+    c_reason: dict[str, str] = field(default_factory=dict)
     qwen_crosses: set[str] = field(default_factory=set)  # cells where the diagnostic disagrees
     d_answer: dict[str, dict[str, Any]] = field(default_factory=dict)  # cell -> D's item fields
     # (cell, role) -> a reply that replaces the usual one, for a valid answer of another kind
@@ -383,6 +432,13 @@ class FakeExecutor:
             answer = self.scenario.override.get((cell, role))
             if answer is None:
                 answer = self._reply(role, _ref_of(packet), packet, cell, number, answerability)
+            faults = self.scenario.identity.get((cell, role))
+            if faults:
+                key = "grades" if role == "judge_b" else "items"
+                node_of = dict(_candidates_in(packet)) or {
+                    m: m for m in re.findall(r"^ITEM (C-[0-9a-f]{12})", packet, re.M)
+                }
+                answer = {**answer, key: misbind(answer[key], faults.pop(0), node_of)}
             reply = json.dumps(answer)
         if failing and kind == "malformed":
             reply = "I would rather explain in prose."
@@ -433,18 +489,19 @@ class FakeExecutor:
             return {"proposal_id": ref, "verdict": "independent", "closest": None, "reason": "x"}
         if role == "judge_b":
             grades = self._truth()
-            nodes = _refs_in(packet, "CANDIDATES (document order)")
+            for node in s.b_shift.get(cell, []):
+                grades[node] = grades[node] + 1 if grades[node] < 3 else grades[node] - 1
             return {
                 "need_id": ref,
                 "grades": [
                     {
-                        "node": n,
+                        "item_id": i,
                         "grade": grades[n],
                         "ambiguous": False,
                         "scope_basis": [n] if grades[n] == 0 else [],
                         "reason": "B",
                     }
-                    for n in nodes
+                    for i, n in _candidates_in(packet)
                 ],
                 "answerability": answerability,
                 "answerability_reason": "B",
@@ -453,11 +510,15 @@ class FakeExecutor:
         if role == "judge_d":
             # the evidence as judges A and B see it: D holds the consensus unless told otherwise
             section = packet.split("ITEMS TO GRADE", 2)[-1]
-            items = [t.rstrip(":") for t in re.findall(r"^ITEM \d+: (\S+)", section, re.M)]
+            node_of = dict(_candidates_in(packet))
+            items = [
+                (i, bm.ANSWERABILITY_TARGET if text.startswith("the answerability") else node_of[i])
+                for i, text in re.findall(r"^ITEM (C-[0-9a-f]{12}): (.*)$", section, re.M)
+            ]
             grades = self._truth()
             base: dict[str, Any] = {"ambiguous": False, "scope_basis": [], "reason": "D"}
 
-            def item(target: str) -> dict[str, Any]:
+            def item(item_id: str, target: str) -> dict[str, Any]:
                 found: dict[str, Any]
                 if target == bm.ANSWERABILITY_TARGET:
                     found = {"grade": None, "answerability": answerability}
@@ -467,9 +528,10 @@ class FakeExecutor:
                     if grade == 0:
                         found["scope_basis"] = [target]
                 uncertain = {"ambiguous": True} if (cell, number) in s.d_uncertain else {}
-                return {**base, **found, **s.d_answer.get(cell, {}), **uncertain, "target": target}
+                answer = {**base, **found, **s.d_answer.get(cell, {}), **uncertain}
+                return {**answer, "item_id": item_id}
 
-            return {"need_id": ref, "items": [item(t) for t in items]}
+            return {"need_id": ref, "items": [item(i, t) for i, t in items]}
         if role == "metadata_adjudicator":
             kind = "direct" if answerability == "complete" else "partial_out_of_scope"
             return {
@@ -482,27 +544,26 @@ class FakeExecutor:
         if role == "judge_c":
             # each item decided by the evidence, as the other judges see it
             grades = self._truth()
-            items = []
-            for m in re.finditer(r"^ITEM (\d+)(.*)\n(.*)$", packet, re.M):
-                number = int(m.group(1))
+            decided = []
+            for m in re.finditer(r"^ITEM (C-[0-9a-f]{12})(.*)\n(.*)$", packet, re.M):
+                iid = m.group(1)
                 if m.group(2).startswith(": the answerability"):
                     target, grade, answer = bm.ANSWERABILITY_TARGET, None, answerability
                 else:
                     found = re.match(r"\[((?:DORA|MiCA|PSD2):[^\]]+)\]", m.group(3))
                     target = found.group(1) if found else "?"
                     grade, answer = grades.get(target, 0), None
-                items.append(
+                decided.append(
                     {
-                        "item": number,
-                        "target": target,
+                        "item_id": iid,
                         "grade": grade,
                         "ambiguous": False,
                         "answerability": answer,
                         "scope_basis": [target] if grade == 0 else [],
-                        "reason": "C",
+                        "reason": s.c_reason.get(cell, "C"),
                     }
                 )
-            return {"need_id": ref, "items": items}
+            return {"need_id": ref, "items": decided}
         raise AssertionError(role)
 
     def broker(self, role: str, run_id: str, packet: str, tools: hb.Tools) -> hpl.BrokerSession:
@@ -575,10 +636,12 @@ class FakeExecutor:
         grades = self._truth()
         if cell in self.scenario.qwen_crosses:
             grades = {n: (0 if g >= 2 else g) for n, g in grades.items()}
-        nodes = _refs_in(messages[0]["content"], "CANDIDATES (document order)")
         answer: dict[str, Any] = {
             "need_id": "x",
-            "grades": [{"node": n, "grade": grades[n], "ambiguous": False} for n in nodes],
+            "grades": [
+                {"item_id": i, "grade": grades[n], "ambiguous": False}
+                for i, n in _candidates_in(messages[0]["content"])
+            ],
             "answerability": answerability,
         }
         output = json.dumps(answer)
@@ -626,7 +689,7 @@ def broken_diagnostic(answer: dict[str, Any], how: str) -> dict[str, Any]:
     elif how == "duplicate":
         broken["grades"] = [*grades, dict(grades[0])]
     elif how == "unknown":
-        broken["grades"] = [*grades, {"node": "MiCA:1", "grade": 0, "ambiguous": False}]
+        broken["grades"] = [*grades, {"item_id": "C-" + "0" * 12, "grade": 0, "ambiguous": False}]
     elif how == "invalid_grade":
         grades[0]["grade"] = 7
     elif how == "missing_answerability":

@@ -289,7 +289,8 @@ def test_a_prompt_over_the_limit_makes_the_diagnostic_unavailable_once(base, fir
     assert hj.diagnostic_unavailable(value) and value["defects"] == ["input_exceeds_context"]
     d = pipeline.store.stage(f"{first}-a1", "judge_d")["value"]
     candidates = [a.target for a in ready_of(pipeline, first).adjudications]
-    assert {i["target"] for i in d["items"]} == set(candidates)
+    ids = pipeline._item_ids(f"{first}-a1", "judge_d", candidates)
+    assert {i["item_id"] for i in d["items"]} == set(ids.values())
     assert pipeline.report()["diagnostic"]["unavailable_defects"] == {"input_exceeds_context": 1}
 
 

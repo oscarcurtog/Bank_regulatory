@@ -482,12 +482,18 @@ def judge_b_packet(
     need: bm.Need,
     candidates: Sequence[str],
     scope: Mapping[str, Sequence[str]],
+    ids: Mapping[str, str],
     opening: str = JUDGE_B_OPENING,
     ref: str | None = None,
 ) -> str:
+    """Judge B's packet (judge_b.v2): every candidate under the opaque id the orchestrator gave
+    it (ids: node -> id), by which judge B answers; the node's identity is never the judge's."""
     judged = set(candidates)
-    blocks = [corpus.node_block(r, judged, scope.get(r, [])) for r in corpus.sort(candidates)]
-    return template("judge_b.v1").substitute(
+    blocks = [
+        f"CANDIDATE {ids[r]}\n" + corpus.node_block(r, judged, scope.get(r, []))
+        for r in corpus.sort(candidates)
+    ]
+    return template("judge_b.v2").substitute(
         opening=opening,
         rules=judge_bc_rules(),
         need_id=ref or need.need_id,
@@ -509,8 +515,8 @@ def show_judgment(j: Mapping[str, Any]) -> str:
 
 @dataclass(frozen=True)
 class CItem:
-    item: int
-    target: str  # "ACT:path" or "answerability"
+    item_id: str  # the opaque id judge C answers by (ingest/holdout.py item_id)
+    target: str  # "ACT:path" or "answerability": the orchestrator's, never the judge's
     rationale_a_is_judge: str  # "A" or "B": which judge appears as "Rationale A"
 
 
@@ -523,43 +529,46 @@ def judge_c_packet(
     b: Mapping[str, Any],
     disagreements: Sequence[str],
     answerability: bool,
+    ids: Mapping[str, str],
     seed: int = JUDGE_C_SEED,
     ref: str | None = None,
 ) -> tuple[str, list[CItem]]:
-    """The items on which A and B disagree, each with the two positions in an order drawn
-    for that item. a and b map a node to its judgment ("grade", "ambiguous", "scope_basis",
-    "rationale") and "answerability" to {"answerability", "rationale"}. The draw depends on
-    the seed and the need only, so it does not change with the order needs are built in."""
+    """The items on which A and B disagree (judge_c.v2), each under the opaque id the
+    orchestrator gave it (ids: node or "answerability" -> id), with the two positions in an
+    order drawn for that item. a and b map a node to its judgment ("grade", "ambiguous",
+    "scope_basis", "rationale") and "answerability" to {"answerability", "rationale"}. The
+    draw depends on the seed and the need only, so it does not change with the order needs
+    are built in."""
     rng = random.Random(f"{seed}:{need.need_id}")
     judged = set(candidates)
     blocks, items = [], []
-    for i, ref in enumerate(corpus.sort(disagreements), start=1):
+    for ref in corpus.sort(disagreements):
         a_first = rng.random() < 0.5
         pa, pb = (a[ref], b[ref]) if a_first else (b[ref], a[ref])
-        items.append(CItem(i, ref, "A" if a_first else "B"))
+        items.append(CItem(ids[ref], ref, "A" if a_first else "B"))
         blocks.append(
-            f"ITEM {i}\n"
+            f"ITEM {ids[ref]}\n"
             + corpus.node_block(ref, judged, scope.get(ref, []))
             + f"\nRationale A: {show_judgment(pa)}. {pa['rationale']}"
             + f"\nRationale B: {show_judgment(pb)}. {pb['rationale']}"
         )
     if answerability:
-        i = len(items) + 1
         a_first = rng.random() < 0.5
         key = bm.ANSWERABILITY_TARGET
         pa, pb = (a[key], b[key]) if a_first else (b[key], a[key])
-        items.append(CItem(i, key, "A" if a_first else "B"))
+        items.append(CItem(ids[key], key, "A" if a_first else "B"))
         agreed = [r for r in corpus.sort(candidates) if r not in disagreements]
         lines = [f"  {r}: {show_judgment(a[r])}" for r in agreed]
         blocks.append(
-            f"ITEM {i}: the answerability of the need (section 3). Decide it consistently with "
+            f"ITEM {ids[key]}: the answerability of the need (section 3). Decide it "
+            "consistently with "
             "your decisions on the items above and with these labels, on which the two judges "
             "agreed:\n"
             + "\n".join(lines)
             + f"\nRationale A: {show_judgment(pa)}. {pa['rationale']}"
             + f"\nRationale B: {show_judgment(pb)}. {pb['rationale']}"
         )
-    text = template("judge_c.v1").substitute(
+    text = template("judge_c.v2").substitute(
         rules=judge_bc_rules(),
         need_id=ref or need.need_id,
         statement=need.statement,
@@ -574,22 +583,27 @@ def judge_d_packet(
     candidates: Sequence[str],
     scope: Mapping[str, Sequence[str]],
     targets: Sequence[str],
+    ids: Mapping[str, str],
     opening: str = HEADLESS_OPENING,
     ref: str | None = None,
 ) -> str:
-    """A blind judge for the items on which the diagnostic judge crossed a material line:
-    every candidate as judge B saw it, no label of anyone, and only those items to grade.
-    It runs isolated like the authors (D-054): contextual independence from A, B and C,
-    not independence of model family."""
+    """A blind judge for the items on which the diagnostic judge crossed a material line
+    (judge_d.v2): every candidate as judge B saw it, each under the opaque id the orchestrator
+    gave it (ids: node or "answerability" -> id), no label of anyone, and only those items to
+    grade, each by its candidate's id. It runs isolated like the authors (D-054): contextual
+    independence from A, B and C, not independence of model family."""
     judged = set(candidates)
     items = []
-    for i, target in enumerate(targets, start=1):
+    for target in targets:
         if target == bm.ANSWERABILITY_TARGET:
-            items.append(f"ITEM {i}: answerability: the answerability of the need (section 3)")
+            items.append(f"ITEM {ids[target]}: the answerability of the need (section 3)")
         else:
-            items.append(f"ITEM {i}: {target}")
-    blocks = [corpus.node_block(r, judged, scope.get(r, [])) for r in corpus.sort(candidates)]
-    return template("judge_d.v1").substitute(
+            items.append(f"ITEM {ids[target]}: the candidate {ids[target]} below")
+    blocks = [
+        f"CANDIDATE {ids[r]}\n" + corpus.node_block(r, judged, scope.get(r, []))
+        for r in corpus.sort(candidates)
+    ]
+    return template("judge_d.v2").substitute(
         opening=opening,
         rules=judge_bc_rules(),
         need_id=ref or need.need_id,
@@ -604,10 +618,12 @@ def diagnostic_messages(
     need: bm.Need,
     candidates: Sequence[str],
     scope: Mapping[str, Sequence[str]],
+    ids: Mapping[str, str],
     ref: str | None = None,
 ) -> list[dict[str, str]]:
-    """The local diagnostic judge's prompt (scripts/mlx_generate.py): judge B's packet."""
-    text = judge_b_packet(corpus, need, candidates, scope, opening=DIAGNOSTIC_OPENING, ref=ref)
+    """The local diagnostic judge's prompt (scripts/mlx_generate.py): judge B's packet, with
+    the opaque ids of its own stage."""
+    text = judge_b_packet(corpus, need, candidates, scope, ids, opening=DIAGNOSTIC_OPENING, ref=ref)
     return [{"role": "user", "content": text}]
 
 

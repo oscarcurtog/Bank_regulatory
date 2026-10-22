@@ -105,8 +105,15 @@ def labels(pipeline: hpl.Pipeline, cell: str) -> dict[str, Any]:
 
 
 def items_of(packet: str) -> list[str]:
+    """What judge D is asked to grade, by the targets its items' ids name in its packet."""
     section = packet.split("ITEMS TO GRADE", 2)[-1].split("ALL THE CANDIDATES", 1)[0]
-    return [t.rstrip(":") for t in re.findall(r"^ITEM \d+: (\S+)", section, re.M)]
+    node_of = dict(
+        re.findall(r"^CANDIDATE (C-[0-9a-f]{12})\n\[((?:DORA|MiCA|PSD2):[^\]]+)\]", packet, re.M)
+    )
+    return [
+        bm.ANSWERABILITY_TARGET if text.startswith("the answerability") else node_of[i]
+        for i, text in re.findall(r"^ITEM (C-[0-9a-f]{12}): (.*)$", section, re.M)
+    ]
 
 
 @pytest.fixture(scope="module")
@@ -177,7 +184,16 @@ def test_judge_d_in_place_of_the_diagnostic_learns_nothing_of_it(base, first, tm
     assert all(p == packets[0] for p in packets)
     assert "Qwen" not in packets[0] and "not_an_object" not in packets[0]
     parameters = list(inspect.signature(hp.judge_d_packet).parameters)
-    assert parameters == ["corpus", "need", "candidates", "scope", "targets", "opening", "ref"]
+    assert parameters == [
+        "corpus",
+        "need",
+        "candidates",
+        "scope",
+        "targets",
+        "ids",
+        "opening",
+        "ref",
+    ]
 
 
 def test_a_judge_d_that_does_not_hold_rejects_by_the_rule_of_a_discrepancy(base, first, tmp_path):

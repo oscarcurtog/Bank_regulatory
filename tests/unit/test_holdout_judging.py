@@ -12,6 +12,20 @@ from ingest import benchmark as bm
 from ingest import holdout_judging as hj
 
 TEXTS = {("DORA", "19.1"): "report", ("DORA", "19.2"): "notify", ("PSD2", "96.1"): "old"}
+UNKNOWN = "C-" + "0" * 12  # an id the orchestrator never gave
+
+
+def ids_of(*targets: str) -> dict[str, str]:
+    """The orchestrator's mapping of a stage: opaque id -> node (or the answerability)."""
+    return {f"C-{i:012x}": t for i, t in enumerate(targets, start=1)}
+
+
+def id_of(ids: dict[str, str], target: str) -> str:
+    return next(i for i, t in ids.items() if t == target)
+
+
+B19 = ids_of("DORA:19.1", "DORA:19.2")
+D19 = ids_of("DORA:19.1", "DORA:19.2", "answerability")
 
 
 def _a_file(**overrides) -> dict:
@@ -51,8 +65,13 @@ def _b_file(grade_191=3, answerability="complete", missing=None) -> dict:
     return {
         "need_id": "N101",
         "grades": [
-            {"node": "DORA:19.1", "grade": grade_191, "reason": "B on 19.1"},
-            {"node": "DORA:19.2", "grade": 0, "scope_basis": ["DORA:19.2"], "reason": "B no"},
+            {"item_id": id_of(B19, "DORA:19.1"), "grade": grade_191, "reason": "B on 19.1"},
+            {
+                "item_id": id_of(B19, "DORA:19.2"),
+                "grade": 0,
+                "scope_basis": ["DORA:19.2"],
+                "reason": "B no",
+            },
         ],
         "answerability": answerability,
         "answerability_reason": "B",
@@ -61,7 +80,7 @@ def _b_file(grade_191=3, answerability="complete", missing=None) -> dict:
 
 
 def test_agreement_needs_no_judge_c():
-    a, b = hj.a_judgments(_a_file()), hj.b_judgments(_b_file())
+    a, b = hj.a_judgments(_a_file()), hj.b_judgments(_b_file(), B19)
     found = hj.disagreements(["DORA:19.1", "DORA:19.2"], a, b)
     assert found == hj.Disagreements([], False)
     out = hj.assemble("N101", ["DORA:19.1", "DORA:19.2"], a, b, {}, None, TEXTS)
@@ -71,7 +90,7 @@ def test_agreement_needs_no_judge_c():
 
 
 def test_every_disagreement_goes_to_judge_c_and_c_decides():
-    a, b = hj.a_judgments(_a_file()), hj.b_judgments(_b_file(grade_191=2))
+    a, b = hj.a_judgments(_a_file()), hj.b_judgments(_b_file(grade_191=2), B19)
     found = hj.disagreements(["DORA:19.1", "DORA:19.2"], a, b)
     assert found.nodes == ["DORA:19.1"] and not found.answerability
     with pytest.raises(ValueError, match="judge C answered"):
@@ -86,7 +105,7 @@ def test_the_gap_note_comes_from_the_judge_whose_answerability_is_final():
     a = hj.a_judgments(
         _a_file(answerability="partial", gap_note="A: the fee is in a delegated act")
     )
-    b = hj.b_judgments(_b_file(answerability="none", missing="B: nothing"))
+    b = hj.b_judgments(_b_file(answerability="none", missing="B: nothing"), B19)
     c_takes_b = {"answerability": {"answerability": "none", "reason": "C"}}
     # with 19.1 at grade 3 a "none" would contradict the dataset rules later; only the
     # provenance of the gap_note is under test here
@@ -159,30 +178,34 @@ def test_judge_a_may_run_only_the_corpus_tools_and_write_only_its_file(tmp_path)
 
 
 def _final() -> hj.Assembled:
-    a, b = hj.a_judgments(_a_file()), hj.b_judgments(_b_file())
+    a, b = hj.a_judgments(_a_file()), hj.b_judgments(_b_file(), B19)
     return hj.assemble("N101", ["DORA:19.1", "DORA:19.2"], a, b, {}, None, TEXTS)
 
 
 def test_the_diagnostic_crosses_a_material_line_only_across_relevance_or_answerability():
     final = _final()  # 19.1 grade 3, 19.2 grade 0, complete
     same_side = {
-        "grades": [{"node": "DORA:19.1", "grade": 2}, {"node": "DORA:19.2", "grade": 1}],
+        "grades": [
+            {"item_id": id_of(B19, "DORA:19.1"), "grade": 2},
+            {"item_id": id_of(B19, "DORA:19.2"), "grade": 1},
+        ],
         "answerability": "complete",
     }
-    assert (
-        hj.material_discrepancies(["DORA:19.1", "DORA:19.2"], final, same_side).discrepancies == []
-    )
+    assert hj.material_discrepancies(B19, final, same_side).discrepancies == []
     crossed = {
         "grades": [
-            {"node": "DORA:19.1", "grade": 3, "ambiguous": True},
-            {"node": "DORA:19.2", "grade": 2},
+            {"item_id": id_of(B19, "DORA:19.1"), "grade": 3, "ambiguous": True},
+            {"item_id": id_of(B19, "DORA:19.2"), "grade": 2},
         ],
         "answerability": "partial",
     }
-    found = hj.material_discrepancies(["DORA:19.1", "DORA:19.2"], final, crossed)
+    found = hj.material_discrepancies(B19, final, crossed)
     assert found.discrepancies == ["DORA:19.1", "DORA:19.2", "answerability"]
-    partial = {"grades": [{"node": "DORA:19.1", "grade": 3}], "answerability": "complete"}
-    found = hj.material_discrepancies(["DORA:19.1", "DORA:19.2"], final, partial)
+    partial = {
+        "grades": [{"item_id": id_of(B19, "DORA:19.1"), "grade": 3}],
+        "answerability": "complete",
+    }
+    found = hj.material_discrepancies(B19, final, partial)
     assert found.discrepancies == [] and found.missing == ["DORA:19.2"]
 
 
@@ -191,10 +214,11 @@ def test_judge_d_holds_the_consensus_or_leaves_it_uncertain():
     outcome = hj.judge_d_outcome(
         final,
         [
-            {"target": "DORA:19.1", "grade": 2},
-            {"target": "DORA:19.2", "grade": 2},
-            {"target": "answerability", "answerability": "none"},
+            {"item_id": id_of(D19, "DORA:19.1"), "grade": 2},
+            {"item_id": id_of(D19, "DORA:19.2"), "grade": 2},
+            {"item_id": id_of(D19, "answerability"), "answerability": "none"},
         ],
+        D19,
     )
     assert outcome == {
         "DORA:19.1": "consensus_held",
@@ -223,8 +247,8 @@ def test_judge_d_holds_the_consensus_or_leaves_it_uncertain():
     ],
 )
 def test_judge_d_regressions(target, grade, ambiguous, expected):
-    item = {"target": target, "grade": grade, "ambiguous": ambiguous}
-    assert hj.judge_d_outcome(_final(), [item]) == {target: expected}
+    item = {"item_id": id_of(D19, target), "grade": grade, "ambiguous": ambiguous}
+    assert hj.judge_d_outcome(_final(), [item], D19) == {target: expected}
 
 
 def _q(path: str, grade: int, act: str = "DORA", ambiguous: bool = False) -> bm.Qrel:
@@ -300,12 +324,12 @@ def test_final_metadata_adds_the_deterministic_fields():
 
 
 CANDIDATES = ["MiCA:149.1", "MiCA:149.2", "DORA:64"]
+Q = ids_of(*CANDIDATES)
 
 
 def _diagnostic(**changes):
     grades = [
-        {"node": n, "grade": g, "ambiguous": False}
-        for n, g in zip(CANDIDATES, (1, 3, 0), strict=True)
+        {"item_id": i, "grade": g, "ambiguous": False} for i, g in zip(Q, (1, 3, 0), strict=True)
     ]
     return {"need_id": "x", "grades": grades, "answerability": "complete"} | changes
 
@@ -314,7 +338,11 @@ def _diagnostic(**changes):
     ("name", "answer", "expected"),
     [
         ("empty list", _diagnostic(grades=[]), "not graded"),
-        ("strict subset", _diagnostic(grades=_diagnostic()["grades"][:2]), "DORA:64: not graded"),
+        (
+            "strict subset",
+            _diagnostic(grades=_diagnostic()["grades"][:2]),
+            f"{id_of(Q, 'DORA:64')}: not graded",
+        ),
         (
             "duplicate candidate",
             _diagnostic(grades=[*_diagnostic()["grades"], _diagnostic()["grades"][0]]),
@@ -325,10 +353,10 @@ def _diagnostic(**changes):
             _diagnostic(
                 grades=[
                     *_diagnostic()["grades"],
-                    {"node": "MiCA:1", "grade": 0, "ambiguous": False},
+                    {"item_id": UNKNOWN, "grade": 0, "ambiguous": False},
                 ]
             ),
-            "MiCA:1: not a candidate",
+            f"{UNKNOWN}: not a candidate",
         ),
         (
             "invalid grade",
@@ -346,7 +374,12 @@ def _diagnostic(**changes):
         ),
         (
             "missing ambiguous",
-            _diagnostic(grades=[{"node": CANDIDATES[0], "grade": 1}, *_diagnostic()["grades"][1:]]),
+            _diagnostic(
+                grades=[
+                    {"item_id": id_of(Q, CANDIDATES[0]), "grade": 1},
+                    *_diagnostic()["grades"][1:],
+                ]
+            ),
             "no true or false ambiguous",
         ),
         (
@@ -360,7 +393,7 @@ def _diagnostic(**changes):
     ],
 )
 def test_an_incomplete_diagnostic_is_never_complete(name, answer, expected):
-    problems = hj.diagnostic_problems(CANDIDATES, answer)
+    problems = hj.diagnostic_problems(Q, answer)
     assert any(expected in p for p in problems), (name, problems)
 
 
@@ -368,9 +401,9 @@ def test_a_complete_diagnostic_passes_with_null_and_ambiguous_labels():
     grades = _diagnostic()["grades"]
     grades[0] = {**grades[0], "grade": None}  # unjudged, as judge B's packet allows
     grades[1] = {**grades[1], "ambiguous": True}
-    assert hj.diagnostic_problems(CANDIDATES, _diagnostic(grades=grades)) == []
-    assert hj.diagnostic_problems(CANDIDATES, _diagnostic()) == []
-    assert hj.diagnostic_problems([], _diagnostic(grades=[], answerability="none")) == []
+    assert hj.diagnostic_problems(Q, _diagnostic(grades=grades)) == []
+    assert hj.diagnostic_problems(Q, _diagnostic()) == []
+    assert hj.diagnostic_problems({}, _diagnostic(grades=[], answerability="none")) == []
 
 
 @pytest.mark.parametrize(
@@ -388,7 +421,7 @@ def test_a_complete_diagnostic_passes_with_null_and_ambiguous_labels():
         ),
         (
             json.dumps(
-                _diagnostic(grades=[*_diagnostic()["grades"], {"node": "MiCA:1", "grade": 0}])
+                _diagnostic(grades=[*_diagnostic()["grades"], {"item_id": UNKNOWN, "grade": 0}])
             ),
             ["invalid_ambiguous", "unknown_candidate"],
         ),
@@ -415,7 +448,7 @@ def test_a_complete_diagnostic_passes_with_null_and_ambiguous_labels():
     ],
 )
 def test_an_inadmissible_answer_is_named_by_its_classes_of_defect_only(output, defects):
-    found = hj.diagnostic_defects(CANDIDATES, output)
+    found = hj.diagnostic_defects(Q, output)
     assert found == defects
     assert not any(c in " ".join(found) for c in CANDIDATES)  # never the content
     marker = hj.unavailable_diagnostic(found)
@@ -423,9 +456,9 @@ def test_an_inadmissible_answer_is_named_by_its_classes_of_defect_only(output, d
 
 
 def test_a_complete_answer_has_no_defect_even_fenced():
-    assert hj.diagnostic_defects(CANDIDATES, json.dumps(_diagnostic())) == []
+    assert hj.diagnostic_defects(Q, json.dumps(_diagnostic())) == []
     fenced = "```json\n" + json.dumps(_diagnostic()) + "\n```"
-    assert hj.diagnostic_defects(CANDIDATES, fenced) == []
+    assert hj.diagnostic_defects(Q, fenced) == []
 
 
 def test_every_problem_of_the_completeness_check_has_a_class():
@@ -433,7 +466,7 @@ def test_every_problem_of_the_completeness_check_has_a_class():
         ["x"],
         {"answerability": "complete"},
         _diagnostic(
-            grades=[{"grade": True}, {"node": "MiCA:1", "grade": 9}, *_diagnostic()["grades"]]
+            grades=[{"grade": True}, {"item_id": UNKNOWN, "grade": 9}, *_diagnostic()["grades"]]
         ),
         _diagnostic(
             grades=[*_diagnostic()["grades"], _diagnostic()["grades"][0]], answerability=None
@@ -441,7 +474,7 @@ def test_every_problem_of_the_completeness_check_has_a_class():
         _diagnostic(grades=[]),
     ]
     for answer in answers:
-        for problem in hj.diagnostic_problems(CANDIDATES, answer):
+        for problem in hj.diagnostic_problems(Q, answer):
             assert hj._defect(problem) in hj.DIAGNOSTIC_DEFECTS, problem
 
 

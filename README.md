@@ -38,7 +38,7 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   BM25 come out level there, and E could not complete: its frozen reranker ran out of memory on
   long articles
 - **Internal TEST set (S3):** its construction and S4's analysis plan are frozen by content in a
-  pre-authoring contract, committed before any TEST need is written. Two constructions were
+  pre-authoring contract, committed before any TEST need is written. Four constructions were
   aborted and are kept as provenance; TEST restarts under one final evidence procedure for every
   need (two blind searches, their union adjudicated once), and is not built yet
 - **Generation, evaluation, API and deployment:** later
@@ -97,7 +97,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 1404 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 1426 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -146,7 +146,7 @@ uv pip install --require-hashes --no-deps -r requirements-embed.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest skips the 209 tests marked `corpus`: they need `data/raw/`, which is
+Without the corpus, pytest skips the 227 tests marked `corpus`: they need `data/raw/`, which is
 not in the repository (see [Data and reproducibility](#data-and-reproducibility)). The 31 tests
 marked `embedding_model` need the `embed` extra and the weights of the three embedding models and
 the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`); two of them also
@@ -161,7 +161,7 @@ against a service container of the same pinned image. The one test marked
 does not exist; every other test of the internal TEST set makes a synthetic one. One contract
 test needs the history back to E's DEV result and is skipped in a shallow clone such as CI's,
 and the host identity test runs on macOS only. In CI (no corpus, no model, PostgreSQL up)
-pytest reports `1160 passed, 244 skipped`.
+pytest reports `1164 passed, 262 skipped`.
 
 ## Docker
 
@@ -229,7 +229,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 | `data/external/` | no | the external benchmark of T4 (third-party data, CC BY-NC-SA 4.0) and everything derived from it |
 
-Without the corpus you can run the test suite (in CI, 1160 tests pass and 244 are skipped with
+Without the corpus you can run the test suite (in CI, 1164 tests pass and 262 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported` and PostgreSQL up), the linters and
 type checks, and both Docker images. The vector index is derived data too: it lives in a Docker
 volume and is rebuilt from `data/chunks/` and `data/embeddings/`.
@@ -459,12 +459,15 @@ construction before the freeze. Every answer is admitted only after its complete
 invariant tying its labels to the need's evidence (the metadata's drivers against the final
 grades, a search's answerability against its own grades) in all three executions of its stage
 rejects the attempt, with nothing inferred or repaired; a failure of a role's contract stays
-technical. An unattended controller (`ingest/holdout_controller.py`)
+technical. What a judge grades is named by an opaque item id the orchestrator gives it, and
+the orchestrator alone maps the id back to its legal node: an answer whose ids are missing,
+unknown, repeated or not the ones given, or that names another node beside an id, is a failure
+of the role's contract, never repaired and never bound by its position. An unattended controller (`ingest/holdout_controller.py`)
 may run START or RESUME and resume again only under its own policy: a technical failure that
 the invocation just produced, of a kind the protocol retries. It never freezes.
 
 Before the first need, the construction is frozen. `config/holdout/pre-authoring-contract.json`
-(SHA-256 `433edd5d633777c575e81302423c19b8646c566e20ceb0a9698b7250c1634225`) fixes by content 76 files (the code and
+(SHA-256 `b824db37fb9e13202f4d3efdc38a706a03c9c56fe030607a39ae5a6a167846d7`) fixes by content 76 files (the code and
 configs of E, E5, BM25 and the evaluation, the S4 plan, and the construction's code, inputs and
 templates), the corpus snapshot and chunk layer, and the identity of every model runtime: the
 requested and effective Claude model and its binary, and the MLX packages, model files and host
@@ -480,7 +483,7 @@ construction (SQLite, an append-only event log). What is published is its commit
 `data/benchmark/test-commitment.json` (hashes, counts and distributions, no text), pushed before
 S4 runs any system. No TEST need is ready yet.
 
-Three earlier constructions were aborted and are kept privately, whole, as provenance; nothing
+Four earlier constructions were aborted and are kept privately, whole, as provenance; nothing
 of them is reused (the contract's `aborted_runs`). The first, under contract
 `fe18917551276d676a6f3e0c5c20d14ee34f2f4a66c9de18407f264366a858f9` (commit `3226afa`), stopped
 with no ready need on the diagnostic's recovery policy: Qwen3-8B decodes greedily, so executing it
@@ -497,7 +500,11 @@ the templates, the judges, the thresholds, the systems and the S4 metrics are un
 third, under contract `c6b0c6912b67c077c86738e186180c5000d305965e585a74744e5d63b215dbd6`
 (commit `1765ae3`), stopped with 6 ready needs when three independent executions of the metadata
 adjudicator violated the same frozen semantic rule, which technical retries could not repair;
-the transition for that class was then defined prospectively, as described above.
+the transition for that class was then defined prospectively, as described above. The fourth,
+under contract `433edd5d633777c575e81302423c19b8646c566e20ceb0a9698b7250c1634225` (commit
+`3740fc7`), stopped with 5 ready needs when three executions of judge C answered the item they
+were given for another legal node: a candidate's identity was carried by its act and path, which
+the model wrote back itself. It is now an opaque id the orchestrator owns, as described above.
 
 DEV keeps its historical qrels, built from one search per need; TEST's come from two. The paired
 comparison of the systems within TEST, on one common set of qrels, is not affected; the absolute
@@ -617,7 +624,7 @@ retrieval candidate.
   benchmark, whose judgments come from one expert per area, drawn from candidate pools built by
   keyword search; its intervals are wide. E could not be evaluated there on this machine. The
   internal TEST set, which will measure the selection bias of DEV on the same task, has its
-  construction frozen and no ready need yet; a first construction was aborted with none.
+  construction frozen and no ready need yet; four earlier constructions were aborted.
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4

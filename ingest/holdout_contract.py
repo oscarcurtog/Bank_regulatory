@@ -477,6 +477,26 @@ ABORTED_RUNS = (
             "exhaustion. Everything else unchanged"
         ),
     },
+    {
+        "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+        "contract_sha256": "433edd5d633777c575e81302423c19b8646c566e20ceb0a9698b7250c1634225",
+        "public_commit": "3740fc7911f1f2bcc24d109e6045aef5eda471b9",
+        "ready_needs": 5,
+        "reason": (
+            "Three executions of judge C answered the item they were given for another legal "
+            "node, a failure of the role's contract, so that the stage was left "
+            "pending_technical_unresolved. A candidate's identity was carried by its act and "
+            "path, which the model wrote back itself, rather than by an id the orchestrator "
+            "owns."
+        ),
+        "change": (
+            "the identity of what a judge grades: every candidate of judges B, C and D and of "
+            "the diagnostic is given under an opaque item id, answered by that exact id and "
+            "mapped to its node by the orchestrator alone (judge_b.v2, judge_c.v2, judge_d.v2); "
+            "a missing, unknown, repeated or other id stays a technical contract failure. "
+            "Rubrics, thresholds, retries and every methodological rule unchanged"
+        ),
+    },
 )
 
 
