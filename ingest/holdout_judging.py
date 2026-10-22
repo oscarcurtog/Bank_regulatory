@@ -241,7 +241,7 @@ def audit_nodes(
 
 
 def pool_judgments(data: Mapping[str, Any], ids: Mapping[str, str]) -> dict[str, dict[str, Any]]:
-    """Judge B's pool variant's labels by node (judge_b_pool.v1): each entry's opaque id resolved
+    """Judge B's pool variant's labels by node (judge_b_pool.v2): each entry's opaque id resolved
     by the orchestrator's own mapping (ids: id -> node), never by what the judge wrote."""
     return {
         ids[g["item_id"]]: {
@@ -254,11 +254,22 @@ def pool_judgments(data: Mapping[str, Any], ids: Mapping[str, str]) -> dict[str,
     }
 
 
-def needs_second_judgment(j: Mapping[str, Any]) -> bool:
-    """A blind label on a node no search listed that cannot stand alone: a grade of 1 or more,
-    or an ambiguity. A grade 0, or no grade (unjudged), that is not ambiguous is final."""
+def positive_or_ambiguous(j: Mapping[str, Any]) -> bool:
+    """A label with a positive or an uncertain signal: a grade of 1 or more, or an ambiguity.
+    No grade (a judge C that leaves a node unjudged) is neither."""
     grade, ambiguous = _label(j)
     return ambiguous or (grade is not None and grade >= 1)
+
+
+def pool_route(j: Mapping[str, Any]) -> str:
+    """Where one blind pool judgment sends its node: an explicit grade 0 that is not ambiguous
+    is the final negative judgment ("final_negative"); a grade of 1 or more, or an ambiguity,
+    needs a second blind judgment ("second_judgment"). An unjudged label is no judgment: the
+    admission refuses it (holdout_admission.pool_problems), and here it is an error, never a 0."""
+    grade, ambiguous = _label(j)
+    if grade is None:
+        raise ValueError("an unjudged pool label is no judgment, and never a grade 0")
+    return "final_negative" if grade == 0 and not ambiguous else "second_judgment"
 
 
 def diagnostic_set(
@@ -274,7 +285,7 @@ def diagnostic_set(
     document order."""
     out = set(listed)
     for node, labels in pool_labels.items():
-        if (final_grades.get(node) or 0) >= 1 or any(needs_second_judgment(j) for j in labels):
+        if (final_grades.get(node) or 0) >= 1 or any(positive_or_ambiguous(j) for j in labels):
             out.add(node)
     return sorted(out)
 

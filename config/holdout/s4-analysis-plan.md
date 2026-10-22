@@ -214,9 +214,11 @@ from it.
   search that listed it. Every node a search received in full enters the exposure pool
   mechanically, listed or not. A pool node no search listed is graded blind by judge B's pool
   variant (the same rubric, no answerability). A grade >= 1 or an ambiguity gets a second blind
-  judgment, and judge C decides where the two differ. A grade 0 that is not ambiguous is final,
-  kept in the pool's record and not as a qrel: an unjudged node and a grade 0 count alike in
-  every metric of this plan. A search that declares a problem makes the need `judge_problem`.
+  judgment, and judge C decides where the two differ. The pool variant must grade every node it
+  is shown, explicitly: a node left out or ungraded is a failure of its contract, never a grade
+  0. An explicit grade 0 that is not ambiguous is final, kept in the pool's record and the
+  provenance and not as a qrel: an unjudged node and a judged 0 count alike in every metric of
+  this plan. A search that declares a problem makes the need `judge_problem`.
   This applies to every need that reaches evidence discovery, whatever its planned
   answerability.
 - **The omission audit:** 12 cells fixed before authoring (`holdout-omission.v1`, stratified by

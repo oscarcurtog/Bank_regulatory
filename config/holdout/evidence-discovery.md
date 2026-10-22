@@ -94,10 +94,14 @@ outside the excluded PSD2 articles. Entering it is mechanical: no model decides 
 
 1. **Judge B** (`judge_b.v2`, blind to every search's labels) grades every listed node and gives
    the answerability, as before.
-2. **Judge B's pool variant** (`judge_b_pool.v1`, role `pool_judge_1`) grades every node of the
+2. **Judge B's pool variant** (`judge_b_pool.v2`, role `pool_judge_1`) grades every node of the
    pool no search listed. It is judge B's packet and rubric, word for word, without the
    answerability: it grades only the nodes it is shown, each under an opaque item id, in fresh
-   contexts, blind to every label. The nodes go in document order, in batches (stages
+   contexts, blind to every label. Its answer must cover exactly the nodes it was shown (the
+   exact-coverage contract of 2026-10-22): each id once, each with an explicit grade 0 to 3 and
+   an explicit true or false ambiguity. A node left out, ungraded (null), unknown, repeated or
+   replaced is a failure of the role's contract (`judge_answer_complete`, `malformed_session`),
+   retried as one, and never a grade 0 or a semantic rejection. The nodes go in document order, in batches (stages
    `pool_b1:<n>`). A batch closes before the node that would make it hold more than 34 nodes,
    the most judge B graded in one development packet. It also closes before the node that would
    make its packet longer than 9,773 tokens, the largest judge B packet the development runs
@@ -105,14 +109,17 @@ outside the excluded PSD2 articles. Entering it is mechanical: no model decides 
    are ceilings, not targets, and a node is never split. A node that alone would pass the token
    ceiling is no packet the protocol allows, and stops the construction (`packet_construction`).
    The same nodes always give the same batches.
-3. **A pool node judge B's pool variant grades 0, or leaves unjudged, without an ambiguity** is
-   final: judged not relevant by one blind judgment. It is kept in the pool's record, not as a
-   qrel. The record format of the benchmark (`ingest/benchmark.py`, `Adjudication`) holds two
-   judgments for every qrel, and an unjudged node and a grade 0 count alike in every metric of
-   the S4 plan.
+3. **A pool node judge B's pool variant grades 0 explicitly, without an ambiguity**, is final:
+   an explicit negative, judged not relevant by one blind judgment. It is kept in the pool's
+   adjudication record, in the READY provenance and in the replayed state, with its grade 0, and
+   never confused with an unjudged node, which the admission refuses. It is not a qrel: the
+   record format of the benchmark (`ingest/benchmark.py`, `Adjudication`) holds two judgments
+   for every qrel, and no metric of the S4 plan tells a judged 0 from an unjudged node (Judged@10,
+   a diagnostic of the evaluation code outside the plan, would count it as unjudged; the pool's
+   record keeps it).
 4. **A pool node graded 1 or more, or found ambiguous**, gets a second blind judgment in a new
-   context (role `pool_judge_2`, the same template, stages `pool_b2:<n>`, the same batching),
-   under the same item id, without the first judgment. If the two agree by the frozen rule (the
+   context (role `pool_judge_2`, the same template and exact-coverage contract, stages
+   `pool_b2:<n>`, the same batching), under the same item id, without the first judgment. If the two agree by the frozen rule (the
    same grade and the same ambiguity), that is the final label. If they differ, judge C decides.
 5. **Judge C** (`judge_c.v2`) decides, in one context, every difference of the adjudication: a
    listed node's first judgment against judge B's, a pool node's two blind judgments, and the
@@ -127,7 +134,7 @@ outside the excluded PSD2 articles. Entering it is mechanical: no model decides 
    - every pool node any blind judgment graded 1 or more or found ambiguous;
    - and the answerability.
 
-   A pool node nobody listed, graded 0 or left unjudged by the pool variant, with no positive or
+   A pool node nobody listed, graded 0 explicitly by the pool variant, with no positive or
    ambiguous label, reaches neither. The diagnostic (Qwen3-8B, local, another model family, no
    vote) grades those candidates with judge B's packet. Before any generation its prompt is
    counted with the frozen Qwen tokenizer and chat template, and a prompt over the frozen limit
@@ -150,14 +157,15 @@ to them. Its coverage is its own exposure, defined as in section 3, not only its
   `audit_b1:<n>`, `audit_b2:<n>` and `audit_judge_c`). A new node the audit search listed takes
   its label as the first judgment, and the pool variant's as the second. A new node it only
   received in full gets the pool variant's judgment, and a second one for a grade of 1 or more
-  or an ambiguity. Judge C decides any difference. None of these contexts sees the normal
+  or an ambiguity. The same exact-coverage contract holds: the audit can never turn a missing
+  answer into a grade 0. Judge C decides any difference. None of these contexts sees the normal
   adjudication's labels, and the normal adjudication is the same in an audited cell and in any
   other.
 - **Any new node with a final grade of 1 or more stops the construction before the freeze**
   (`omission_audit`), so that the evidence procedure is reviewed for every need alike. The
   threshold is the frozen one, >= 1, unchanged, and an ambiguous final label counts by its
-  grade. A new node with a final grade of 0, or left unjudged, is a diagnostic: it is recorded
-  and counted in the audit's record, and is no qrel of the need.
+  grade. A new node with a final grade of 0, or left unjudged by judge C, is a diagnostic: it is
+  recorded and counted in the audit's record, and is no qrel of the need.
 - **An audit judgment discrepancy is not an omission.** The audit search's label on a node the
   pool already held is provenance only. This holds even when it grades 1 or more a node whose
   final grade is 0, and in the other direction. It never changes a qrel, never runs judge C

@@ -14,6 +14,7 @@ from ingest import holdout_admission as ha
 from ingest import holdout_controller as hct
 from ingest import holdout_judging as hj
 from ingest import holdout_packets as hp
+from ingest import ir_metrics
 
 TEXTS: dict[bm.NodeKey, str] = {
     ("MiCA", "3.1"): "a definition",
@@ -164,13 +165,16 @@ def grades(*labels: tuple[str, Any, bool]) -> dict[str, Any]:
     }
 
 
+ONE, TWO = "C-" + "1" * 12, "C-" + "2" * 12
+
+
 def test_the_pool_variant_answers_every_node_by_its_id_and_no_answerability():
-    good = grades(("C-" + "1" * 12, 0, False), ("C-" + "2" * 12, 2, False))
-    assert ha.pool_problems(good, IDS) == []
+    good = grades((ONE, 0, False), (TWO, 2, False))
+    assert ha.pool_problems(good, IDS) == []  # the exact set, each explicit: accepted
     assert hj.pool_judgments(good, IDS)["MiCA:60.2"]["grade"] == 2
-    missing = grades(("C-" + "1" * 12, 0, False))
+    missing = grades((ONE, 0, False))
     assert any("missing" in p for p in ha.pool_problems(missing, IDS))
-    unknown = grades(("C-" + "1" * 12, 0, False), ("C-" + "0" * 12, 1, False))
+    unknown = grades((ONE, 0, False), ("C-" + "0" * 12, 1, False))
     assert any("unknown" in p for p in ha.pool_problems(unknown, IDS))
     named = grades(("C-" + "1" * 12, 0, False), ("C-" + "2" * 12, 2, False))
     named["grades"][1]["target"] = "MiCA:61.2"
@@ -180,18 +184,40 @@ def test_the_pool_variant_answers_every_node_by_its_id_and_no_answerability():
     assert ha.pool_problems(no_basis, IDS)  # a grade 0 names its scope, as judge B's
 
 
+def test_the_exact_coverage_contract_refuses_every_answer_short_of_one_explicit_label_each():
+    """The person's decision of 2026-10-22: an absent judgment is never a negative one."""
+    null = grades((ONE, None, False), (TWO, 2, False))
+    assert any("grade not 0 to 3" in p for p in ha.pool_problems(null, IDS))
+    twice = grades((ONE, 0, False), (TWO, 2, False), (TWO, 2, False))
+    assert any("named twice" in p for p in ha.pool_problems(twice, IDS))
+    silent = grades((ONE, 0, False), (TWO, 2, False))
+    del silent["grades"][1]["ambiguous"]
+    assert any("ambiguous not given" in p for p in ha.pool_problems(silent, IDS))
+    replaced = grades((ONE, 0, False), (TWO, 2, False))
+    replaced["grades"][1]["item_id"] = "C-" + "3" * 12  # another id in place of the shown one
+    found = ha.pool_problems(replaced, IDS)
+    assert any("unknown" in p for p in found) and any("missing" in p for p in found)
+    assert ha.pool_problems({"need_id": "R-x", "grades": []}, IDS)  # nothing answered
+
+
 @pytest.mark.parametrize(
-    ("label", "second"),
+    ("label", "route"),
     [
-        ({"grade": 0, "ambiguous": False}, False),  # final 0
-        ({"grade": None, "ambiguous": False}, False),  # final: left unjudged
-        ({"grade": 1, "ambiguous": False}, True),
-        ({"grade": 3, "ambiguous": False}, True),
-        ({"grade": 0, "ambiguous": True}, True),
+        ({"grade": 0, "ambiguous": False}, "final_negative"),  # an explicit grade 0
+        ({"grade": 1, "ambiguous": False}, "second_judgment"),
+        ({"grade": 3, "ambiguous": False}, "second_judgment"),
+        ({"grade": 0, "ambiguous": True}, "second_judgment"),
     ],
 )
-def test_a_positive_or_ambiguous_label_needs_a_second_judgment(label, second):
-    assert hj.needs_second_judgment(label) is second
+def test_an_explicit_label_routes_its_node(label, route):
+    assert hj.pool_route(label) == route
+
+
+def test_an_unjudged_label_is_never_read_as_a_grade_0():
+    with pytest.raises(ValueError, match="never a grade 0"):
+        hj.pool_route({"grade": None, "ambiguous": False})
+    with pytest.raises(ValueError):
+        hj.pool_route({})
 
 
 def test_the_two_blind_judgments_agree_or_judge_c_decides():
@@ -218,14 +244,16 @@ def test_the_two_blind_judgments_agree_or_judge_c_decides():
 def test_judge_d_and_the_diagnostic_receive_the_exact_union():
     listed = ["DORA:19.1", "MiCA:60.1"]
     pool_labels: dict[str, list[dict[str, Any]]] = {
-        "MiCA:3.1": [{"grade": 0, "ambiguous": False}],  # nobody listed, judged 0: out
-        "MiCA:3.2": [{"grade": None, "ambiguous": False}],  # left unjudged: out
+        "MiCA:3.1": [{"grade": 0, "ambiguous": False}],  # an explicit negative: out
+        # a positive first judgment, then judge C leaves it unjudged: in, by the first
+        "MiCA:3.2": [{"grade": 2}, {"grade": 0}, {"grade": None, "ambiguous": False}],
         "MiCA:60.2": [{"grade": 1, "ambiguous": False}, {"grade": 0, "ambiguous": False}],
         "PSD2:4.1": [{"grade": 0, "ambiguous": True}, {"grade": 0, "ambiguous": True}],
     }
     final = {"DORA:19.1": 3, "MiCA:60.1": 0, "MiCA:60.2": 0, "PSD2:4.1": 0}
     assert hj.diagnostic_set(listed, pool_labels, final) == [
         "DORA:19.1",
+        "MiCA:3.2",
         "MiCA:60.1",
         "MiCA:60.2",
         "PSD2:4.1",
@@ -233,6 +261,30 @@ def test_judge_d_and_the_diagnostic_receive_the_exact_union():
     # a final grade >= 1 alone brings a pool node in, and a listed node needs nothing else
     assert "MiCA:3.1" in hj.diagnostic_set([], {"MiCA:3.1": []}, {"MiCA:3.1": 1})
     assert hj.diagnostic_set(["MiCA:60.1", "MiCA:60.1"], {}, {}) == ["MiCA:60.1"]
+
+
+# ---------------------------------------------------------------------------
+# an explicit negative out of the qrels changes no metric of the S4 plan
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.evaluator
+def test_leaving_an_explicit_negative_out_of_the_qrels_changes_no_metric_of_the_plan():
+    """The chunk an explicit negative falls in, judged 0 or unjudged: Recall, MRR and nDCG
+    (the S4 plan's metrics) are the same. Judged@10, a diagnostic of the evaluation code outside
+    the plan, is the one that tells them apart, and the pool's record keeps the negative."""
+    rankings = {"q1": ["c-negative", "c-relevant", "c-other"], "q2": ["c-other", "c-negative"]}
+    with_zero = {
+        "q1": {"c-relevant": 3, "c-negative": 0},
+        "q2": {"c-relevant": 2, "c-negative": 0},
+    }
+    without = {"q1": {"c-relevant": 3}, "q2": {"c-relevant": 2}}
+    one = ir_metrics.standard_scores(with_zero, rankings)
+    two = ir_metrics.standard_scores(without, rankings)
+    plan = ["Recall@5", "Recall@10", "Recall@20", "MRR@10", "nDCG@10"]
+    for query in rankings:
+        assert {m: one[query][m] for m in plan} == {m: two[query][m] for m in plan}
+    assert one["q1"]["Judged@10"] != two["q1"]["Judged@10"]
 
 
 # ---------------------------------------------------------------------------

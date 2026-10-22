@@ -116,8 +116,16 @@ def test_an_exposed_unlisted_node_enters_the_pool_and_is_judged_blind(base, firs
     pool = value_of(pipeline, pid, "exposure_pool")
     assert all(pool["exposed_by"][n] == ["search_2"] for n in exposed)
     assert pool["unlisted"] == len(exposed) and pool["second_judgment"] == []
-    # judged once, blind, and final at 0: kept in the pool's record, never a qrel
-    assert pool["screened"] == {n: {"grade": 0, "ambiguous": False} for n in exposed}
+    # judged once, blind, explicitly 0: an explicit negative, in the pool's record, no qrel
+    assert set(pool["explicit_negative"]) == set(exposed)
+    for n in exposed:
+        assert pool["pool_adjudication"][n] == {
+            "first": {"grade": 0, "ambiguous": False},
+            "second": None,
+            "judge_c": None,
+            "outcome": "explicit_negative",
+            "final": {"grade": 0, "ambiguous": False},
+        }
     stages = stage_names(pipeline, pid)
     assert "pool_b1:1" in stages and not any(s.startswith("pool_b2") for s in stages)
     assert not set(exposed) & set(graded(ready_of(pipeline, first)))
@@ -159,6 +167,10 @@ def test_the_pool_replays_identically_from_the_logs(base, first, tmp_path, monke
     before = pipeline.store.verify()
     pool = value_of(pipeline, pid, "exposure_pool")
     records = {n: r.record() for n, r in pipeline.ready.items()}
+    # the replayed state holds the judgments as given: an explicit 0 is the integer 0
+    first_grades = {g["grade"] for g in value_of(pipeline, pid, "pool_b1:1")["grades"]}
+    assert first_grades == {0, 1} and None not in first_grades
+    assert pool["pool_adjudication"][exposed[1]]["outcome"] == "explicit_negative"
     pipeline.store.close()
     again, _ = reopen(base, tmp_path / "test", scenario)
     with again.store.no_writes():
@@ -235,25 +247,22 @@ def test_two_agreeing_blind_judgments_are_final_without_judge_c(base, first, tmp
 
 def test_the_orchestrator_never_gives_a_pool_node_its_label(base, first, tmp_path):
     """Every unlisted node's final label is one a judge gave it: the first blind judgment when
-    final, the agreed one, or judge C's; never one the orchestrator implies or repairs."""
-    zero, unjudged = article_nodes(base, "DORA", "28")[0], article_nodes(base, "DORA", "29")[0]
+    it is an explicit grade 0, the agreed one, or judge C's; never one the orchestrator implies
+    or repairs."""
+    zero = article_nodes(base, "DORA", "28")[0]
     two = EXTRA_NODE  # grade 2 to every judge of this cell, judge D too
     scenario = Scenario(
-        expose={(first, "searcher_1"): [zero, unjudged, two]},
-        pool_grade={
-            (first, "pool_judge_1"): {zero: 0, unjudged: None, two: 2},
-            (first, "pool_judge_2"): {two: 2},
-        },
+        expose={(first, "searcher_1"): [zero, two]},
+        pool_grade={(first, "pool_judge_1"): {zero: 0, two: 2}, (first, "pool_judge_2"): {two: 2}},
         extra_grade={first: 2},
     )
     pipeline, executor = built(base, tmp_path, [first], scenario)
     pool = value_of(pipeline, f"{first}-a1", "exposure_pool")
-    assert pool["screened"] == {
-        zero: {"grade": 0, "ambiguous": False},
-        unjudged: {"grade": None, "ambiguous": False},
-    }
+    assert pool["explicit_negative"] == [zero]
+    assert pool["pool_adjudication"][two]["outcome"] == "agreed"
+    assert pool["pool_adjudication"][two]["final"] == {"grade": 2, "ambiguous": False}
     ready = ready_of(pipeline, first)
-    assert graded(ready)[two] == 2 and zero not in graded(ready) and unjudged not in graded(ready)
+    assert graded(ready)[two] == 2 and zero not in graded(ready)
     # only pool nodes were judged by the pool variant, and each once in its first judgment
     judged = [
         node
@@ -261,7 +270,112 @@ def test_the_orchestrator_never_gives_a_pool_node_its_label(base, first, tmp_pat
         if "CANDIDATE" in packet and packet in packets_of(executor, "pool_judge_1")
         for _, node in _candidates_in(packet)
     ]
-    assert sorted(set(judged)) == sorted({zero, unjudged, two})
+    assert sorted(set(judged)) == sorted({zero, two})
+
+
+# ---------------------------------------------------------------------------
+# the exact-coverage contract: an absent judgment is never a negative one
+# ---------------------------------------------------------------------------
+
+
+def until_stop(pipeline: hpl.Pipeline, order: list[str], cell: str) -> None:
+    with pytest.raises(hpl.TechnicalStop):
+        for c in order:
+            pipeline.build_cell(c)
+            if c == cell:
+                break
+
+
+def failures_at(pipeline: hpl.Pipeline, stage: str) -> list[dict[str, Any]]:
+    runs = [r["run_id"] for r in pipeline.store.runs() if r["stage"] == stage]
+    return pipeline.store.failure_payloads(runs)
+
+
+@pytest.mark.parametrize("fault", ["missing", "duplicate", "unknown", "wrong"])
+def test_a_first_pool_judgment_short_of_the_exact_set_is_technical(
+    base, first, order, tmp_path, fault
+):
+    nodes = article_nodes(base, "DORA", "28")[:2]
+    scenario = Scenario(
+        expose={(first, "searcher_2"): nodes}, identity={(first, "pool_judge_1"): [fault]}
+    )
+    pipeline, _ = make(base, tmp_path / "test", scenario)
+    until_stop(pipeline, order, first)
+    (failure,) = failures_at(pipeline, "pool_b1:1")
+    assert (failure["reason"], failure["check"], failure["violations"]) == (
+        "malformed_session",
+        "judge_answer_complete",
+        [],
+    )
+    # nothing was finalized from the failed answer: no pool record, no negative inferred
+    assert pipeline.store.stage(f"{first}-a1", "exposure_pool") is None
+
+
+def test_an_ungraded_node_is_technical_three_times_and_never_a_zero(base, first, order, tmp_path):
+    """A null grade, every execution: the role's contract fails three times and the stage is
+    unresolved for a person; never a grade 0, never semantic_inadmissible."""
+    node = article_nodes(base, "DORA", "28")[0]
+    scenario = Scenario(
+        expose={(first, "searcher_2"): [node]},
+        pool_grade={(first, "pool_judge_1"): {node: None}},
+    )
+    pipeline, _ = make(base, tmp_path / "test", scenario)
+    states = []
+    for n in range(3):
+        pipeline._reset()
+        pipeline.resuming = n > 0
+        until_stop(pipeline, order, first)
+        states.append(pipeline.store.status())
+    assert states == ["pending_technical", "pending_technical", "pending_technical_unresolved"]
+    failures = failures_at(pipeline, "pool_b1:1")
+    assert len(failures) == 3
+    assert all(f["check"] == "judge_answer_complete" and f["violations"] == [] for f in failures)
+    assert all(a["outcome"] == "accepted" for a in pipeline.store.attempts())  # no rejection
+    assert pipeline.store.stage(f"{first}-a1", "exposure_pool") is None
+
+
+def test_a_second_pool_judgment_missing_a_routed_node_is_technical(base, first, order, tmp_path):
+    node = article_nodes(base, "DORA", "28")[0]
+    scenario = Scenario(
+        expose={(first, "searcher_2"): [node]},
+        pool_grade={(first, "pool_judge_1"): {node: 1}},
+        identity={(first, "pool_judge_2"): ["missing"]},
+    )
+    pipeline, _ = make(base, tmp_path / "test", scenario)
+    until_stop(pipeline, order, first)
+    (failure,) = failures_at(pipeline, "pool_b2:1")
+    assert (failure["reason"], failure["check"]) == ("malformed_session", "judge_answer_complete")
+    assert pipeline.store.stage(f"{first}-a1", "pool_b1:1") is not None
+
+
+def test_an_audit_pool_judgment_missing_a_node_is_technical(base, audited, order, tmp_path):
+    """The audit can never turn a missing answer into a grade 0."""
+    node = article_nodes(base, "DORA", "28")[0]
+    scenario = Scenario(
+        expose={(audited, "audit_searcher"): [node]},
+        identity={(audited, "pool_judge_1"): ["missing"]},
+    )
+    pipeline, _ = make(base, tmp_path / "test", scenario)
+    until_stop(pipeline, order, audited)
+    (failure,) = failures_at(pipeline, "audit_b1:1")
+    assert (failure["reason"], failure["check"]) == ("malformed_session", "judge_answer_complete")
+    assert pipeline.store.stage(f"{audited}-a1", "omission_audit") is None
+    assert not pipeline.omission_log  # no audit was decided from the failed answer
+
+
+def test_the_qrels_leave_an_explicit_negative_out_and_the_provenance_keeps_it(
+    base, first, tmp_path
+):
+    node = article_nodes(base, "DORA", "28")[0]
+    scenario = Scenario(expose={(first, "searcher_3"): [node]})
+    pipeline, _ = built(base, tmp_path, [first], scenario)
+    record = ready_of(pipeline, first).record()
+    assert node not in {f"{q['act']}:{q['path']}" for q in record["qrels"]}
+    assert node not in {a["target"] for a in record["adjudications"]}
+    discovery = record["provenance"]["evidence_discovery"]
+    assert discovery["explicit_negative"] == [node]
+    assert discovery["pool_adjudication"][node]["first"] == {"grade": 0, "ambiguous": False}
+    assert pipeline.report()["evidence_discovery"]["explicit_negative"] == 1
 
 
 def test_a_broken_pool_identity_is_a_technical_failure(base, first, order, tmp_path):
@@ -360,7 +474,7 @@ def test_an_audit_label_on_a_pooled_node_is_provenance_only(base, audited, tmp_p
     pipeline, _ = built(base, tmp_path, [audited], scenario)
     pid = f"{audited}-a1"
     pool = value_of(pipeline, pid, "exposure_pool")
-    assert pool["screened"] == {EXTRA_NODE: {"grade": 0, "ambiguous": False}}
+    assert pool["explicit_negative"] == [EXTRA_NODE]
     audit = value_of(pipeline, pid, "omission_audit")
     assert audit["new_listed"] == [] and audit["new_exposed"] == []
     assert audit["judgment_discrepancies"] == [{"node": EXTRA_NODE, "direction": "0_to_1_or_more"}]

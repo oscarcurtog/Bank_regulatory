@@ -165,8 +165,8 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
             # judge B's pool variant on the exposure pool's nodes no search listed: the first
             # blind judgment, and the second where the first is a grade >= 1 or an ambiguity
             "pool_judge_1",
-            "judge_b_pool.v1",
-            ("judge_b_pool.v1",),
+            "judge_b_pool.v2",
+            ("judge_b_pool.v2",),
             "headless",
             (),
             "nodes the searches received in full, with their legal context, from the corpus",
@@ -176,8 +176,8 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
         ),
         RoleContract(
             "pool_judge_2",
-            "judge_b_pool.v1",
-            ("judge_b_pool.v1",),
+            "judge_b_pool.v2",
+            ("judge_b_pool.v2",),
             "headless",
             (),
             "the nodes the first pool judgment graded >= 1 or found ambiguous, from the corpus",

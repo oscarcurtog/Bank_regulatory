@@ -98,7 +98,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 1461 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 1471 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -147,7 +147,7 @@ uv pip install --require-hashes --no-deps -r requirements-embed.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest skips the 245 tests marked `corpus`: they need `data/raw/`, which is
+Without the corpus, pytest skips the 253 tests marked `corpus`: they need `data/raw/`, which is
 not in the repository (see [Data and reproducibility](#data-and-reproducibility)). The 31 tests
 marked `embedding_model` need the `embed` extra and the weights of the three embedding models and
 the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`); two of them also
@@ -162,7 +162,7 @@ against a service container of the same pinned image. The one test marked
 does not exist; every other test of the internal TEST set makes a synthetic one. One contract
 test needs the history back to E's DEV result and is skipped in a shallow clone such as CI's,
 and the host identity test runs on macOS only. In CI (no corpus, no model, PostgreSQL up)
-pytest reports `1181 passed, 280 skipped`.
+pytest reports `1183 passed, 288 skipped`.
 
 ## Docker
 
@@ -230,7 +230,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 | `data/external/` | no | the external benchmark of T4 (third-party data, CC BY-NC-SA 4.0) and everything derived from it |
 
-Without the corpus you can run the test suite (in CI, 1181 tests pass and 280 are skipped with
+Without the corpus you can run the test suite (in CI, 1183 tests pass and 288 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported` and PostgreSQL up), the linters and
 type checks, and both Docker images. The vector index is derived data too: it lives in a Docker
 volume and is rebuilt from `data/chunks/` and `data/embeddings/`.
@@ -453,7 +453,9 @@ blind searches, each a fresh isolated context with the same frozen packet, readi
 only through an evidence broker and seeing nothing of the others. Their listed candidates are
 joined, and every node the broker gave any of them in full enters an exposure pool, listed or
 not: coverage does not depend on what a search chooses to list. A pool node no search listed is
-graded blind by judge B's pool variant, in batches of at most 34 nodes and 9,773 tokens. A grade
+graded blind by judge B's pool variant, in batches of at most 34 nodes and 9,773 tokens; each
+node it is shown needs an explicit grade, and one left out or ungraded is a failure of its
+contract, never a grade 0. A grade
 1 or more, or an ambiguity, gets a second blind judgment, and judge C decides where the two
 differ. In 12 cells fixed before authoring, a fourth blind search is the omission audit: a node
 it listed or read in full outside the pool, adjudicated grade 1 or more, stops the construction
@@ -473,7 +475,7 @@ may run START or RESUME and resume again only under its own policy: a technical 
 the invocation just produced, of a kind the protocol retries. It never freezes.
 
 Before the first need, the construction is frozen. `config/holdout/pre-authoring-contract.json`
-(SHA-256 `5bba6ef7306b496381442fef71061113983e6a3ccf8bbee572f4821940a07d50`) fixes by content 77 files (the code and
+(SHA-256 `eac1d3eb66f546c68233185f8cf24b3f6347e6b315c311847d97f23302745e9a`) fixes by content 77 files (the code and
 configs of E, E5, BM25 and the evaluation, the S4 plan, and the construction's code, inputs and
 templates), the corpus snapshot and chunk layer, and the identity of every model runtime: the
 requested and effective Claude model and its binary, and the MLX packages, model files and host

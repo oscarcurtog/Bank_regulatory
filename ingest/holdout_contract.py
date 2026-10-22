@@ -398,8 +398,11 @@ def construction(
             "the node; the answerability, search_1's",
             "exposure_pool": "every node a normal search received in full (an article or nodes "
             "page) or listed, that can be judged; a search snippet is not a full reading",
-            "unlisted_nodes": "judge B's pool variant (judge_b_pool.v1), blind; a grade >= 1 or "
-            "an ambiguity gets a second blind judgment, and judge C decides where they differ",
+            "unlisted_nodes": "judge B's pool variant (judge_b_pool.v2), blind, every node shown "
+            "graded explicitly 0 to 3 with its ambiguity, exactly once (a node left out or "
+            "ungraded is a failure of the role's contract, never a grade 0); an explicit grade 0 "
+            "that is not ambiguous is final, a grade >= 1 or an ambiguity gets a second blind "
+            "judgment by the same contract, and judge C decides where they differ",
             "pool_batches": {
                 "max_nodes": hp.POOL_BATCH_MAX_NODES,
                 "max_tokens": hp.POOL_BATCH_MAX_TOKENS,

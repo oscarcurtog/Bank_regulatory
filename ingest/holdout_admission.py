@@ -323,9 +323,12 @@ def judge_b_problems(answer: Any, ids: Mapping[str, str]) -> list[str]:
 
 
 def pool_problems(answer: Any, ids: Mapping[str, str]) -> list[str]:
-    """Judge B's pool variant's answer (judge_b_pool.v1): one entry for every node shown, by its
-    exact opaque id (ids: id -> node), and only those, each a label the adjudication can hold.
-    It gives no answerability: none is asked."""
+    """Judge B's pool variant's answer (judge_b_pool.v2), the exact-coverage contract of the
+    person's decision of 2026-10-22: the set of answered ids is exactly the set shown (ids: id
+    -> node), each once, each with an explicit grade 0 to 3 and an explicit true or false
+    ambiguity, each a label the adjudication can hold. A node left out, ungraded (null),
+    unknown, repeated or replaced is a failure of the role's contract: never a grade 0. It
+    gives no answerability: none is asked."""
     if not isinstance(answer, Mapping):
         return ["the answer is not an object"]
     grades = answer.get("grades")
@@ -340,7 +343,9 @@ def pool_problems(answer: Any, ids: Mapping[str, str]) -> list[str]:
             continue
         named.append(g["item_id"])
         problems += _identity_conflicts(g, ids.get(g["item_id"]), where)
-        problems += _label_problems(g, where, "reason", grade_nullable=True)
+        if not isinstance(g.get("ambiguous"), bool):
+            problems.append(f"{where}: ambiguous not given as true or false")
+        problems += _label_problems(g, where, "reason", grade_nullable=False)
     problems += _set_problems(named, list(ids), "grades")
     if not problems:
         # every label exactly as the adjudication record will build it (hj.pool_judgments)

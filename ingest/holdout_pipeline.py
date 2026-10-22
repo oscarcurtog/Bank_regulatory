@@ -1667,7 +1667,16 @@ class Pipeline:
         pool_1, b1_stages = self._pool_round(
             pid, draft, "pool_b1", "pool_judge_1", unlisted, searched
         )
-        flagged = [n for n in unlisted if hj.needs_second_judgment(pool_1[n])]
+        # an explicit grade 0 that is not ambiguous is final; a grade >= 1 or an ambiguity
+        # gets a second blind judgment. No unjudged label passed the admission, and none is
+        # ever read as a 0 (hj.pool_route refuses it: the record_assembly stop)
+        routes = self._built(
+            "record_assembly",
+            "adjudication",
+            pid,
+            lambda: {n: hj.pool_route(pool_1[n]) for n in unlisted},
+        )
+        flagged = [n for n in unlisted if routes[n] == "second_judgment"]
         pool_2, b2_stages = self._pool_round(
             pid,
             draft,
@@ -1724,10 +1733,16 @@ class Pipeline:
                 _assembled_record(assembled),
             )
         )
-        # the pool's own record: every node, who listed and who received it, and the final
-        # label of those judge B's pool variant graded alone (no qrel: the record format holds
-        # two judgments, and an unjudged node and a grade 0 count alike in every S4 metric)
-        screened = {n: pool_1[n] for n in unlisted if n not in flagged}
+        # the pool's own record: every node, who listed and who received it, and every
+        # unlisted node's judgments with its outcome. An explicit negative (one blind grade 0,
+        # not ambiguous) is kept here and in the READY provenance, not as a qrel: the record
+        # format holds two judgments for a qrel, and no metric of the S4 plan tells it from an
+        # unjudged node
+        negatives = {n: pool_1[n] for n in unlisted if routes[n] == "final_negative"}
+        finals = {
+            x.target: {"grade": x.final.grade, "ambiguous": x.final.ambiguous}
+            for x in final.adjudications
+        }
         pool_record = self._decide(
             pid,
             "exposure_pool",
@@ -1735,10 +1750,10 @@ class Pipeline:
             {
                 **discovery.record(),
                 "second_judgment": flagged,
-                "screened": {
-                    n: {"grade": j.get("grade"), "ambiguous": bool(j.get("ambiguous"))}
-                    for n, j in screened.items()
-                },
+                "explicit_negative": sorted(negatives),
+                "pool_adjudication": _pool_adjudication(
+                    unlisted, {**pool_1}, pool_2, c_answers, finals
+                ),
                 "batches": {"pool_b1": len(b1_stages), "pool_b2": len(b2_stages)},
             },
         )
@@ -1747,7 +1762,7 @@ class Pipeline:
         if cell.cell_id in w.omission:
             assert audit_file is not None
             normal: dict[str, int | None] = {f"{q.act}:{q.path}": q.grade for q in final.qrels}
-            normal |= {n: j.get("grade") for n, j in screened.items()}
+            normal |= {n: j.get("grade") for n, j in negatives.items()}
             self._omission_audit(
                 cell, pid, need_id, draft, discovery.pool, normal, audit_file, audit_exposure
             )
@@ -2108,7 +2123,13 @@ class Pipeline:
         )
         inputs = self._inputs(pid, "lock", *NORMAL_SEARCHES, "audit_search")
         first, b1 = self._pool_round(pid, draft, "audit_b1", "pool_judge_1", new, inputs)
-        flagged = [n for n in nodes.exposed if hj.needs_second_judgment(first[n])]
+        routes = self._built(
+            "record_assembly",
+            "omission_audit",
+            pid,
+            lambda: {n: hj.pool_route(first[n]) for n in nodes.exposed},
+        )
+        flagged = [n for n in nodes.exposed if routes[n] == "second_judgment"]
         second, b2 = self._pool_round(
             pid, draft, "audit_b2", "pool_judge_2", flagged, {**inputs, **self._inputs(pid, *b1)}
         )
@@ -2137,7 +2158,7 @@ class Pipeline:
             lambda: hj.assemble_audit(need_id, candidates, a, b, c_answers, w.texts),
         )
         finals = {x.target: x.final.grade for x in decided.adjudications}
-        screened = {n: first[n].get("grade") for n in nodes.exposed if n not in flagged}
+        negatives = [n for n in nodes.exposed if routes[n] == "final_negative"]
         discrepancies = []
         for node, label in sorted(nodes.on_pool.items()):
             audit_grade, normal_grade = label.get("grade") or 0, normal.get(node) or 0
@@ -2154,7 +2175,17 @@ class Pipeline:
                 "new_exposed": list(nodes.exposed),
                 "second_judgment": flagged,
                 "final_grades": dict(sorted(finals.items())),
-                "screened": dict(sorted(screened.items())),
+                "explicit_negative": negatives,
+                "pool_adjudication": _pool_adjudication(
+                    new,
+                    {**a, **{n: first[n] for n in negatives}},
+                    b,
+                    c_answers,
+                    {
+                        x.target: {"grade": x.final.grade, "ambiguous": x.final.ambiguous}
+                        for x in decided.adjudications
+                    },
+                ),
                 "judgment_discrepancies": discrepancies,
             },
         )
@@ -2166,7 +2197,12 @@ class Pipeline:
                 "proposal_id": pid,
                 "need_id": need_id,
                 "additional_nodes": [*record["new_listed"], *record["new_exposed"]],
-                "additional_final_grades": {**record["screened"], **record["final_grades"]},
+                # an explicit negative is a grade 0 its judge gave; judge C may leave a node
+                # unjudged (None), which is never a 0
+                "additional_final_grades": {
+                    **{n: 0 for n in record["explicit_negative"]},
+                    **record["final_grades"],
+                },
                 "judgment_discrepancies": record["judgment_discrepancies"],
             }
         )
@@ -2564,7 +2600,10 @@ class Pipeline:
                 "cells": len(audited),
                 "additional_nodes": sum(len(o["additional_nodes"]) for o in audited),
                 "grade_0_additions": sum(
-                    not g for o in audited for g in o["additional_final_grades"].values()
+                    g == 0 for o in audited for g in o["additional_final_grades"].values()
+                ),
+                "unjudged_additions": sum(
+                    g is None for o in audited for g in o["additional_final_grades"].values()
                 ),
                 "attempts_audited": len(self.omission_log),
                 # the audit search's labels on nodes the pool held already: provenance, counted
@@ -2622,7 +2661,7 @@ class Pipeline:
                 out[key] += int(found.get(key, 0))
             second = list(found.get("second_judgment", []))
             out["second_judgment"] += len(second)
-            out["screened"] += len(found.get("screened", {}))
+            out["explicit_negative"] += len(found.get("explicit_negative", []))
             out["unlisted_grade_1_or_more"] += sum(
                 n in grades and grades[n].grade >= 1 for n in second
             )
@@ -2669,6 +2708,37 @@ class Pipeline:
             ) from error
         commit({**record, "backup": backup, "state": self.store.summary()})
         return record
+
+
+def _pool_adjudication(
+    nodes: Sequence[str],
+    first: Mapping[str, Mapping[str, Any]],
+    second: Mapping[str, Mapping[str, Any]],
+    c_answers: Mapping[str, Mapping[str, Any]],
+    finals: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Each pool node's judgments as they were given: its first blind judgment, its second and
+    judge C's when it had them, its outcome and its final label. An explicit negative has one
+    judgment, an explicit grade 0; a node with two has its final label from the adjudication
+    record (finals). An unjudged first judgment never reaches this record: the admission
+    refuses it, and the routing would stop the construction."""
+
+    def label(j: Mapping[str, Any]) -> dict[str, Any]:
+        return {"grade": j.get("grade"), "ambiguous": bool(j.get("ambiguous"))}
+
+    out: dict[str, Any] = {}
+    for n in nodes:
+        adjudicated = n in second
+        out[n] = {
+            "first": label(first[n]),
+            "second": label(second[n]) if adjudicated else None,
+            "judge_c": label(c_answers[n]) if n in c_answers else None,
+            "outcome": (
+                ("judge_c" if n in c_answers else "agreed") if adjudicated else "explicit_negative"
+            ),
+            "final": dict(finals[n]) if adjudicated else label(first[n]),
+        }
+    return out
 
 
 def _sha(text: str) -> str:

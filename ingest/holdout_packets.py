@@ -28,7 +28,7 @@ TEMPLATES = bm.TEMPLATES_DIR / "holdout"
 # Every attempt of a cell gets frame A (Codex Gate 2, P1.2); v1's frames B and C are history.
 ATTEMPT_FRAMES = TEMPLATES / "attempt_frames.v2.json"
 JUDGE_C_SEED = 20261019
-# A batch of judge B's pool variant (judge_b_pool.v1, the design of 2026-10-22): at most the 34
+# A batch of judge B's pool variant (judge_b_pool.v2, the design of 2026-10-22): at most the 34
 # candidates judge B graded in one packet of the protocol-development runs, and at most the
 # 9773 tokens of the largest judge B packet those runs admitted (counted with the project's
 # frozen tokenizer, ingest/chunks.py): never a packet larger than one judge B already received.
@@ -517,14 +517,16 @@ def judge_b_pool_packet(
     opening: str = JUDGE_B_OPENING,
     ref: str | None = None,
 ) -> str:
-    """Judge B's pool variant (judge_b_pool.v1): judge B's packet and rubric for nodes of the
-    exposure pool that no search listed, each under the opaque id the orchestrator gave it, and
-    no answerability. Nothing in it says how a node reached the pool or what anyone thought."""
+    """Judge B's pool variant (judge_b_pool.v2): judge B's packet and rubric for nodes of the
+    exposure pool that no search listed, each under the opaque id the orchestrator gave it, no
+    answerability, and an explicit grade and ambiguity asked for every node shown, exactly once
+    (no node may be left unjudged). Nothing in it says how a node reached the pool or what
+    anyone thought."""
     judged = set(nodes)
     blocks = [
         f"CANDIDATE {ids[r]}\n" + corpus.node_block(r, judged, []) for r in corpus.sort(nodes)
     ]
-    return template("judge_b_pool.v1").substitute(
+    return template("judge_b_pool.v2").substitute(
         opening=opening,
         rules=judge_bc_rules(),
         need_id=ref or need.need_id,
