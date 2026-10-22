@@ -73,7 +73,7 @@ def test_ready_needs_and_cells_are_one_to_one(full):
 
 def test_the_omission_audit_runs_on_its_cells_only(base, full):
     pipeline, executor, _ = full
-    searched = {cell for role, cell, _ in executor.calls if role == "omission_searcher"}
+    searched = {cell for role, cell, _ in executor.calls if role == "audit_searcher"}
     assert searched == set(ho.omission_cells(base["grid"]))
     assert len(pipeline.omission_log) == 12
 
@@ -86,7 +86,7 @@ def test_every_need_was_locked_once_before_its_judges(full):
     for r in pipeline.store.ready():
         pid = r["proposal_id"]
         order = [e.stage for e in events if e.proposal_id == pid and e.kind == "stage_admitted"]
-        assert order.index("lock") < order.index("judge_a")
+        assert order.index("lock") < order.index("search_1")
 
 
 def test_no_person_reviews_a_statement(full):
@@ -137,8 +137,8 @@ def test_three_methodological_rejections_leave_the_cell_unfilled(base, tmp_path)
         ("raise", "judge_b"),
         ("contaminate", "judge_b"),
         ("contaminate", "concept_author"),
-        ("resource", "judge_a"),
-        ("protocol", "judge_a"),
+        ("resource", "searcher_1"),
+        ("protocol", "searcher_3"),
         ("malformed", "gatekeeper"),
         ("raise", "metadata_adjudicator"),
         ("raise", "qwen_diagnostic"),

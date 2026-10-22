@@ -76,7 +76,10 @@ RETRIED = frozenset(
 )
 FORBIDDEN = "forbidden content outside the authorized input: "
 STALL_SECONDS = 5400  # longer than any execution's deadline (holdout_process.py)
-INVOCATION_SECONDS = 48 * 3600
+# the outer deadline of one invocation (the person's decision of 2026-10-22, prospective and
+# operational: a construction of three searches and an exposure pool takes some 43 to 45 hours);
+# past it the group is ended and the controller stops, never resumes
+INVOCATION_SECONDS = 72 * 3600
 POLL_SECONDS = 30
 MAX_CYCLES = 500
 TERMINATION_GRACE = 120.0  # for the orchestrator to end its own children on SIGTERM

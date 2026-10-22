@@ -112,7 +112,7 @@ def test_resume_in_a_new_process_goes_back_to_the_failed_stage_only(
 ):
     cell = order[1]
     directory = tmp_path / "test"
-    pipeline, _ = make(base, directory, Scenario(technical={cell: "judge_a"}))
+    pipeline, _ = make(base, directory, Scenario(technical={cell: "searcher_1"}))
     with pytest.raises(hpl.TechnicalStop):
         pipeline.build()
     pid = f"{cell}-a1"
@@ -124,12 +124,12 @@ def test_resume_in_a_new_process_goes_back_to_the_failed_stage_only(
     resumed, executor = reopen(base, directory, Scenario())  # the failure was transient
     resumed.resume()
     assert roles_on(executor, order[0]) == []  # a finished cell is replayed, never run
-    assert roles_on(executor, cell)[0] == "judge_a"
+    assert roles_on(executor, cell)[0] == "searcher_1"
     authors = {"concept_author", "statement_writer", "gatekeeper", "query_writer"}
     assert not authors & set(roles_on(executor, cell))
     attempts = [a for a in resumed.store.attempts() if a["cell_id"] == cell]
     assert [(a["number"], a["need_id"], a["outcome"]) for a in attempts] == [(1, need, "accepted")]
-    runs = resumed.store.runs(pid, "judge_a")
+    runs = resumed.store.runs(pid, "search_1")
     assert [(r["technical_run"], r["status"]) for r in runs] == [(1, "failed"), (2, "admitted")]
     assert len({r["packet_sha256"] for r in runs}) == 1 and len({r["run_id"] for r in runs}) == 2
     assert outcome(resumed) == reference
@@ -219,7 +219,7 @@ def test_a_valid_answer_is_never_executed_again(base, order, tmp_path):
     ("boundary", "kind", "stage", "before"),
     [
         ("between two stages", "run_started", "judge_b", True),
-        ("after a stage's admission, before the next", "stage_admitted", "judge_a", False),
+        ("after a stage's admission, before the next", "stage_admitted", "search_1", False),
         ("after the need id, before the queries", "need_id_given", None, False),
         ("after the lock, before the judges", "stage_admitted", "lock", False),
         ("after READY, before the next cell", "need_ready", None, False),
@@ -262,7 +262,7 @@ def test_a_crash_during_the_call_is_one_interrupted_execution(base, order, tmp_p
     assert outcome(resumed) == reference
 
 
-@pytest.mark.parametrize("role", ["judge_b", "judge_a", "qwen_diagnostic"])
+@pytest.mark.parametrize("role", ["judge_b", "searcher_2", "qwen_diagnostic"])
 def test_a_response_spooled_before_the_orchestrator_dies_is_recovered(
     base, order, tmp_path, reference, role
 ):
@@ -278,7 +278,7 @@ def test_a_response_spooled_before_the_orchestrator_dies_is_recovered(
     resumed, executor = reopen(base, directory, Scenario())
     resumed.resume()
     assert role not in roles_on(executor, cell) and len(executor.recovered) == 1
-    stage = {"judge_b": "judge_b", "judge_a": "judge_a", "qwen_diagnostic": "diagnostic"}[role]
+    stage = {"judge_b": "judge_b", "searcher_2": "search_2", "qwen_diagnostic": "diagnostic"}[role]
     runs = resumed.store.runs(f"{cell}-a1", stage)
     assert [(r["technical_run"], r["status"]) for r in runs] == [(1, "admitted")]
     responded = [
@@ -296,19 +296,19 @@ def test_a_response_recorded_before_a_crash_is_audited_not_run_again(
     cell = order[0]
     directory = tmp_path / "test"
     pipeline, _ = make(base, directory)
-    crash_on(pipeline.store, "run_responded", stage="judge_a")
+    crash_on(pipeline.store, "run_responded", stage="search_1")
     with pytest.raises(Crash):
         pipeline.build()
     die(pipeline)
     resumed, executor = reopen(base, directory, Scenario())
     resumed.resume()
-    assert "judge_a" not in roles_on(executor, cell)
-    runs = resumed.store.runs(f"{cell}-a1", "judge_a")
+    assert "searcher_1" not in roles_on(executor, cell)
+    runs = resumed.store.runs(f"{cell}-a1", "search_1")
     assert [(r["technical_run"], r["status"]) for r in runs] == [(1, "admitted")]
     assert outcome(resumed) == reference
     # the same response delivered again changes nothing; another one is refused
     event = next(
-        e for e in resumed.store.events() if e.kind == "run_responded" and e.stage == "judge_a"
+        e for e in resumed.store.events() if e.kind == "run_responded" and e.stage == "search_1"
     )
     where = {"cell": event.cell_id, "proposal": event.proposal_id, "stage": event.stage}
     assert not resumed.store.record(event.kind, event.key, event.payload, run=event.run_id, **where)

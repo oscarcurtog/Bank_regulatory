@@ -65,8 +65,10 @@ PARTIAL = [
     ("DORA:19.3", 0),
 ]
 NONE = [("MiCA:149.2", 1), ("MiCA:149.1", 1), ("DORA:64", 0)]
-EXTRA_NODE = "MiCA:143.3"  # what the omission audit's search C adds in a scenario
-B_EXTRA_NODE = "MiCA:143.2"  # what search B adds to search A's candidates in a scenario
+EXTRA_NODE = "MiCA:143.3"  # what the omission audit's search adds in a scenario
+B_EXTRA_NODE = "MiCA:143.2"  # what search_2 adds to search_1's candidates in a scenario
+SEARCHERS = ("searcher_1", "searcher_2", "searcher_3", "audit_searcher")
+POOL_JUDGES = ("pool_judge_1", "pool_judge_2")
 OVER_LIMIT = 20000  # a token count over the diagnostic's frozen limit
 CONTAMINATION = " The E5 baseline reached Recall@10 0.824."
 # The model the stand-in reports, in the shape of the authenticated runtime's own report
@@ -263,6 +265,13 @@ class Scenario:
     die_after: tuple[str, str] | None = None
     extra_grade: dict[str, int] = field(default_factory=dict)  # cell -> grade of EXTRA_NODE
     b_extra: dict[str, int] = field(default_factory=dict)  # cell -> grade of B_EXTRA_NODE
+    # (cell, role) -> nodes a search receives in full (a `nodes` request) and does not list
+    expose: dict[tuple[str, str], list[str]] = field(default_factory=dict)
+    # (cell, role) -> a pattern a search sends to `search`: it sees snippets, never a full text
+    snippet: dict[tuple[str, str], str] = field(default_factory=dict)
+    # (cell, role) -> node -> what a pool judge gives it: a grade, or {"grade", "ambiguous"};
+    # every other node gets its grade of the evidence (0 outside it)
+    pool_grade: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
     # (cell, role) -> a node of the evidence that search does not list
     drop: dict[tuple[str, str], str] = field(default_factory=dict)
     # (cell, role) -> the problem a search declares, with no candidates at all
@@ -316,6 +325,8 @@ class FakeExecutor:
         self.pipeline: hpl.Pipeline | None = None
         self.calls: list[tuple[str, str, int]] = []  # (role, cell, attempt)
         self.packets: dict[tuple[str, str, int], str] = {}
+        # every packet, in the order sent: a role with several batches sends more than one
+        self.sent: list[tuple[str, str, int, str]] = []
         self.failed: Counter[tuple[str, str]] = Counter()
         self.recovered: list[str] = []
 
@@ -380,6 +391,7 @@ class FakeExecutor:
         cell, number, answerability = self._where()
         self.calls.append((role, cell, number))
         self.packets[(role, cell, number)] = packet
+        self.sent.append((role, cell, number, packet))
         s = self.scenario
         if s.kill == (cell, role):
             os.kill(os.getpid(), signal.SIGKILL)
@@ -434,7 +446,7 @@ class FakeExecutor:
                 answer = self._reply(role, _ref_of(packet), packet, cell, number, answerability)
             faults = self.scenario.identity.get((cell, role))
             if faults:
-                key = "grades" if role == "judge_b" else "items"
+                key = "grades" if role in ("judge_b", *POOL_JUDGES) else "items"
                 node_of = dict(_candidates_in(packet)) or {
                     m: m for m in re.findall(r"^ITEM (C-[0-9a-f]{12})", packet, re.M)
                 }
@@ -496,9 +508,9 @@ class FakeExecutor:
                 "grades": [
                     {
                         "item_id": i,
-                        "grade": grades[n],
+                        "grade": grades.get(n, 0),
                         "ambiguous": False,
-                        "scope_basis": [n] if grades[n] == 0 else [],
+                        "scope_basis": [n] if grades.get(n, 0) == 0 else [],
                         "reason": "B",
                     }
                     for i, n in _candidates_in(packet)
@@ -507,8 +519,30 @@ class FakeExecutor:
                 "answerability_reason": "B",
                 "missing": None if answerability == "complete" else "the corpus lacks it",
             }
+        if role in POOL_JUDGES:
+            grades = self._truth()
+            given = s.pool_grade.get((cell, role), {})
+            out = []
+            for i, node in _candidates_in(packet):
+                found = given.get(node, grades.get(node, 0))
+                grade, ambiguous = (
+                    (found["grade"], bool(found.get("ambiguous")))
+                    if isinstance(found, dict)
+                    else (found, False)
+                )
+                out.append(
+                    {
+                        "item_id": i,
+                        "grade": grade,
+                        "ambiguous": ambiguous,
+                        "scope_basis": [node] if grade == 0 else [],
+                        "reason": "P",
+                    }
+                )
+            return {"need_id": ref, "grades": out}
         if role == "judge_d":
-            # the evidence as judges A and B see it: D holds the consensus unless told otherwise
+            # the evidence as the searches and judge B see it: D holds the consensus unless told
+            # otherwise
             section = packet.split("ITEMS TO GRADE", 2)[-1]
             node_of = dict(_candidates_in(packet))
             items = [
@@ -574,10 +608,10 @@ class FakeExecutor:
             raise RuntimeError("the stream-json process died")
         s = self.scenario
         evidence = list(self._evidence())
-        if role == "omission_searcher" and cell in s.extra_grade:
+        if role == "audit_searcher" and cell in s.extra_grade:
             evidence.append((EXTRA_NODE, s.extra_grade[cell]))
-        if role in ("second_searcher", "omission_searcher") and cell in s.b_extra:
-            # search B's addition, which search C finds too
+        if role in ("searcher_2", "audit_searcher") and cell in s.b_extra:
+            # search_2's addition, which the audit search finds too
             evidence.append((B_EXTRA_NODE, s.b_extra[cell]))
         dropped = s.drop.get((cell, role))
         evidence = [(n, g) for n, g in evidence if n != dropped]
@@ -608,12 +642,23 @@ class FakeExecutor:
         if queued:
             final = {"need_id": ref, **queued.pop(0)}
         ask = json.dumps({"request": {"op": "nodes", "args": {"refs": [evidence[0][0]]}}})
+        more = []
+        if (cell, role) in s.expose:
+            refs = s.expose[(cell, role)]
+            more.append(json.dumps({"request": {"op": "nodes", "args": {"refs": refs}}}))
+        if (cell, role) in s.snippet:
+            pattern = s.snippet[(cell, role)]
+            more.append(
+                json.dumps(
+                    {"request": {"op": "search", "args": {"scope": "ALL", "pattern": pattern}}}
+                )
+            )
         if failing and kind == "resource":
             replies = [ask] * 33 + [json.dumps({"final": final})]
         elif failing and kind == "protocol":
             replies = ["not a request"] * 3
         else:
-            replies = [ask, ask, json.dumps({"final": final})]
+            replies = [ask, ask, *more, json.dumps({"final": final})]
 
         class Judge:
             received: list[str] = []
@@ -639,7 +684,7 @@ class FakeExecutor:
         answer: dict[str, Any] = {
             "need_id": "x",
             "grades": [
-                {"item_id": i, "grade": grades[n], "ambiguous": False}
+                {"item_id": i, "grade": grades.get(n, 0), "ambiguous": False}
                 for i, n in _candidates_in(messages[0]["content"])
             ],
             "answerability": answerability,

@@ -245,7 +245,7 @@ def test_only_frame_a_is_part_of_the_protocol(tmp_path):
         hp.attempt_frame(old)
 
 
-def test_judge_a_v2_reads_through_the_broker_and_keeps_devs_text(grid):
+def test_the_search_packet_reads_through_the_broker_and_keeps_devs_text(grid):
     from ingest import holdout_broker as hb
 
     need = _need()
@@ -255,5 +255,11 @@ def test_judge_a_v2_reads_through_the_broker_and_keeps_devs_text(grid):
     assert f"at most {hb.MAX_REQUESTS} requests" in packet and "8,000 characters" in packet
     v1 = hp.judge_a_packet(need, grid.cells[0], hp.Path("/OUT/N101.json"), hp.Path("/REPO"))
     keep = packet.split("HOW TO SEARCH")[1].split("THE RULES")[0]
-    assert keep == v1.split("HOW TO SEARCH")[1].split("THE RULES")[0]
+    # DEV's text, word for word, but the suggested number of candidates (judge_a.v3): the
+    # listing is the search's judgment, and coverage the exposure pool's
+    dev = v1.split("HOW TO SEARCH")[1].split("THE RULES")[0]
+    assert "Usually 6 to 16 candidates." in dev and "Usually 6 to 16" not in keep
+    assert keep == dev.replace("Usually 6 to 16 candidates. ", "")
+    assert "Do not list nodes that nobody would consider." in keep
+    assert not re.search(r"\b\d+ to \d+ candidates\b", packet)
     assert hp.judge_a_rules() in packet and hp.judge_a_rules_dev() in v1

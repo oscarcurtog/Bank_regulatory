@@ -196,7 +196,8 @@ def real_runs(world) -> dict[str, hr.RoleRun]:
     metadata = hp.metadata_packet(
         corpus, need, world["fixtures"].qrels_of(need.need_id), "complete", None, ref=ref
     )
-    judge_a = hp.judge_a_broker_packet(need, cell, ref=ref)
+    pool = hp.judge_b_pool_packet(corpus, need, candidates, ids, ref=ref)
+    search = hp.judge_a_broker_packet(need, cell, ref=ref)
 
     class Judge:
         replies = [
@@ -211,7 +212,7 @@ def real_runs(world) -> dict[str, hr.RoleRun]:
             return self.replies[len(self.received) - 1]
 
     judge = Judge()
-    broker = hb.run_judge_a(judge, judge_a, world["tools"])
+    broker = hb.run_judge_a(judge, search, world["tools"])
     runs = {
         "concept_author": run_of("concept_author", concept),
         "statement_writer": run_of("statement_writer", writer),
@@ -221,11 +222,14 @@ def real_runs(world) -> dict[str, hr.RoleRun]:
         "judge_c": run_of("judge_c", judge_c),
         "judge_d": run_of("judge_d", judge_d),
         "metadata_adjudicator": run_of("metadata_adjudicator", metadata),
-        "judge_a": run_of("judge_a", judge_a, judge.replies, broker.sent, broker.log),
-        # search B: search A's packet and broker, in a run of its own
-        "second_searcher": run_of(
-            "second_searcher", judge_a, judge.replies, broker.sent, broker.log
-        ),
+        # judge B's pool variant: its first and its second blind judgment
+        "pool_judge_1": run_of("pool_judge_1", pool),
+        "pool_judge_2": run_of("pool_judge_2", pool),
+        # every search: one packet and broker, each in a run of its own
+        **{
+            role: run_of(role, search, judge.replies, broker.sent, broker.log)
+            for role in hr.SEARCHERS
+        },
     }
     messages = hp.diagnostic_messages(corpus, need, candidates, {}, ids, ref=ref)
     local = hr.RoleRun(
@@ -248,7 +252,7 @@ def real_runs(world) -> dict[str, hr.RoleRun]:
 
 def test_every_real_authorized_run_passes(world):
     runs = real_runs(world)
-    assert set(runs) == set(hr.ROLE_CONTRACTS) - {"omission_searcher", "gatekeeper_evidence"}
+    assert set(runs) == set(hr.ROLE_CONTRACTS) - {"gatekeeper_evidence"}
     for role, run in runs.items():
         result = audit(world, run)
         assert result.ok, (role, result.problems, result.findings)
@@ -299,7 +303,7 @@ def test_a_dev_statement_outside_the_packet_fails_an_author_but_dev_inside_passe
 
 def test_a_modified_packet_fails(world):
     runs = real_runs(world)
-    for role in ("concept_author", "judge_b", "judge_a", "gatekeeper"):
+    for role in ("concept_author", "judge_b", "searcher_1", "pool_judge_1", "gatekeeper"):
         run = runs[role]
         changed = run.packet.replace("information need", "information request", 1)
         assert changed != run.packet
@@ -313,7 +317,7 @@ def test_a_modified_packet_fails(world):
 def test_an_unexpected_orchestrator_message_fails(world):
     runs = real_runs(world)
     hint = "Hint: the answer is in Article 19."
-    for role in ("statement_writer", "judge_b", "judge_a"):
+    for role in ("statement_writer", "judge_b", "searcher_2", "pool_judge_2"):
         run = runs[role]
         forged = run_of(role, run.packet, [*run.replies, "{}"], [*run.sent, hint], run.broker_log)
         problems = audit(world, forged).problems
@@ -321,9 +325,9 @@ def test_an_unexpected_orchestrator_message_fails(world):
 
 
 def test_a_tampered_broker_result_fails(world):
-    run = real_runs(world)["judge_a"]
+    run = real_runs(world)["searcher_3"]
     tampered = [run.sent[0], run.sent[1].replace("DORA", "DORA (see DEV N014)", 1), *run.sent[2:]]
-    forged = run_of("judge_a", run.packet, run.replies, tampered, run.broker_log)
+    forged = run_of("searcher_3", run.packet, run.replies, tampered, run.broker_log)
     assert any("not what the corpus returns" in p for p in audit(world, forged).problems)
 
 

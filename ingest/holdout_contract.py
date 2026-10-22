@@ -97,8 +97,9 @@ CONSTRUCTION_FILES = (
     "scripts/mlx_prompt_tokens.py",
 )
 # What else decides how TEST is built, read by that code: the protocol (the judges' rules,
-# the rubric, the areas), the evidence discovery of every need (searches A and B, the omission
-# audit's search C), every reachable failure with its classification, the diagnostic judge's
+# the rubric, the areas), the evidence discovery of every need (three searches, the exposure
+# pool, the omission audit's search), every reachable failure with its classification, the
+# diagnostic judge's
 # config, and DEV and the fixtures (the gatekeeper's comparisons, the authors' forbidden
 # wording)
 EVIDENCE_PATH = Path("config/holdout/evidence-discovery.md")
@@ -360,6 +361,7 @@ def construction(
     from ingest import holdout_broker as hb
     from ingest import holdout_checks as hk
     from ingest import holdout_controller as hct
+    from ingest import holdout_packets as hp
     from ingest import holdout_process as hproc
     from ingest import holdout_roles as hr
     from ingest import holdout_state as hs
@@ -387,11 +389,26 @@ def construction(
         "statement_review": "code and blind roles only; no person edits or approves a statement",
         "evidence_discovery": {
             "spec": EVIDENCE_PATH.as_posix(),
-            "searches": {"A": "judge_a", "B": "second_search"},
-            "audit_search": {"C": "omission_search", "cells": len(plan["omission_audit"]["cells"])},
-            "first_judgment": "search A's label where A listed the node, else search B's, else "
-            "search C's; the answerability, search A's",
-            "audit_threshold": "a node new to search C adjudicated grade >= 1 stops",
+            "searches": ["search_1", "search_2", "search_3"],
+            "audit_search": {
+                "stage": "audit_search",
+                "cells": len(plan["omission_audit"]["cells"]),
+            },
+            "first_judgment": "the label of the first of search_1, search_2, search_3 that listed "
+            "the node; the answerability, search_1's",
+            "exposure_pool": "every node a normal search received in full (an article or nodes "
+            "page) or listed, that can be judged; a search snippet is not a full reading",
+            "unlisted_nodes": "judge B's pool variant (judge_b_pool.v1), blind; a grade >= 1 or "
+            "an ambiguity gets a second blind judgment, and judge C decides where they differ",
+            "pool_batches": {
+                "max_nodes": hp.POOL_BATCH_MAX_NODES,
+                "max_tokens": hp.POOL_BATCH_MAX_TOKENS,
+                "tokenizer": "cl100k_base (ingest/chunks.py)",
+            },
+            "judge_d_and_diagnostic": "every listed node, every pool node with a final grade >= 1, "
+            "every pool node any blind judgment graded >= 1 or found ambiguous",
+            "audit_threshold": "a node the audit search listed or received in full, outside the "
+            "normal exposure pool, adjudicated grade >= 1 stops",
         },
         "process_deadlines_seconds": {
             "headless": hproc.HEADLESS_SECONDS,
@@ -402,6 +419,10 @@ def construction(
             "termination_grace": hproc.GRACE_SECONDS,
         },
         "controller_policy": hct.POLICY,
+        "controller_deadlines_seconds": {
+            "invocation": hct.INVOCATION_SECONDS,
+            "stall": hct.STALL_SECONDS,
+        },
         "code_sha256": {f: _sha(Path(f)) for f in CONSTRUCTION_FILES},
         "inputs_sha256": {f: _sha(Path(f)) for f in CONSTRUCTION_INPUTS},
         "template_files": {n: hr.template_path(n).as_posix() for n in hr.template_hashes()},
@@ -495,6 +516,27 @@ ABORTED_RUNS = (
             "mapped to its node by the orchestrator alone (judge_b.v2, judge_c.v2, judge_d.v2); "
             "a missing, unknown, repeated or other id stays a technical contract failure. "
             "Rubrics, thresholds, retries and every methodological rule unchanged"
+        ),
+    },
+    {
+        "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+        "contract_sha256": "b824db37fb9e13202f4d3efdc38a706a03c9c56fe030607a39ae5a6a167846d7",
+        "public_commit": "808762e078f1e96a3f71a02c0b560b447332fca7",
+        "ready_needs": 3,
+        "reason": (
+            "The omission audit's hard stop: the audit search listed a node outside the union "
+            "of searches A and B, adjudicated grade >= 1. A structural review, counts only, "
+            "found that most omissions were nodes the missing search had read in full and not "
+            "listed: coverage depended on each search's discretionary, softly capped listing"
+        ),
+        "change": (
+            "three fixed blind searches for every need; a mechanical exposure pool (every node "
+            "a search received in full, listed or not, is judged: judge B's pool variant, a "
+            "second blind judgment for a grade >= 1 or an ambiguity, judge C on a difference); "
+            "the audit search's coverage is its own exposure; judge D and the diagnostic on the "
+            "listed nodes and the pool's contested or relevant ones; no number of candidates in "
+            "the searches' template (judge_a.v3); the controller's outer deadline 72 hours. The "
+            "rubrics, the omission threshold >= 1, the retries and every other rule unchanged"
         ),
     },
 )

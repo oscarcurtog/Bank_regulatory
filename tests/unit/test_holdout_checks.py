@@ -82,11 +82,14 @@ def test_the_record_carries_every_check_with_its_retry_rule():
     assert record["checks"]["role_audit"]["retriable"] is True
     assert record["checks"]["final_qrels_unambiguous"]["kind"] == "methodological_eligibility"
     assert len(record["stop_rules"]) == 7
-    assert any("search C" in r and ">= 1" in r for r in record["stop_rules"])
-    # search B's declared problem is the need's, like search A's
+    assert any(
+        "audit search" in r and "exposure pool" in r and ">= 1" in r for r in record["stop_rules"]
+    )
+    # each normal search's declared problem is the need's; the audit search's stops instead
     assert {v.role for v in hk.ROLE_VERDICTS if v.outcome == "judge_problem"} == {
-        "judge_a",
-        "second_searcher",
+        "searcher_1",
+        "searcher_2",
+        "searcher_3",
     }
 
 

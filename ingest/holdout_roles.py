@@ -64,6 +64,9 @@ class RoleContract:
 
 
 _SYSTEMS = ("the systems under evaluation (E, E5, BM25)", "their results and failure modes")
+# The evidence searches' roles, one per stage: search_1, search_2 and search_3 of every need,
+# and the omission audit's search
+SEARCHERS = ("searcher_1", "searcher_2", "searcher_3", "audit_searcher")
 _PROJECT = ("CLAUDE.md", "the memory index", "the repository and its git status")
 ROLE_CONTRACTS: dict[str, RoleContract] = {
     c.role: c
@@ -124,52 +127,28 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
             "the two statements and the shared and other grade-3 nodes, from the corpus",
             ("grades other than those shown", *_SYSTEMS, *_PROJECT),
         ),
-        RoleContract(
-            "judge_a",
-            "judge_a.v2",
-            ("judge_a.v2",),
-            "headless_broker",
-            ("broker_result", "protocol_error"),
-            "the corpus, only through the evidence broker",
-            ("DEV", "other judges' labels", "files", "Bash", *_SYSTEMS, *_PROJECT),
-            rules_field="rules",
-            banned_in_packet=hp.BANNED_FOR_JUDGE_A,
-        ),
-        RoleContract(
-            # search B of every need: search A's packet and rules, in a context of its own
-            "second_searcher",
-            "judge_a.v2",
-            ("judge_a.v2",),
-            "headless_broker",
-            ("broker_result", "protocol_error"),
-            "the corpus, only through the evidence broker",
-            (
-                "search A's candidates, grades, path, logs and output",
-                "DEV",
-                "qrels",
-                *_SYSTEMS,
-                *_PROJECT,
-            ),
-            rules_field="rules",
-            banned_in_packet=hp.BANNED_FOR_JUDGE_A,
-        ),
-        RoleContract(
-            # the omission audit's search C, in its 12 cells
-            "omission_searcher",
-            "judge_a.v2",
-            ("judge_a.v2",),
-            "headless_broker",
-            ("broker_result", "protocol_error"),
-            "the corpus, only through the evidence broker",
-            (
-                "search A's and search B's candidates, grades, paths, logs and outputs",
-                "DEV",
-                "qrels",
-                *_SYSTEMS,
-                *_PROJECT,
-            ),
-            rules_field="rules",
-            banned_in_packet=hp.BANNED_FOR_JUDGE_A,
+        *(
+            # the three blind searches of every need, and the omission audit's search in its
+            # 12 cells: one packet and broker, each in a context of its own, seeing nothing of
+            # the others
+            RoleContract(
+                role,
+                "judge_a.v3",
+                ("judge_a.v3",),
+                "headless_broker",
+                ("broker_result", "protocol_error"),
+                "the corpus, only through the evidence broker",
+                (
+                    "the other searches' candidates, grades, paths, logs and outputs",
+                    "DEV",
+                    "qrels",
+                    *_SYSTEMS,
+                    *_PROJECT,
+                ),
+                rules_field="rules",
+                banned_in_packet=hp.BANNED_FOR_JUDGE_A,
+            )
+            for role in SEARCHERS
         ),
         RoleContract(
             "judge_b",
@@ -178,7 +157,31 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
             "headless",
             (),
             "every candidate with its legal context and scope provisions, from the corpus",
-            ("the searches' labels (A, B and C)", "DEV", *_SYSTEMS, *_PROJECT),
+            ("the searches' labels", "DEV", *_SYSTEMS, *_PROJECT),
+            rules_field="rules",
+            banned_in_packet=hp.BANNED_FOR_B_AND_C,
+        ),
+        RoleContract(
+            # judge B's pool variant on the exposure pool's nodes no search listed: the first
+            # blind judgment, and the second where the first is a grade >= 1 or an ambiguity
+            "pool_judge_1",
+            "judge_b_pool.v1",
+            ("judge_b_pool.v1",),
+            "headless",
+            (),
+            "nodes the searches received in full, with their legal context, from the corpus",
+            ("the searches' labels", "how a node reached the pool", "DEV", *_SYSTEMS, *_PROJECT),
+            rules_field="rules",
+            banned_in_packet=hp.BANNED_FOR_B_AND_C,
+        ),
+        RoleContract(
+            "pool_judge_2",
+            "judge_b_pool.v1",
+            ("judge_b_pool.v1",),
+            "headless",
+            (),
+            "the nodes the first pool judgment graded >= 1 or found ambiguous, from the corpus",
+            ("the first pool judgment", "the searches' labels", "DEV", *_SYSTEMS, *_PROJECT),
             rules_field="rules",
             banned_in_packet=hp.BANNED_FOR_B_AND_C,
         ),
@@ -200,7 +203,13 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
             "headless",
             (),
             "every candidate with its context, and the disputed items",
-            ("the labels of A, B, C and the diagnostic", "DEV", "rankings", *_SYSTEMS, *_PROJECT),
+            (
+                "every other judge's labels and the diagnostic's",
+                "DEV",
+                "rankings",
+                *_SYSTEMS,
+                *_PROJECT,
+            ),
             rules_field="rules",
             banned_in_packet=hp.BANNED_FOR_B_AND_C,
         ),
@@ -240,7 +249,7 @@ MESSAGE_SCHEMAS = {
 def authorized_rules(role: str) -> str:
     """The exact rules text a judge role may receive: judge A's without DEV examples, judges
     B, C, D and the diagnostic with DEV batch 2's removals, the metadata rubric's drivers."""
-    if role in ("judge_a", "second_searcher", "omission_searcher"):
+    if role in SEARCHERS:
         return hp.judge_a_rules()
     if role == "metadata_adjudicator":
         return hp.driver_rubric()

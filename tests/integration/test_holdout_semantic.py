@@ -1,9 +1,10 @@
 """The semantic admissibility of an answer (the person's rule of 2026-10-21): a well-formed answer
 that violates a frozen semantic invariant tying its labels to the need's evidence or
 answerability is one failed technical execution; the same invariant violated in all three
-executions of search A, search B or the metadata adjudicator rejects the attempt
-(semantic_inadmissible). A failure of the role's contract keeps its technical exhaustion, and so
-does search C. On the real grid and corpus with synthetic replies; no model runs."""
+executions of a normal search (search_1, search_2, search_3) or the metadata adjudicator rejects
+the attempt (semantic_inadmissible). A failure of the role's contract keeps its technical
+exhaustion, and so does the audit search. On the real grid and corpus with synthetic replies; no
+model runs."""
 
 from __future__ import annotations
 
@@ -314,9 +315,10 @@ def search_without_grade_3() -> dict[str, Any]:
 
 
 @pytest.mark.parametrize(
-    ("role", "stage"), [("judge_a", "judge_a"), ("second_searcher", "second_search")]
+    ("role", "stage"),
+    [("searcher_1", "search_1"), ("searcher_2", "search_2"), ("searcher_3", "search_3")],
 )
-def test_a_search_a_or_b_without_support_three_times_rejects_the_attempt(
+def test_a_normal_search_without_support_three_times_rejects_the_attempt(
     base, order, complete, tmp_path, role, stage
 ):
     replies = [search_without_grade_3() for _ in range(3)]
@@ -330,14 +332,14 @@ def test_a_search_a_or_b_without_support_three_times_rejects_the_attempt(
     assert rejected["stage"] == stage
 
 
-def test_search_c_without_support_three_times_keeps_its_technical_exhaustion(
+def test_the_audit_search_without_support_three_times_keeps_its_technical_exhaustion(
     base, order, audited, tmp_path
 ):
     """The audit's cells get no rejection the others do not get."""
     replies = [search_without_grade_3() for _ in range(3)]
-    pipeline, _ = make(base, tmp_path / "test", scenario(audited, "omission_searcher", replies))
+    pipeline, _ = make(base, tmp_path / "test", scenario(audited, "audit_searcher", replies))
     assert executions(pipeline, order, audited, 3)[-1] == "pending_technical_unresolved"
-    assert pipeline.store.verify()["waiting"][0]["stage"] == "omission_search"
+    assert pipeline.store.verify()["waiting"][0]["stage"] == "audit_search"
 
 
 def test_three_attempts_rejected_so_leave_the_cell_unfilled(base, order, complete, tmp_path):

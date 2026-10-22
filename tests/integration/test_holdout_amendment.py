@@ -162,8 +162,14 @@ def test_a_stop_for_the_person_is_still_its_own():
 # ---------------------------------------------------------------------------
 
 BUILDERS = {n for n in dir(hp) if n.endswith(("_packet", "_messages")) and callable(getattr(hp, n))}
-ASSEMBLY = {("bm", "Need"), ("bm", "render_query_prompt"), ("hj", "assemble")}
-GUARDED_HELPERS = {"writer", "_packet_guard", "_evidence_packet", "statement_problems"}
+ASSEMBLY = {
+    ("bm", "Need"),
+    ("bm", "render_query_prompt"),
+    ("hj", "assemble"),
+    ("hj", "assemble_audit"),
+}
+# a nested helper only _built calls: the pool batches' renderer is one
+GUARDED_HELPERS = {"writer", "render", "_packet_guard", "_evidence_packet", "statement_problems"}
 
 
 def test_no_packet_or_record_is_built_outside_a_classified_guard():

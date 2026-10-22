@@ -1,8 +1,9 @@
-"""Evidence discovery for every TEST need (config/holdout/evidence-discovery.md): search A and
-search B, blind and independent, their union adjudicated once; the omission audit's search C in
-its 12 cells; each search's declared problem with its transition; the audit bound to the attempt
-that becomes READY; the diagnostic's preflight; and the failures nothing else classifies. On the
-real grid and corpus with synthetic replies (tests/holdout_fakes.py); no model runs."""
+"""Evidence discovery for every TEST need (config/holdout/evidence-discovery.md): three blind,
+independent searches, their listed candidates joined and the exposure pool built from what they
+received in full; the omission audit's search in its 12 cells; each search's declared problem
+with its transition; the audit bound to the attempt that becomes READY; the diagnostic's
+preflight; and the failures nothing else classifies. On the real grid and corpus with synthetic
+replies (tests/holdout_fakes.py); no model runs."""
 
 from __future__ import annotations
 
@@ -29,7 +30,7 @@ from tests.holdout_fakes import (
 )
 
 pytestmark = pytest.mark.corpus
-SEARCH_ROLES = ("judge_a", "second_searcher", "omission_searcher")
+NORMAL = ("searcher_1", "searcher_2", "searcher_3")
 
 
 @pytest.fixture(scope="module")
@@ -73,7 +74,7 @@ def without_ref(packet: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# the union, as a function
+# the union and the pool, as functions
 # ---------------------------------------------------------------------------
 
 
@@ -96,73 +97,101 @@ def file(*nodes: tuple[str, int], answerability: str = "complete") -> dict[str, 
     }
 
 
-def test_the_union_keeps_each_node_once_with_its_first_judgment():
-    a = file(("MiCA:149.2", 3), ("DORA:64", 0))
-    b = file(("MiCA:149.2", 1), ("MiCA:143.2", 2), answerability="partial")
-    c = file(("MiCA:143.2", 2), ("MiCA:143.3", 0))
-    found = hj.evidence_union(a, b, c)
-    assert found.nodes == ["MiCA:149.2", "DORA:64", "MiCA:143.2", "MiCA:143.3"]
-    # a node A listed: A's label, whatever B said; a node only B listed: B's; C's new ones: C's
+def test_the_union_keeps_each_node_once_with_its_first_judgment_and_pools_what_was_read(base):
+    excluded = next(
+        f"{a}:{p}"
+        for (a, p) in base["texts"]
+        if a == "PSD2" and p.split(".")[0] in base["excluded"]
+    )
+    files = {
+        "search_1": file(("MiCA:149.2", 3), ("DORA:64", 0)),
+        "search_2": file(("MiCA:149.2", 1), ("MiCA:143.2", 2), answerability="partial"),
+        "search_3": file(("MiCA:143.2", 1), ("MiCA:143.3", 0)),
+    }
+    exposures = {
+        "search_1": ["MiCA:149.2", "MiCA:149.1"],
+        "search_2": ["MiCA:149.1", excluded, "MiCA:999.9"],  # excluded, and no such node
+        "search_3": [],
+    }
+    found = hj.exposure_pool(files, exposures, base["texts"], base["excluded"])
+    assert found.listed == ["MiCA:149.2", "DORA:64", "MiCA:143.2", "MiCA:143.3"]
+    # the first search that listed a node gives its first judgment, in the order 1, 2, 3
     assert found.first["MiCA:149.2"]["grade"] == 3
     assert found.first["MiCA:143.2"]["grade"] == 2
     assert found.scope["MiCA:143.2"] == ["scope-of-MiCA:143.2"]
-    assert found.additional == ["MiCA:143.3"]
-    # the answerability's first judgment is search A's; B's is provenance only
+    # the answerability's first judgment is search_1's; the others' are provenance only
     assert found.first[bm.ANSWERABILITY_TARGET]["answerability"] == "complete"
-    assert found.found_by == {
-        "MiCA:149.2": ["A", "B"],
-        "DORA:64": ["A"],
-        "MiCA:143.2": ["B", "C"],
-        "MiCA:143.3": ["C"],
+    assert found.listed_by == {
+        "MiCA:149.2": ["search_1", "search_2"],
+        "DORA:64": ["search_1"],
+        "MiCA:143.2": ["search_2", "search_3"],
+        "MiCA:143.3": ["search_3"],
     }
+    # what a search received in full enters the pool, listed or not, if it can be judged
+    assert found.exposed_by == {"MiCA:149.2": ["search_1"], "MiCA:149.1": ["search_1", "search_2"]}
+    assert found.unlisted == ["MiCA:149.1"]
+    assert found.pool == sorted([*found.listed, "MiCA:149.1"])
     record = found.record()
-    assert (record["union"], record["only_b"], record["both"]) == (3, 1, 1)
-    assert record["answerability_a_b_agree"] is False
+    assert (
+        record["listed_union"],
+        record["listed_by_one"],
+        record["pool"],
+        record["unlisted"],
+    ) == (
+        4,
+        2,
+        5,
+        1,
+    )
+    assert record["answerabilities_agree"] is False
+    # the same inputs, the same pool: nothing in it depends on anything else
+    assert hj.exposure_pool(files, exposures, base["texts"], base["excluded"]) == found
 
 
 # ---------------------------------------------------------------------------
-# two blind searches for every need
+# three blind searches for every need
 # ---------------------------------------------------------------------------
 
 
-def test_every_need_gets_two_blind_searches_and_one_adjudication_on_their_union(
-    base, first, tmp_path
-):
+def test_every_need_gets_three_blind_searches_and_one_adjudication(base, first, tmp_path):
     pipeline, executor = built(base, tmp_path, [first], Scenario(b_extra={first: 2}))
     roles = [role for role, cell, _ in executor.calls if cell == first]
-    assert roles.count("judge_a") == 1 and roles.count("second_searcher") == 1
-    assert "omission_searcher" not in roles
+    assert [roles.count(r) for r in NORMAL] == [1, 1, 1]
+    assert "audit_searcher" not in roles
     ready = ready_of(pipeline, first)
     graded = {f"{q.act}:{q.path}": q.grade for q in ready.qrels}
-    assert graded[B_EXTRA_NODE] == 2  # found by search B only, adjudicated with the rest
+    assert graded[B_EXTRA_NODE] == 2  # listed by search_2 only, adjudicated with the rest
     discovery = ready.provenance["evidence_discovery"]
-    assert discovery["found_by"][B_EXTRA_NODE] == ["B"] and discovery["only_b"] == 1
-    assert pipeline.report()["evidence_discovery"]["only_b_relevant"] == 1
+    assert discovery["listed_by"][B_EXTRA_NODE] == ["search_2"]
+    assert discovery["listed_by_one"] == 1
+    report = pipeline.report()["evidence_discovery"]
+    assert report["listed_by_one_grade_1_or_more"] == 1
+    assert set(ready.provenance["search_consumption"]) == {"search_1", "search_2", "search_3"}
 
 
-def test_search_b_is_as_blind_as_search_a(base, first, tmp_path):
+def test_the_second_and_third_searches_are_as_blind_as_the_first(base, first, tmp_path):
     """The same frozen packet from the locked need alone, a reference of its own, and no input
-    but the lock: nothing of search A reaches search B."""
+    but the lock: nothing of one search reaches another."""
     pipeline, executor = built(base, tmp_path, [first], Scenario(b_extra={first: 2}))
-    a = executor.packets[("judge_a", first, 1)]
-    b = executor.packets[("second_searcher", first, 1)]
-    assert a != b and without_ref(a) == without_ref(b)
+    packets = [executor.packets[(role, first, 1)] for role in NORMAL]
+    assert len(set(packets)) == 3 and len({without_ref(p) for p in packets}) == 1
     pid = f"{first}-a1"
     lock = pipeline.store.stage(pid, "lock")
     need = bm.Need.model_validate(lock["value"]["need"])
     cell = pipeline.world.cell(first)
-    assert b == hp.judge_a_broker_packet(need, cell, ref=pipeline._ref("second_searcher", pid))
+    assert packets[2] == hp.judge_a_broker_packet(need, cell, ref=pipeline._ref("searcher_3", pid))
     inputs = {r["stage"]: json.loads(r["inputs"]) for r in pipeline.store.runs()}
-    assert set(inputs["second_search"]) == {"lock"} == set(inputs["judge_a"])
-    assert hr.ROLE_CONTRACTS["second_searcher"].template == "judge_a.v2"
-    assert "search A's candidates" in " ".join(hr.ROLE_CONTRACTS["second_searcher"].forbidden)
+    assert set(inputs["search_1"]) == set(inputs["search_2"]) == set(inputs["search_3"]) == {"lock"}
+    for role in (*NORMAL, "audit_searcher"):
+        assert hr.ROLE_CONTRACTS[role].template == "judge_a.v3"
+        assert "the other searches' candidates" in " ".join(hr.ROLE_CONTRACTS[role].forbidden)
 
 
-def test_a_need_planned_none_gets_both_searches(base, order, tmp_path):
-    cell = next(c for c in order if base["grid"].cells[0] and _planned(base, c) == "none")
+def test_a_need_planned_none_gets_the_three_searches(base, order, tmp_path):
+    cell = next(c for c in order if _planned(base, c) == "none")
     pipeline, executor = built(base, tmp_path, [cell])
     roles = [role for role, c, _ in executor.calls if c == cell]
-    assert {"judge_a", "second_searcher"} <= set(roles)
+    assert set(NORMAL) <= set(roles)
 
 
 def _planned(base, cell_id: str) -> str:
@@ -170,9 +199,10 @@ def _planned(base, cell_id: str) -> str:
 
 
 @pytest.mark.parametrize(
-    ("role", "stage"), [("judge_a", "judge_a"), ("second_searcher", "second_search")]
+    ("role", "stage"),
+    [("searcher_1", "search_1"), ("searcher_2", "search_2"), ("searcher_3", "search_3")],
 )
-def test_search_a_or_b_declaring_a_problem_makes_the_need_judge_problem(
+def test_a_normal_search_declaring_a_problem_makes_the_need_judge_problem(
     base, first, tmp_path, role, stage
 ):
     """P1 #2: before any of its candidates is read; never a KeyError, never a retry."""
@@ -188,52 +218,56 @@ def test_search_a_or_b_declaring_a_problem_makes_the_need_judge_problem(
 
 
 # ---------------------------------------------------------------------------
-# the omission audit's search C
+# the omission audit's search
 # ---------------------------------------------------------------------------
 
 
-def test_search_c_runs_in_the_audit_cells_blind_to_a_and_b(base, audited, tmp_path):
+def test_the_audit_search_runs_in_its_cells_blind_to_the_others(base, audited, tmp_path):
     pipeline, executor = built(base, tmp_path, [audited], Scenario(extra_grade={audited: 0}))
-    c = executor.packets[("omission_searcher", audited, 1)]
-    a = executor.packets[("judge_a", audited, 1)]
-    assert without_ref(c) == without_ref(a)
+    audit = executor.packets[("audit_searcher", audited, 1)]
+    one = executor.packets[("searcher_1", audited, 1)]
+    assert without_ref(audit) == without_ref(one)
     inputs = {r["stage"]: json.loads(r["inputs"]) for r in pipeline.store.runs()}
-    assert set(inputs["omission_search"]) == {"lock"}
+    assert set(inputs["audit_search"]) == {"lock"}
+    # the normal adjudication never reads the audit: the same in an audited cell as elsewhere
     judged = json.loads(next(r["inputs"] for r in pipeline.store.runs() if r["stage"] == "judge_b"))
-    assert {"judge_a", "second_search", "omission_search"} <= set(judged)
+    assert set(judged) == {"lock", "search_1", "search_2", "search_3"}
 
 
-def test_a_node_new_to_search_c_adjudicated_1_or_more_stops(base, audited, tmp_path):
+def test_a_node_new_to_the_audit_adjudicated_1_or_more_stops(base, audited, tmp_path):
     pipeline, _ = make(base, tmp_path / "test", Scenario(extra_grade={audited: 1}))
-    with pytest.raises(hpl.ConstructionStop, match="union of searches A and B") as stop:
+    with pytest.raises(hpl.ConstructionStop, match="outside the exposure pool") as stop:
         pipeline.build()
     assert stop.value.reason == "omission_audit"
     summary = pipeline.store.summary()
     assert (summary["status"], summary["stop"]["reason"]) == ("stopped", "omission_audit")
 
 
-def test_a_node_new_to_search_c_adjudicated_0_is_a_diagnostic(base, audited, tmp_path):
+def test_a_node_new_to_the_audit_adjudicated_0_is_a_diagnostic(base, audited, tmp_path):
     pipeline, _ = built(base, tmp_path, [audited], Scenario(extra_grade={audited: 0}))
     ready = ready_of(pipeline, audited)
     graded = {f"{q.act}:{q.path}": q.grade for q in ready.qrels}
-    assert graded[EXTRA_NODE] == 0  # kept as a grade 0 qrel, which enters no metric
+    assert EXTRA_NODE not in graded  # a diagnostic of the audit, no qrel of the need
+    logged = [o for o in pipeline.omission_log if o["cell_id"] == audited]
+    assert logged[0]["additional_final_grades"] == {EXTRA_NODE: 0}
     report = pipeline.report()["omission_audit"]
     assert (report["cells"], report["grade_0_additions"], report["attempts_audited"]) == (1, 1, 1)
     assert pipeline.progress_problems([audited]) == []
 
 
-def test_a_node_search_b_also_found_is_no_omission(base, audited, tmp_path):
-    """Search C lists, grade 3, the node only search B found: it is in the union already, so
-    nothing is new to C and nothing stops."""
+def test_a_node_a_normal_search_also_found_is_no_omission(base, audited, tmp_path):
+    """The audit search lists, grade 3, the node only search_2 found: it is in the pool
+    already, so nothing is new to the audit and nothing stops."""
     pipeline, _ = built(base, tmp_path, [audited], Scenario(b_extra={audited: 3}))
     ready = ready_of(pipeline, audited)
-    assert ready.provenance["evidence_discovery"]["found_by"][B_EXTRA_NODE] == ["B", "C"]
+    assert ready.provenance["evidence_discovery"]["listed_by"][B_EXTRA_NODE] == ["search_2"]
     logged = [o for o in pipeline.omission_log if o["cell_id"] == audited]
     assert logged[0]["additional_nodes"] == []
+    assert logged[0]["judgment_discrepancies"] == []  # the audit agrees with the final grade
 
 
-def test_search_c_declaring_a_problem_stops_the_construction(base, audited, tmp_path):
-    scenario = Scenario(problem={(audited, "omission_searcher"): "cannot be judged"})
+def test_the_audit_search_declaring_a_problem_stops_the_construction(base, audited, tmp_path):
+    scenario = Scenario(problem={(audited, "audit_searcher"): "cannot be judged"})
     pipeline, _ = make(base, tmp_path / "test", scenario)
     with pytest.raises(hpl.ConstructionStop) as stop:
         pipeline.build()
@@ -317,7 +351,7 @@ def test_an_audit_that_cannot_read_its_run_fails_closed_and_is_retried(
 
     def once(run: hr.RoleRun, *args: Any, **kwargs: Any) -> hr.RoleAudit:
         calls["n"] += 1
-        if run.role == "second_searcher" and calls.setdefault("broke", 0) == 0:
+        if run.role == "searcher_2" and calls.setdefault("broke", 0) == 0:
             calls["broke"] = 1
             raise ValueError("an unreadable session")
         return real(run, *args, **kwargs)
@@ -328,7 +362,7 @@ def test_an_audit_that_cannot_read_its_run_fails_closed_and_is_retried(
         pipeline.build()
     summary = pipeline.store.summary()
     assert summary["technical_failures"] == {"isolation": 1}
-    assert summary["waiting"][0]["stage"] == "second_search"
+    assert summary["waiting"][0]["stage"] == "search_2"
     pipeline.store.close()
     again, _ = reopen(base, tmp_path / "test")
     again.resuming = True
@@ -336,7 +370,7 @@ def test_an_audit_that_cannot_read_its_run_fails_closed_and_is_retried(
     assert any(r.cell_id == first for r in again.ready.values())
 
 
-def test_dual_search_replays_deterministically_with_every_write_refused(
+def test_three_searches_replay_deterministically_with_every_write_refused(
     base, first, audited, tmp_path
 ):
     scenario = Scenario(b_extra={first: 2}, extra_grade={audited: 0})

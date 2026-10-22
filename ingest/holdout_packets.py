@@ -28,6 +28,13 @@ TEMPLATES = bm.TEMPLATES_DIR / "holdout"
 # Every attempt of a cell gets frame A (Codex Gate 2, P1.2); v1's frames B and C are history.
 ATTEMPT_FRAMES = TEMPLATES / "attempt_frames.v2.json"
 JUDGE_C_SEED = 20261019
+# A batch of judge B's pool variant (judge_b_pool.v1, the design of 2026-10-22): at most the 34
+# candidates judge B graded in one packet of the protocol-development runs, and at most the
+# 9773 tokens of the largest judge B packet those runs admitted (counted with the project's
+# frozen tokenizer, ingest/chunks.py): never a packet larger than one judge B already received.
+# Both are ceilings, not targets: the batch closes before the node that would pass either.
+POOL_BATCH_MAX_NODES = 34
+POOL_BATCH_MAX_TOKENS = 9773
 
 # The prompt that launches a context: it reads its own packet and nothing else (DEV batch 2).
 LAUNCH_READ_ONE = (
@@ -502,6 +509,71 @@ def judge_b_packet(
     )
 
 
+def judge_b_pool_packet(
+    corpus: Corpus,
+    need: bm.Need,
+    nodes: Sequence[str],
+    ids: Mapping[str, str],
+    opening: str = JUDGE_B_OPENING,
+    ref: str | None = None,
+) -> str:
+    """Judge B's pool variant (judge_b_pool.v1): judge B's packet and rubric for nodes of the
+    exposure pool that no search listed, each under the opaque id the orchestrator gave it, and
+    no answerability. Nothing in it says how a node reached the pool or what anyone thought."""
+    judged = set(nodes)
+    blocks = [
+        f"CANDIDATE {ids[r]}\n" + corpus.node_block(r, judged, []) for r in corpus.sort(nodes)
+    ]
+    return template("judge_b_pool.v1").substitute(
+        opening=opening,
+        rules=judge_bc_rules(),
+        need_id=ref or need.need_id,
+        statement=need.statement,
+        candidates="\n\n".join(blocks),
+    )
+
+
+_ENCODING: Any = None
+
+
+def packet_tokens(text: str) -> int:
+    """A packet's length in tokens of the project's frozen tokenizer (ingest/chunks.py): exact
+    and the same on every replay. It is not the judge's own tokenizer, which no local file
+    holds; the batch ceilings are measured with it too, on packets judge B received."""
+    global _ENCODING
+    if _ENCODING is None:
+        from ingest import chunks
+
+        _ENCODING = chunks.load_encoding(chunks.TOKENIZER)
+    return len(_ENCODING.encode(text))
+
+
+def pool_batches(
+    nodes: Sequence[str],
+    render: Any,
+    count: Any = packet_tokens,
+    max_nodes: int = POOL_BATCH_MAX_NODES,
+    max_tokens: int = POOL_BATCH_MAX_TOKENS,
+) -> list[list[str]]:
+    """The nodes in their order, cut into batches: a batch closes before the node that would
+    make it hold more than max_nodes or render (render(batch) is the packet) to more than
+    max_tokens. A node is never split; one that alone renders to more than max_tokens is no
+    packet the protocol allows (PacketError: the packet_construction stop). Deterministic: the
+    same nodes and the same renderer give the same batches."""
+    batches: list[list[str]] = []
+    current: list[str] = []
+    for node in nodes:
+        if current and (len(current) >= max_nodes or count(render([*current, node])) > max_tokens):
+            batches.append(current)
+            current = []
+        if not current and count(render([node])) > max_tokens:
+            raise PacketError(f"one node alone renders over {max_tokens} tokens")
+        current.append(node)
+    if current:
+        batches.append(current)
+    return batches
+
+
 def show_judgment(j: Mapping[str, Any]) -> str:
     if j.get("answerability"):
         return f"answerability {j['answerability']}"
@@ -630,13 +702,15 @@ def diagnostic_messages(
 def judge_a_broker_packet(
     need: bm.Need, cell: ho.Cell, opening: str = HEADLESS_OPENING, ref: str | None = None
 ) -> str:
-    """Judge A of TEST (judge_a.v2): DEV batch 2's packet, word for word, except that the
-    corpus is read through the evidence broker (ingest/holdout_broker.py) instead of Bash,
-    and the answer is a final reply instead of a file. Its limits are the broker's."""
+    """A search of TEST's evidence (judge_a.v3): DEV batch 2's packet, word for word, except
+    that the corpus is read through the evidence broker (ingest/holdout_broker.py) instead of
+    Bash, the answer is a final reply instead of a file, and no number of candidates is
+    suggested (the listing is the search's own judgment; coverage is the exposure pool's).
+    Its limits are the broker's."""
     from ingest import holdout_broker as hb
 
     planned = f"type {cell.type}, act(s) {', '.join(cell.acts)}, answerability {cell.answerability}"
-    return template("judge_a.v2").substitute(
+    return template("judge_a.v3").substitute(
         opening=opening,
         protocol_version=ho.PROTOCOL_VERSION,
         max_refs=hb.MAX_REFS,

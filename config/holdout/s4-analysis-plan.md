@@ -117,8 +117,9 @@ A difference between DEV and TEST can hold three effects at once:
 1. selection and model-design bias: E was designed while looking at DEV;
 2. author and process shift: TEST's needs come from other authors and a different process
    (section 7);
-3. qrel construction: DEV keeps its historical qrels, built from one evidence search per need;
-   TEST's come from two blind, independent searches per need, adjudicated together
+3. qrel construction: DEV keeps its historical qrels, built from one evidence search per need
+   and its judge's listing; TEST's come from three blind, independent searches per need and a
+   mechanical exposure pool: every node a search received in full is judged, listed or not
    (`config/holdout/evidence-discovery.md`). TEST's relevant sets can be more complete than
    DEV's, and that alone can lower recall and move nDCG.
 
@@ -185,7 +186,7 @@ from it.
   exception fixed before this construction: a well-formed answer that violates a frozen semantic
   invariant tying its labels to the need's evidence or answerability (the metadata's type,
   drivers and negation against the final grades; a search's answerability against its own
-  grades), in all three executions of searches A or B or of the metadata adjudicator, rejects the
+  grades), in all three executions of a normal search or of the metadata adjudicator, rejects the
   attempt (`semantic_inadmissible`), with nothing inferred or repaired. A failure the construction
   does not classify is recorded as a stop for a person.
 - **Technical retries and resume.** A resume continues the same cell, the same need and the same
@@ -206,22 +207,31 @@ from it.
   verified, a verified backup is made and a report of counts is recorded. A checkpoint never
   recalibrates a prompt, changes the protocol, the grid or a stop rule, or balances types; a
   problem it finds stops the construction.
-- **Evidence discovery, the same for every need** (`config/holdout/evidence-discovery.md`): two
-  blind, independent searches, A and B, with the same frozen packet and broker, each in its own
-  isolated context, neither seeing the other's candidates, path or labels; their candidates
-  joined, each once; one adjudication on the union, each candidate's first judgment being search
-  A's label where A listed it and search B's otherwise. A search that declares a problem makes
-  the need `judge_problem`. This applies to every need that reaches evidence discovery, whatever
-  its planned answerability.
+- **Evidence discovery, the same for every need** (`config/holdout/evidence-discovery.md`):
+  three blind, independent searches (search_1, search_2, search_3) with the same frozen packet
+  and broker, each in its own isolated context, none seeing another's candidates, path or
+  labels. Their listed candidates are joined, each once, with the first judgment of the first
+  search that listed it. Every node a search received in full enters the exposure pool
+  mechanically, listed or not. A pool node no search listed is graded blind by judge B's pool
+  variant (the same rubric, no answerability). A grade >= 1 or an ambiguity gets a second blind
+  judgment, and judge C decides where the two differ. A grade 0 that is not ambiguous is final,
+  kept in the pool's record and not as a qrel: an unjudged node and a grade 0 count alike in
+  every metric of this plan. A search that declares a problem makes the need `judge_problem`.
+  This applies to every need that reaches evidence discovery, whatever its planned
+  answerability.
 - **The omission audit:** 12 cells fixed before authoring (`holdout-omission.v1`, stratified by
-  type and acts) get a third blind search, C, with the same broker, which sees nothing of A or
-  B. Its nodes new to the union go through the same adjudication. Any of them adjudicated grade
-  >= 1 stops the construction before the freeze, so that the evidence search is corrected for
-  every need alike; grade 0 additions are diagnostics. The audit that counts is the one of the
-  attempt that becomes READY; a declared problem of search C stops the construction, since the
-  audit cannot be completed.
-- **The diagnostic judge** (Qwen3-8B, local) grades every candidate with judge B's packet and has
-  no vote. Where it crosses the relevance line or the answerability of the final label, a blind
+  type and acts) get a fourth blind search, with the same broker, which sees nothing of the
+  other three. Its coverage is its own exposure: a node it listed or received in full outside
+  the normal pool is adjudicated by the pool's rules, and any of them with a final grade >= 1
+  stops the construction before the freeze, so that the evidence procedure is reviewed for every
+  need alike. Grade 0 additions are diagnostics. Its label on a node the pool held already is
+  provenance only, counted by direction as an audit judgment discrepancy, never a label, a
+  rejection or a stop. The audit that counts is the one of the attempt that becomes READY, and a
+  declared problem of the audit search stops the construction, since the audit cannot be
+  completed.
+- **The diagnostic judge** (Qwen3-8B, local) grades, with judge B's packet, the candidates judge
+  D receives: every listed node, every pool node with a final grade >= 1, and every pool node any
+  blind judgment graded >= 1 or found ambiguous. It has no vote. Where it crosses the relevance line or the answerability of the final label, a blind
   judge D grades the item: if D holds the final label it stays and the discrepancy is recorded; if
   not, or if D finds the item ambiguous, the need is `adjudication_uncertain`, leaves the scored
   TEST and gets a new blind attempt. Its prompt is counted with the frozen tokenizer before any
@@ -240,7 +250,8 @@ from it.
 ## 8. Known limitations
 
 - **Three effects in one difference** (section 5), one of them the different construction of
-  the qrels: one search per need in DEV, two in TEST.
+  the qrels: one search and its listing per need in DEV; in TEST, three searches and every node
+  they received in full judged.
 - **Process differences from DEV:** in DEV the orchestrating session wrote the scenario of 20 of
   the 30 needs, narrowed 6 more after seeing their evidence, and was judge A of 10. In TEST no
   author has seen the system or DEV, replacements are written blind, and judge A is always a
@@ -260,7 +271,8 @@ from it.
   frozen order is kept. The order is random and fixed in advance, but a different seed would keep
   a different one.
 - **The omission audit covers 12 cells of 60.** It is a control against systematic omissions,
-  not a proof of exhaustive evidence.
+  not a proof of exhaustive evidence: a search of the same model family as the three it audits,
+  it can test that the pool is complete relative to what such searches reach, never beyond it.
 - **Judge D** gives independence of context, not of model family. Where the diagnostic is
   unavailable, no label of TEST had a judge of another family.
 - **The orchestration** that builds the packets and validates the data has seen DEV's evidence and

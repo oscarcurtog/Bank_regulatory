@@ -48,17 +48,25 @@ _MODEL_STAGES = (
     "statement",
     "overlap_gate",
     "query_formulation",
-    "judge_a",
-    "second_search",
-    "omission_search",
+    "search_1",
+    "search_2",
+    "search_3",
+    "audit_search",
     "judge_b",
+    "pool_b1",
+    "pool_b2",
+    "audit_b1",
+    "audit_b2",
     "judge_c",
+    "audit_judge_c",
     "diagnostic",
     "judge_d",
     "metadata",
     "evidence_gate",
 )
-_SEARCHES = ("judge_a", "second_search", "omission_search")
+_SEARCHES = ("search_1", "search_2", "search_3", "audit_search")
+# judge B's pool variant (judge_b_pool.v1): each kind's batches are stages "<kind>:<n>"
+_POOL = ("pool_b1", "pool_b2", "audit_b1", "audit_b2")
 CHECKS: dict[str, Check] = {
     c.name: c
     for c in (
@@ -76,7 +84,7 @@ CHECKS: dict[str, Check] = {
             "technical_integrity",
             "model_output",
             tuple(
-                s for s in _MODEL_STAGES if s not in ("query_formulation", "judge_a", "diagnostic")
+                s for s in _MODEL_STAGES if s not in ("query_formulation", *_SEARCHES, "diagnostic")
             ),
             "malformed_session",
             "every packet asks for one JSON object (the role templates); the diagnostic's own "
@@ -156,15 +164,26 @@ CHECKS: dict[str, Check] = {
             "stop",
             "a packet the code builds from frozen inputs and admitted outputs before a model "
             "sees it: a frozen input that no longer holds (the protocol's sections and examples, "
-            "the attempt frames, a template), a node the corpus lacks, or the anti-copy guard "
-            "firing on the frozen parts alone. No execution can change it: the construction "
+            "the attempt frames, a template), a node the corpus lacks, the anti-copy guard "
+            "firing on the frozen parts alone, or a node of the exposure pool that alone renders "
+            "a pool packet over its token ceiling (ingest/holdout_packets.py pool_batches). No "
+            "execution can change it: the construction "
             "stops for a person (CONSTRUCTION_AMENDMENT_1)",
         ),
         Check(
             "record_assembly",
             "technical_integrity",
             "assembled_records",
-            ("lock", "evidence_union", "adjudication", "metadata", "evidence_gate", "ready"),
+            (
+                "lock",
+                "evidence_union",
+                "exposure_pool",
+                "adjudication",
+                "omission_audit",
+                "metadata",
+                "evidence_gate",
+                "ready",
+            ),
             "stop",
             "the records the code assembles from admitted outputs (the draft and final need and "
             "queries, the adjudications and qrels with their gap notes, the evidence pairs, the "
@@ -176,11 +195,12 @@ CHECKS: dict[str, Check] = {
             "judge_answer_complete",
             "technical_integrity",
             "model_output",
-            (*_SEARCHES, "judge_b", "judge_c", "judge_d"),
+            (*_SEARCHES, "judge_b", *_POOL, "judge_c", "audit_judge_c", "judge_d"),
             "malformed_session",
             "the complete contract of a search's or a judge's answer before it is admitted "
             "(ingest/holdout_admission.py, P1 #1): every candidate graded once and only the "
-            "candidates, every item answered once, grades 0 to 3, true or false ambiguity, an "
+            "candidates, each by its exact opaque id, every item answered once, grades 0 to 3, "
+            "true or false ambiguity, an "
             "answerability of the protocol, the rationale every label needs, the gap note a "
             "partial or none answerability needs, each label one the adjudication record can "
             "hold, and the protocol's rules on a search's file (judge_a_problems); a search "
@@ -259,19 +279,20 @@ CHECKS: dict[str, Check] = {
             "semantic_admissibility",
             "methodological_eligibility",
             "model_output",
-            ("judge_a", "second_search", "metadata"),
+            ("search_1", "search_2", "search_3", "metadata"),
             "semantic_inadmissible",
             "the person's rule of 2026-10-21: an answer that ended normally, passed its audit and "
             "has the right form, but violates a frozen semantic invariant tying its labels to "
             "the need's evidence or answerability (the metadata's type, gap drivers, negation "
             "and drivers against the final grades; a search's answerability against its own "
-            "grades: ingest/holdout_admission.py), is one failed technical execution; when the "
+            "grades: ingest/holdout_admission.py), in search_1, search_2, search_3 or the "
+            "metadata adjudicator, is one failed technical execution; when the "
             "stage's three executions all violate the same invariant (the check and its codes, "
             "never the text), the need or its adjudication cannot give an admissible answer: "
             "the attempt is rejected, nothing is inferred, repaired or substituted, and the "
             "cell gets a new blind attempt (at most three). A failure of the role's contract "
             "(form, fields, types, vocabulary, a reference it was not shown) stays technical, "
-            "and so does search C's, whose audit cells get no rejection the others do not get",
+            "and so does the audit search's, whose cells get no rejection the others do not get",
         ),
         Check(
             "final_qrels_unambiguous",
@@ -377,12 +398,14 @@ ROLE_VERDICTS = (
         "overlap_*",
         "overlap_gate_evidence.v1",
     ),
-    RoleVerdict("judge_a", "a problem with the need", "judge_problem", "judge_a.v2"),
-    RoleVerdict(
-        "second_searcher",
-        "a problem with the need, before any of its candidates is read",
-        "judge_problem",
-        "judge_a.v2: search B is part of every need's evidence, under search A's rule",
+    *(
+        RoleVerdict(
+            role,
+            "a problem with the need, before any of its candidates is read",
+            "judge_problem",
+            "judge_a.v3: each of the three searches is part of every need's evidence",
+        )
+        for role in ("searcher_1", "searcher_2", "searcher_3")
     ),
     RoleVerdict(
         "judge_d",
@@ -392,9 +415,10 @@ ROLE_VERDICTS = (
     ),
 )
 STOP_RULES = (
-    "an omission found by the audit's search C, new to the union of searches A and B, "
-    "adjudicated grade >= 1 (Codex Gate 2 P1.4; config/holdout/evidence-discovery.md)",
-    "the audit's search C declares a problem: the audit cannot be completed "
+    "an omission found by the audit search: a node it listed or received in full, outside the "
+    "exposure pool of the three normal searches, adjudicated grade >= 1 (Codex Gate 2 P1.4; "
+    "config/holdout/evidence-discovery.md)",
+    "the audit search declares a problem: the audit cannot be completed "
     "(omission_audit_incomplete, before any of its candidates is read)",
     "a process group not verified gone after SIGKILL (process_cleanup)",
     "a failure the construction does not classify (unclassified_failure)",

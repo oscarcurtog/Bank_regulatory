@@ -165,7 +165,11 @@ def test_the_contract_carries_every_new_identity_and_no_account(contract):
     assert (admissible["kind"], admissible["retriable"]) == ("diagnostic_only", False)
     assert "diagnostic_defects" in admissible["rule"] and "not agreement" in admissible["rule"]
     # the constructions this contract replaces, aborted, and why
-    first, second, third, fourth = contract["aborted_runs"]
+    first, second, third, fourth, fifth = contract["aborted_runs"]
+    assert fifth["status"] == "ABORTED_PROTOCOL_DEVELOPMENT_RUN"
+    assert fifth["contract_sha256"].startswith("b824db37fb9e")
+    assert fifth["public_commit"] == "808762e078f1e96a3f71a02c0b560b447332fca7"
+    assert fifth["ready_needs"] == 3 and "exposure pool" in fifth["change"]
     assert fourth["status"] == "ABORTED_PROTOCOL_DEVELOPMENT_RUN"
     assert fourth["contract_sha256"].startswith("433edd5d6337")
     assert fourth["public_commit"] == "3740fc7911f1f2bcc24d109e6045aef5eda471b9"
@@ -319,10 +323,18 @@ def test_the_clean_restart_amends_nothing_and_freezes_its_procedure(contract):
         assert f"ingest/{module}.py" in contract["construction"]["code_sha256"]
     assert "scripts/mlx_prompt_tokens.py" in contract["construction"]["code_sha256"]
     discovery = contract["construction"]["evidence_discovery"]
-    assert discovery["searches"] == {"A": "judge_a", "B": "second_search"}
-    assert discovery["audit_search"] == {"C": "omission_search", "cells": 12}
-    assert ">= 1" in discovery["audit_threshold"]
+    assert discovery["searches"] == ["search_1", "search_2", "search_3"]
+    assert discovery["audit_search"] == {"stage": "audit_search", "cells": 12}
+    assert (
+        ">= 1" in discovery["audit_threshold"] and "exposure pool" in discovery["audit_threshold"]
+    )
+    assert discovery["pool_batches"] == {
+        "max_nodes": 34,
+        "max_tokens": 9773,
+        "tokenizer": "cl100k_base (ingest/chunks.py)",
+    }
     assert contract["construction"]["controller_policy"] == "holdout-controller.v1"
+    assert contract["construction"]["controller_deadlines_seconds"]["invocation"] == 72 * 3600
     deadlines = contract["construction"]["process_deadlines_seconds"]
     assert deadlines["broker_run"] >= deadlines["broker_turn"] > 0
     record = json.loads(hc.AMENDMENT_PATH.read_text(encoding="utf-8"))

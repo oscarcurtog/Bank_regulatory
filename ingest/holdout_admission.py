@@ -160,7 +160,7 @@ def evidence_gate_problems(value: Any) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# the evidence searches (judge_a.v2: search A, search B and the audit's search C)
+# the evidence searches (judge_a.v3: search_1, search_2, search_3 and the audit search)
 # ---------------------------------------------------------------------------
 
 
@@ -173,7 +173,7 @@ def declared_problem(found: Mapping[str, Any]) -> str | None:
 def search_verdict(
     found: Any, texts: Mapping[bm.NodeKey, str], excluded: frozenset[str]
 ) -> Verdict:
-    """A search's final answer (judge_a.v2). A declared problem is an answer of its own: its
+    """A search's final answer (judge_a.v3). A declared problem is an answer of its own: its
     text, and nothing else, is required (its transition is the pipeline's, before any
     candidate is read). Otherwise every candidate and the answerability, complete (the role's
     contract), and then the protocol's rules tying the answerability to the search's own
@@ -318,6 +318,34 @@ def judge_b_problems(answer: Any, ids: Mapping[str, str]) -> list[str]:
         # every label exactly as the adjudication record will build it (hj.b_judgments)
         nodes = [ids[n] for n in named]
         labels = hj.b_judgments(answer, ids)
+        problems += [p for n, j in labels.items() for p in _judgment(j, _place(n, nodes))]
+    return problems
+
+
+def pool_problems(answer: Any, ids: Mapping[str, str]) -> list[str]:
+    """Judge B's pool variant's answer (judge_b_pool.v1): one entry for every node shown, by its
+    exact opaque id (ids: id -> node), and only those, each a label the adjudication can hold.
+    It gives no answerability: none is asked."""
+    if not isinstance(answer, Mapping):
+        return ["the answer is not an object"]
+    grades = answer.get("grades")
+    if not isinstance(grades, list):
+        return ["grades: not a list"]
+    problems = []
+    named = []
+    for i, g in enumerate(grades, start=1):
+        where = f"entry {i}"
+        if not isinstance(g, Mapping) or not isinstance(g.get("item_id"), str):
+            problems.append(f"{where}: names no candidate id")
+            continue
+        named.append(g["item_id"])
+        problems += _identity_conflicts(g, ids.get(g["item_id"]), where)
+        problems += _label_problems(g, where, "reason", grade_nullable=True)
+    problems += _set_problems(named, list(ids), "grades")
+    if not problems:
+        # every label exactly as the adjudication record will build it (hj.pool_judgments)
+        nodes = [ids[n] for n in named]
+        labels = hj.pool_judgments(answer, ids)
         problems += [p for n, j in labels.items() for p in _judgment(j, _place(n, nodes))]
     return problems
 

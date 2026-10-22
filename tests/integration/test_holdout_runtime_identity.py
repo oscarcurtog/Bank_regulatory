@@ -276,12 +276,12 @@ def test_a_session_on_another_claude_model_is_never_admitted(base, first, tmp_pa
     assert executor.calls[-1] == ("judge_b", first, 1)  # nothing consumed it
 
 
-def test_judge_a_through_the_broker_is_checked_too(base, first, tmp_path):
+def test_a_search_through_the_broker_is_checked_too(base, first, tmp_path):
     change = {"assistant_model": "other"}
-    pipeline, _ = make(base, tmp_path / "test", Scenario(model={(first, "judge_a"): change}))
+    pipeline, _ = make(base, tmp_path / "test", Scenario(model={(first, "searcher_1"): change}))
     with pytest.raises(hpl.TechnicalStop, match="runtime_identity"):
         pipeline.build()
-    assert pipeline.store.stage(f"{first}-a1", "judge_a") is None
+    assert pipeline.store.stage(f"{first}-a1", "search_1") is None
 
 
 # ---------------------------------------------------------------------------

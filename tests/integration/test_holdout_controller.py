@@ -274,6 +274,36 @@ def test_the_loop_retries_a_new_technical_failure_and_stops_at_completion(base, 
     assert any("technical_retry: model_api" in line for line in run.lines)
 
 
+def test_the_loop_stops_at_the_outer_deadline_and_never_resumes(tmp_path):
+    """The outer deadline of an invocation, 72 hours in production (the person's decision of
+    2026-10-22, operational): an invocation past it is ended with its group verified gone, and
+    the controller stops; it never resumes after it."""
+    field = hct.Controller.__dataclass_fields__["deadline"]
+    assert field.default == hct.INVOCATION_SECONDS == 72 * 3600
+    directory = tmp_path / "test"
+    command, calls = invocations(directory, ["import time; time.sleep(300)"])
+
+    def no_audit(run: hr.RoleRun) -> hr.RoleAudit:
+        raise AssertionError("an invocation that recorded nothing has nothing to audit")
+
+    run = hct.Controller(
+        directory,
+        raw_dir(directory),
+        "sha",
+        lambda: [],
+        no_audit,
+        command,
+        tmp_path / "logs",
+        stall=600,
+        poll=0.2,
+        grace=1,
+        cwd=REPO,
+    )
+    run.deadline = 1.5
+    code = run.run("start")
+    assert calls == ["start"] and code.startswith("deadline"), code
+
+
 @pytest.mark.corpus
 def test_the_loop_stops_on_an_invocation_that_records_nothing(base, tmp_path):
     failing = {"technical": {FIRST: "judge_b"}, "technical_kind": "raise"}

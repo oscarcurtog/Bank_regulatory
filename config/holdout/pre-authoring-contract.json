@@ -14,12 +14,13 @@
    "sha256": "f0d3279e86f43f4db3808e3c59793631744cb356d5f6b6b10b878bbcfce3da4e",
    "cells": 12
   },
-  "role_contracts_sha256": "cdc7c0b79effaadda91025022a4ad7e4ab727ceccfd12cbe2b1104d21b07c6c1",
+  "role_contracts_sha256": "784d9c3b6ea42eabf725bf29df09ff86d7fb8a3b8f7f56122bfe5291fbfbe788",
   "templates_sha256": {
    "attempt_frames.v2": "9b1bc7fd6eebd393b8ae1d164fca5215dcfa28249d04ab2fb35373fcd8d56411",
    "concept_author.v1": "6a4ca085ed7067153ac7d55504c51a98820df66f4e9f5d16095f8409694c1eca",
-   "judge_a.v2": "0f9557e1d72ae18940d68de55c3b58f518e1c1d46b2abb05aa02e60bbdbe7d00",
+   "judge_a.v3": "94163595733d358ae4f835ade21692e006f7d553f3c51a56fe0518d5872e4afe",
    "judge_b.v2": "f0dbb47aaf9c86377967740e86cd55b0d2d7708e76387f546baf3ea9e589fa78",
+   "judge_b_pool.v1": "405ca4d6497f458063f4703ba966898f32258cfd658e3f999f2302d2f2093803",
    "judge_c.v2": "920a56f060cfcf862bf0f352308b89d5ae111cd569775959640439f22c99d339",
    "judge_d.v2": "0785fcf85e1c5601382116aaa627b52c4b3b6a677c8138205c0c15101bb6b7d6",
    "metadata_adjudicator.v1": "f713c3333a7a3645dc7f16d40badef3fddf3c1dce12f152fb0768ddf65a28574",
@@ -47,16 +48,25 @@
   "statement_review": "code and blind roles only; no person edits or approves a statement",
   "evidence_discovery": {
    "spec": "config/holdout/evidence-discovery.md",
-   "searches": {
-    "A": "judge_a",
-    "B": "second_search"
-   },
+   "searches": [
+    "search_1",
+    "search_2",
+    "search_3"
+   ],
    "audit_search": {
-    "C": "omission_search",
+    "stage": "audit_search",
     "cells": 12
    },
-   "first_judgment": "search A's label where A listed the node, else search B's, else search C's; the answerability, search A's",
-   "audit_threshold": "a node new to search C adjudicated grade >= 1 stops"
+   "first_judgment": "the label of the first of search_1, search_2, search_3 that listed the node; the answerability, search_1's",
+   "exposure_pool": "every node a normal search received in full (an article or nodes page) or listed, that can be judged; a search snippet is not a full reading",
+   "unlisted_nodes": "judge B's pool variant (judge_b_pool.v1), blind; a grade >= 1 or an ambiguity gets a second blind judgment, and judge C decides where they differ",
+   "pool_batches": {
+    "max_nodes": 34,
+    "max_tokens": 9773,
+    "tokenizer": "cl100k_base (ingest/chunks.py)"
+   },
+   "judge_d_and_diagnostic": "every listed node, every pool node with a final grade >= 1, every pool node any blind judgment graded >= 1 or found ambiguous",
+   "audit_threshold": "a node the audit search listed or received in full, outside the normal exposure pool, adjudicated grade >= 1 stops"
   },
   "process_deadlines_seconds": {
    "headless": 900,
@@ -67,23 +77,27 @@
    "termination_grace": 10.0
   },
   "controller_policy": "holdout-controller.v1",
+  "controller_deadlines_seconds": {
+   "invocation": 259200,
+   "stall": 5400
+  },
   "code_sha256": {
    "ingest/corpus_tools.py": "1b6c4c89497c244c707bb02c1c662342a1b526d0ce85bd3e7be2a192eb2bf718",
    "ingest/holdout.py": "4f35d5d87bab7535b280f305cdab630bd7cb77be10f8be892071c9ca17d1ef0c",
-   "ingest/holdout_admission.py": "1e1fb23b634b1faddf1e05dae1005b597b78f6bfebe12ef5dc4d5a7b194f106c",
+   "ingest/holdout_admission.py": "69b6fc4933517e29dc5f9c56d8ffbcf4264678dcdc86e9377d7c911044f348b8",
    "ingest/holdout_broker.py": "373ecf4ca93180e8bd407b688cddd6b086556a50eadfd13701e66ecb288dd40c",
-   "ingest/holdout_checks.py": "ec5adb35c8825ba41e0acd82a11bf006f87242baab4655c3b7e00b13a3f3ce67",
-   "ingest/holdout_contract.py": "2f5c45da21ccdb780c67ebe29919c2f84cce7fef6e88915013db490608e0e4d6",
-   "ingest/holdout_controller.py": "91f86b286c6d17d1e6cfdaec2fd4ace782ec413b531e774359dfdbc686b4c70c",
+   "ingest/holdout_checks.py": "bd3b46c44be8eb21ab8160252d6525f74c1cb421eced1161ec2c87e83ecb72e0",
+   "ingest/holdout_contract.py": "0533f8a84f0502a6c349d46f2d4691693e240a787f696bffa3bf9587435d071c",
+   "ingest/holdout_controller.py": "a8f85b4ef661e5e9b8cc2c6cbf3cdab989feddfe994d2de6e7db7b77dbb38b13",
    "ingest/holdout_executor.py": "4566f95710961c729c2f27e35def949fec52bc315eb2fa523d709ea869b5f6fa",
    "ingest/holdout_isolation.py": "2e5c69b6566e5d7cd4229dc5ad3b80fa736fded67c6343a6a7593240b58265be",
-   "ingest/holdout_judging.py": "61923e53b858fa32430764eff7e59853e16288df1755667f4684f189f9e2d4b7",
+   "ingest/holdout_judging.py": "5eda51ddadcb5f0cc8fdea839210176efbc77e28571b0fbe343f832dd9d21703",
    "ingest/holdout_launcher.py": "e611ff224a266c13bf92be32eb6a280426921ed44eded687d1ac8da1b82a56a1",
    "ingest/holdout_ledger.py": "552e4681a40af6bb3b2ff4072880eaae7c8d4df992d2f8414a926bb9ca3c2904",
-   "ingest/holdout_packets.py": "af71ff89cd28ab3bcc98c8d86af58559876fb1a3a3947768ee1d90d67da73444",
-   "ingest/holdout_pipeline.py": "5cb02b65ed68bbe573f5fe74cc10bbff371fcf6ed6128931b809d35cd6cab753",
+   "ingest/holdout_packets.py": "7052cf28c93cea69e7234c30eb9f281768087936ee98c0155f9bf0be176f794c",
+   "ingest/holdout_pipeline.py": "f30a31dde45475673f1ab284437f09fab207aceb4dcb63553ce20381da54ffbe",
    "ingest/holdout_process.py": "dd87a17b3ada9ab5502468b769020b3b52769c38a2774cbc32caa8c2a2dc9244",
-   "ingest/holdout_roles.py": "49215bdc51f95e42b0b67f8ef922bb96a643fb3b26a1f9912dac45e1305855ef",
+   "ingest/holdout_roles.py": "3d4a98319fc61508c602111c064f8a9e45338e97f6829549ea9777a93b7bc0fe",
    "ingest/holdout_runtime.py": "ba0dcc4db48a907c6dd62792c62000151db3a71570aec438c4886238edbdef50",
    "ingest/holdout_spool.py": "a3b3c311a84b350570ae38ed95bf37f4f734f6e8c377334d8bf3fef7f884f473",
    "ingest/holdout_state.py": "07390e77c9c7dfeb8adad5f30a402a857b61384e4b64528fce1f72ac7f513d26",
@@ -94,8 +108,8 @@
   },
   "inputs_sha256": {
    "data/benchmark/PROTOCOL.md": "79cafdda538cf9cfec682817ac77bf75692f562545ad5b21f38d8394df0db1d0",
-   "config/holdout/evidence-discovery.md": "96aedcb5cbd83874368d395f88551eec275ad50eec1f2079ad1d481bd0ecac34",
-   "config/holdout/failure-paths.md": "e4f92f61337fd23a48c7e0a46d23b6af988babba3c6dd2b22dd815fd6e348a6d",
+   "config/holdout/evidence-discovery.md": "0372cf8d431ca75980bdc2365425e08eee1e3a5ba4371ce78d6e7b982207c286",
+   "config/holdout/failure-paths.md": "b881fc5dbec15c0d3f11e81382c980697818736fb71a119be31ff673108e1e8f",
    "config/retrieval/qwen3-8b-mlx.json": "92836ad88b8529027775f101b3c1e1bf1c47db46434199de271a582e82ac02a4",
    "data/benchmark/dev/manifest.json": "c845b684035dac91dec399604e6623a60c67a9564afba975f177b5d6482fb917",
    "data/benchmark/dev/needs.jsonl": "1c22c80dfb1b1d3092634b795bee5e01e0fca2bc07582d4ea1854d91c07cb791",
@@ -109,8 +123,9 @@
   "template_files": {
    "attempt_frames.v2": "data/benchmark/templates/holdout/attempt_frames.v2.json",
    "concept_author.v1": "data/benchmark/templates/holdout/concept_author.v1.md",
-   "judge_a.v2": "data/benchmark/templates/holdout/judge_a.v2.md",
+   "judge_a.v3": "data/benchmark/templates/holdout/judge_a.v3.md",
    "judge_b.v2": "data/benchmark/templates/holdout/judge_b.v2.md",
+   "judge_b_pool.v1": "data/benchmark/templates/holdout/judge_b_pool.v1.md",
    "judge_c.v2": "data/benchmark/templates/holdout/judge_c.v2.md",
    "judge_d.v2": "data/benchmark/templates/holdout/judge_d.v2.md",
    "metadata_adjudicator.v1": "data/benchmark/templates/holdout/metadata_adjudicator.v1.md",
@@ -140,9 +155,10 @@
      "kind": "technical_integrity",
      "reads": "model_output",
      "stages": [
-      "judge_a",
-      "second_search",
-      "omission_search"
+      "search_1",
+      "search_2",
+      "search_3",
+      "audit_search"
      ],
      "consequence": "resource",
      "rule": "32 requests are the technical ceiling (ingest/holdout_broker.py, Codex Gate 2 P1.3)",
@@ -153,9 +169,10 @@
      "kind": "technical_integrity",
      "reads": "model_output",
      "stages": [
-      "judge_a",
-      "second_search",
-      "omission_search"
+      "search_1",
+      "search_2",
+      "search_3",
+      "audit_search"
      ],
      "consequence": "protocol",
      "rule": "the third invalid reply ends the run (ingest/holdout_broker.py, D-054)",
@@ -225,11 +242,17 @@
       "statement",
       "overlap_gate",
       "query_formulation",
-      "judge_a",
-      "second_search",
-      "omission_search",
+      "search_1",
+      "search_2",
+      "search_3",
+      "audit_search",
       "judge_b",
+      "pool_b1",
+      "pool_b2",
+      "audit_b1",
+      "audit_b2",
       "judge_c",
+      "audit_judge_c",
       "diagnostic",
       "judge_d",
       "metadata",
@@ -255,15 +278,21 @@
      "kind": "technical_integrity",
      "reads": "model_output",
      "stages": [
-      "judge_a",
-      "second_search",
-      "omission_search",
+      "search_1",
+      "search_2",
+      "search_3",
+      "audit_search",
       "judge_b",
+      "pool_b1",
+      "pool_b2",
+      "audit_b1",
+      "audit_b2",
       "judge_c",
+      "audit_judge_c",
       "judge_d"
      ],
      "consequence": "malformed_session",
-     "rule": "the complete contract of a search's or a judge's answer before it is admitted (ingest/holdout_admission.py, P1 #1): every candidate graded once and only the candidates, every item answered once, grades 0 to 3, true or false ambiguity, an answerability of the protocol, the rationale every label needs, the gap note a partial or none answerability needs, each label one the adjudication record can hold, and the protocol's rules on a search's file (judge_a_problems); a search that declares a problem needs its text only. The diagnostic's is diagnostic_admissible",
+     "rule": "the complete contract of a search's or a judge's answer before it is admitted (ingest/holdout_admission.py, P1 #1): every candidate graded once and only the candidates, each by its exact opaque id, every item answered once, grades 0 to 3, true or false ambiguity, an answerability of the protocol, the rationale every label needs, the gap note a partial or none answerability needs, each label one the adjudication record can hold, and the protocol's rules on a search's file (judge_a_problems); a search that declares a problem needs its text only. The diagnostic's is diagnostic_admissible",
      "retriable": true
     },
     "material_discrepancy": {
@@ -297,11 +326,17 @@
       "statement",
       "overlap_gate",
       "query_formulation",
-      "judge_a",
-      "second_search",
-      "omission_search",
+      "search_1",
+      "search_2",
+      "search_3",
+      "audit_search",
       "judge_b",
+      "pool_b1",
+      "pool_b2",
+      "audit_b1",
+      "audit_b2",
       "judge_c",
+      "audit_judge_c",
       "judge_d",
       "metadata",
       "evidence_gate"
@@ -319,18 +354,24 @@
       "statement",
       "overlap_gate",
       "query_formulation",
-      "judge_a",
-      "second_search",
-      "omission_search",
+      "search_1",
+      "search_2",
+      "search_3",
+      "audit_search",
       "judge_b",
+      "pool_b1",
+      "pool_b2",
+      "audit_b1",
+      "audit_b2",
       "judge_c",
+      "audit_judge_c",
       "diagnostic",
       "judge_d",
       "metadata",
       "evidence_gate"
      ],
      "consequence": "stop",
-     "rule": "a packet the code builds from frozen inputs and admitted outputs before a model sees it: a frozen input that no longer holds (the protocol's sections and examples, the attempt frames, a template), a node the corpus lacks, or the anti-copy guard firing on the frozen parts alone. No execution can change it: the construction stops for a person (CONSTRUCTION_AMENDMENT_1)",
+     "rule": "a packet the code builds from frozen inputs and admitted outputs before a model sees it: a frozen input that no longer holds (the protocol's sections and examples, the attempt frames, a template), a node the corpus lacks, the anti-copy guard firing on the frozen parts alone, or a node of the exposure pool that alone renders a pool packet over its token ceiling (ingest/holdout_packets.py pool_batches). No execution can change it: the construction stops for a person (CONSTRUCTION_AMENDMENT_1)",
      "retriable": false
     },
     "plan_deviation": {
@@ -353,11 +394,17 @@
       "statement",
       "overlap_gate",
       "query_formulation",
-      "judge_a",
-      "second_search",
-      "omission_search",
+      "search_1",
+      "search_2",
+      "search_3",
+      "audit_search",
       "judge_b",
+      "pool_b1",
+      "pool_b2",
+      "audit_b1",
+      "audit_b2",
       "judge_c",
+      "audit_judge_c",
       "diagnostic",
       "judge_d",
       "metadata",
@@ -396,7 +443,9 @@
      "stages": [
       "lock",
       "evidence_union",
+      "exposure_pool",
       "adjudication",
+      "omission_audit",
       "metadata",
       "evidence_gate",
       "ready"
@@ -413,10 +462,13 @@
       "concept",
       "statement",
       "overlap_gate",
-      "second_search",
-      "omission_search",
       "judge_b",
+      "pool_b1",
+      "pool_b2",
+      "audit_b1",
+      "audit_b2",
       "judge_c",
+      "audit_judge_c",
       "judge_d",
       "metadata",
       "evidence_gate"
@@ -434,11 +486,17 @@
       "statement",
       "overlap_gate",
       "query_formulation",
-      "judge_a",
-      "second_search",
-      "omission_search",
+      "search_1",
+      "search_2",
+      "search_3",
+      "audit_search",
       "judge_b",
+      "pool_b1",
+      "pool_b2",
+      "audit_b1",
+      "audit_b2",
       "judge_c",
+      "audit_judge_c",
       "diagnostic",
       "judge_d",
       "metadata",
@@ -464,12 +522,13 @@
      "kind": "methodological_eligibility",
      "reads": "model_output",
      "stages": [
-      "judge_a",
-      "second_search",
+      "search_1",
+      "search_2",
+      "search_3",
       "metadata"
      ],
      "consequence": "semantic_inadmissible",
-     "rule": "the person's rule of 2026-10-21: an answer that ended normally, passed its audit and has the right form, but violates a frozen semantic invariant tying its labels to the need's evidence or answerability (the metadata's type, gap drivers, negation and drivers against the final grades; a search's answerability against its own grades: ingest/holdout_admission.py), is one failed technical execution; when the stage's three executions all violate the same invariant (the check and its codes, never the text), the need or its adjudication cannot give an admissible answer: the attempt is rejected, nothing is inferred, repaired or substituted, and the cell gets a new blind attempt (at most three). A failure of the role's contract (form, fields, types, vocabulary, a reference it was not shown) stays technical, and so does search C's, whose audit cells get no rejection the others do not get",
+     "rule": "the person's rule of 2026-10-21: an answer that ended normally, passed its audit and has the right form, but violates a frozen semantic invariant tying its labels to the need's evidence or answerability (the metadata's type, gap drivers, negation and drivers against the final grades; a search's answerability against its own grades: ingest/holdout_admission.py), in search_1, search_2, search_3 or the metadata adjudicator, is one failed technical execution; when the stage's three executions all violate the same invariant (the check and its codes, never the text), the need or its adjudication cannot give an admissible answer: the attempt is rejected, nothing is inferred, repaired or substituted, and the cell gets a new blind attempt (at most three). A failure of the role's contract (form, fields, types, vocabulary, a reference it was not shown) stays technical, and so does the audit search's, whose cells get no rejection the others do not get",
      "retriable": false
     },
     "state_integrity": {
@@ -540,16 +599,22 @@
      "rule": "overlap_gate_evidence.v1"
     },
     {
-     "role": "judge_a",
-     "verdict": "a problem with the need",
-     "outcome": "judge_problem",
-     "rule": "judge_a.v2"
-    },
-    {
-     "role": "second_searcher",
+     "role": "searcher_1",
      "verdict": "a problem with the need, before any of its candidates is read",
      "outcome": "judge_problem",
-     "rule": "judge_a.v2: search B is part of every need's evidence, under search A's rule"
+     "rule": "judge_a.v3: each of the three searches is part of every need's evidence"
+    },
+    {
+     "role": "searcher_2",
+     "verdict": "a problem with the need, before any of its candidates is read",
+     "outcome": "judge_problem",
+     "rule": "judge_a.v3: each of the three searches is part of every need's evidence"
+    },
+    {
+     "role": "searcher_3",
+     "verdict": "a problem with the need, before any of its candidates is read",
+     "outcome": "judge_problem",
+     "rule": "judge_a.v3: each of the three searches is part of every need's evidence"
     },
     {
      "role": "judge_d",
@@ -559,8 +624,8 @@
     }
    ],
    "stop_rules": [
-    "an omission found by the audit's search C, new to the union of searches A and B, adjudicated grade >= 1 (Codex Gate 2 P1.4; config/holdout/evidence-discovery.md)",
-    "the audit's search C declares a problem: the audit cannot be completed (omission_audit_incomplete, before any of its candidates is read)",
+    "an omission found by the audit search: a node it listed or received in full, outside the exposure pool of the three normal searches, adjudicated grade >= 1 (Codex Gate 2 P1.4; config/holdout/evidence-discovery.md)",
+    "the audit search declares a problem: the audit cannot be completed (omission_audit_incomplete, before any of its candidates is read)",
     "a process group not verified gone after SIGKILL (process_cleanup)",
     "a failure the construction does not classify (unclassified_failure)",
     "fewer than 50 evaluable needs still reachable (D-054 decision 3)",
@@ -702,7 +767,7 @@
   }
  },
  "code": {
-  "built_on_commit": "3740fc7911f1f2bcc24d109e6045aef5eda471b9",
+  "built_on_commit": "808762e078f1e96a3f71a02c0b560b447332fca7",
   "e_result_commit": "7636908bf57c7fbd95cc46b180c9f2e59a41b3f8",
   "files_sha256": {
    "ingest/benchmark.py": "09896f2ff6f2ad8436d7b1e5e5aa05036b15dfed65ab77ba525222da1deb840c",
@@ -947,7 +1012,7 @@
  },
  "analysis": {
   "plan_file": "config/holdout/s4-analysis-plan.md",
-  "plan_sha256": "fbd4eff00cc51294da2dedf387aaf919b099c34d1237bf658d57523a4a2bda46",
+  "plan_sha256": "a88ef690b97fe66a5b1c5e8fef64f8c0dde857d2bf5bac20c1abe0f3ec752330",
   "primary_comparison": "E against E5",
   "bootstrap": {
    "function": "ingest/run_report.py paired_bootstrap",
@@ -996,6 +1061,14 @@
    "ready_needs": 5,
    "reason": "Three executions of judge C answered the item they were given for another legal node, a failure of the role's contract, so that the stage was left pending_technical_unresolved. A candidate's identity was carried by its act and path, which the model wrote back itself, rather than by an id the orchestrator owns.",
    "change": "the identity of what a judge grades: every candidate of judges B, C and D and of the diagnostic is given under an opaque item id, answered by that exact id and mapped to its node by the orchestrator alone (judge_b.v2, judge_c.v2, judge_d.v2); a missing, unknown, repeated or other id stays a technical contract failure. Rubrics, thresholds, retries and every methodological rule unchanged"
+  },
+  {
+   "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+   "contract_sha256": "b824db37fb9e13202f4d3efdc38a706a03c9c56fe030607a39ae5a6a167846d7",
+   "public_commit": "808762e078f1e96a3f71a02c0b560b447332fca7",
+   "ready_needs": 3,
+   "reason": "The omission audit's hard stop: the audit search listed a node outside the union of searches A and B, adjudicated grade >= 1. A structural review, counts only, found that most omissions were nodes the missing search had read in full and not listed: coverage depended on each search's discretionary, softly capped listing",
+   "change": "three fixed blind searches for every need; a mechanical exposure pool (every node a search received in full, listed or not, is judged: judge B's pool variant, a second blind judgment for a grade >= 1 or an ambiguity, judge C on a difference); the audit search's coverage is its own exposure; judge D and the diagnostic on the listed nodes and the pool's contested or relevant ones; no number of candidates in the searches' template (judge_a.v3); the controller's outer deadline 72 hours. The rubrics, the omission threshold >= 1, the retries and every other rule unchanged"
   }
  ],
  "derived_at_freeze_only": [

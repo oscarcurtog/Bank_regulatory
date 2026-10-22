@@ -5,22 +5,28 @@ model's output is consumed only after it passes its role's audit (ingest/holdout
 
     concept (blind concept author) -> statement (blind statement writer) -> overlap_gate (DEV,
     fixtures, ready TEST) -> statement_validation (the existing rules, by code) ->
-    query_formulation (blind query writer) -> lock (statement and queries) -> judge_a (search
-    A, through the evidence broker) -> second_search (search B, blind and independent, for
-    every need) -> omission_search (the audit's search C, blind, in the omission audit's 12
-    cells) -> judge_b -> judge_c (on every disagreement) -> adjudication -> diagnostic
-    (Qwen3-8B) -> judge_d (on a material discrepancy, or on every candidate and the
-    answerability when the diagnostic is unavailable) -> metadata (blind adjudicator) ->
-    evidence_gate (each DEV need that shares grade-3 evidence) -> validators -> READY
+    query_formulation (blind query writer) -> lock (statement and queries) -> search_1,
+    search_2, search_3 (three blind searches, through the evidence broker, for every need) ->
+    audit_search (the omission audit's search, blind, in its 12 cells) -> judge_b (the listed
+    candidates) -> pool_b1 and pool_b2 (judge B's pool variant on the exposure pool's
+    unlisted nodes) -> judge_c (on every disagreement) -> adjudication, exposure_pool ->
+    omission_audit (its cells) -> diagnostic (Qwen3-8B) -> judge_d (on a material
+    discrepancy, or on every candidate and the answerability when the diagnostic is
+    unavailable) -> metadata (blind adjudicator) -> evidence_gate (each DEV need that shares
+    grade-3 evidence) -> validators -> READY
 
-The evidence of every need is discovered the same way (config/holdout/evidence-discovery.md):
-search A and search B, each a fresh isolated context with the same frozen packet
-(judge_a.v2) built from the locked need alone, neither seeing the other's candidates, path,
-labels or output; their candidates joined into one set; one adjudication on it. In the 12
-cells of the omission audit a third blind search, C, looks for what that set lacks: a node new
-to C goes through the same adjudication, and one adjudicated grade >= 1 stops the construction
-before the freeze. A search that declares a problem: A or B, the need is not judgeable
-(judge_problem); C, the audit cannot be completed, and the construction stops for a person.
+The evidence of every need is discovered the same way (config/holdout/evidence-discovery.md,
+the design of 2026-10-22): three searches, each a fresh isolated context with the same frozen
+packet (judge_a.v3) built from the locked need alone, none seeing another's candidates, path,
+labels or output. Their listed candidates are joined; every node the broker gave any of them
+in full enters the exposure pool mechanically, listed or not, and is judged: a node no search
+listed is graded blind by judge B's pool variant, a grade >= 1 or an ambiguity gets a second
+blind judgment, and judge C decides where the two differ. In the 12 cells of the omission
+audit a fourth blind search looks for what the pool lacks: a node it listed or received in
+full outside the pool is adjudicated by the same rules, and one with a final grade >= 1 stops
+the construction before the freeze. A search that declares a problem: a normal one, the need is
+not judgeable (judge_problem); the audit's, the audit cannot be completed, and the construction
+stops for a person.
 
 No person reads or approves a statement before the lock (the person's decision of
 2026-10-19): the person knows E, DEV and their failure modes, and any wording of theirs would
@@ -55,7 +61,7 @@ again, with no vote and no label; judge D, blind, grades every candidate and the
 in its place, by the rule of a discrepancy. A failure of the process or of the runtime (a
 crash, memory, an interruption, another runtime or host) is still technical.
 
-An omission found by the audit's search C and adjudicated grade >= 1 stops the construction
+An omission found by the audit search and adjudicated grade >= 1 stops the construction
 before the freeze; so do fewer than 50 reachable evaluable needs. After the 20th, 40th and 60th
 cell of the order a checkpoint verifies the state, makes a verified backup and records a report
 of counts: it changes nothing, and a problem it finds stops the construction.
@@ -147,13 +153,22 @@ EXECUTOR_FAILURE: dict[str, TechnicalReason] = {
 
 # The checks whose failure can be a frozen semantic invariant of a well-formed answer, and the
 # stages where three executions violating the same one reject the attempt (the person's rule of
-# 2026-10-21). Search C keeps the frozen technical exhaustion: the audit's cells get no
+# 2026-10-21). The audit search keeps the frozen technical exhaustion: the audit's cells get no
 # rejection the others do not get.
 SEMANTIC_CHECKS = ("metadata_answer", "judge_answer_complete")
-SEMANTIC_STAGES = ("judge_a", "second_search", "metadata")
-# The searches of a need's evidence, in their order: search A, search B (every need) and the
-# omission audit's search C (its 12 cells); every later stage is built from what they admitted
-SEARCHES = ("judge_a", "second_search", "omission_search")
+SEMANTIC_STAGES = ("search_1", "search_2", "search_3", "metadata")
+# The searches of a need's evidence, in their order (the design of 2026-10-22): three blind
+# searches for every need, then the omission audit's search in its 12 cells. Every later stage
+# of the normal adjudication is built from the three normal searches alone, so that it is the
+# same in an audited cell and in any other
+NORMAL_SEARCHES = ("search_1", "search_2", "search_3")
+SEARCHES = (*NORMAL_SEARCHES, "audit_search")
+SEARCH_ROLES = {
+    "search_1": "searcher_1",
+    "search_2": "searcher_2",
+    "search_3": "searcher_3",
+    "audit_search": "audit_searcher",
+}
 # The check that covers an answer of a shape its stage cannot read, by stage
 SHAPE_CHECK = {
     "concept": "answer_fields",
@@ -1313,8 +1328,9 @@ class Pipeline:
         inputs: Mapping[str, str],
         admit: Callable[[Any], Any],
     ) -> Any:
-        """Judge A or the second searcher. Every outcome but a final answer is a technical
-        failure of this execution: the ceiling (pending_technical_resource) or the protocol."""
+        """One evidence search. Every outcome but a final answer is a technical failure of this
+        execution: the ceiling (pending_technical_resource) or the protocol. The admitted value
+        carries the nodes the broker gave it in full (hj.exposure), read from its own log."""
 
         def document(result: BrokerSession | None) -> dict[str, Any] | None:
             if result is None:
@@ -1342,7 +1358,13 @@ class Pipeline:
                 raise technical("broker_ceiling", f"{role}: {run.consumption()}")
             if run.outcome != "final":
                 raise technical("broker_protocol", f"{role}: {run.outcome}")
-            return admit({"final": run.final, "consumption": run.consumption()})
+            return admit(
+                {
+                    "final": run.final,
+                    "consumption": run.consumption(),
+                    "exposure": hj.exposure(run.log),
+                }
+            )
 
         return self._model(role, pid, stage, packet, ref, inputs, call, recall, check)
 
@@ -1551,9 +1573,10 @@ class Pipeline:
                 raise semantic("judge_answer_complete", verdict.violations)
             return value
 
-        def search(role: str, stage: str) -> tuple[dict[str, Any], dict[str, Any]]:
+        def search(stage: str) -> tuple[dict[str, Any], dict[str, Any]]:
             """One blind search: a fresh context, the frozen packet built from the locked
             need alone (never another search's candidates, path, labels or output)."""
+            role = SEARCH_ROLES[stage]
             ref = self._ref(role, pid)
             value = self._broker(
                 role,
@@ -1571,42 +1594,54 @@ class Pipeline:
             )
             return value, a_file_of(value)
 
-        # search A, then search B: a declared problem is the need's, before any candidate
-        judged_a, a_file = search("judge_a", "judge_a")
-        if ha.declared_problem(a_file) is not None:
-            raise Rejected("judge_problem", "judge_a")
-        searched_b, b_file = search("second_searcher", "second_search")
-        if ha.declared_problem(b_file) is not None:
-            raise Rejected("judge_problem", "second_search")
-        c_file = None
+        # three blind searches, in their order: a declared problem is the need's, before any
+        # candidate is read
+        files: dict[str, dict[str, Any]] = {}
+        exposures: dict[str, list[str]] = {}
+        consumption: dict[str, Any] = {}
+        for stage in NORMAL_SEARCHES:
+            value, found = search(stage)
+            if ha.declared_problem(found) is not None:
+                raise Rejected("judge_problem", stage)
+            files[stage], exposures[stage] = found, list(value["exposure"])
+            consumption[stage] = value["consumption"]
+        audit_file: dict[str, Any] | None = None
+        audit_exposure: list[str] = []
         if cell.cell_id in w.omission:
-            _, c_file = search("omission_searcher", "omission_search")
-            if ha.declared_problem(c_file) is not None:
+            value, audit_file = search("audit_search")
+            if ha.declared_problem(audit_file) is not None:
                 raise ConstructionStop(
                     f"the omission audit's search of {cell.cell_id} declares a problem: the "
                     "audit cannot be completed; a person decides",
                     reason="omission_audit_incomplete",
                     cell_id=cell.cell_id,
                     proposal_id=pid,
-                    stage="omission_search",
+                    stage="audit_search",
                 )
+            audit_exposure = list(value["exposure"])
+            consumption["audit_search"] = value["consumption"]
         discovery = self._built(
             "record_assembly",
             "evidence_union",
             pid,
-            lambda: hj.evidence_union(a_file, b_file, c_file),
+            lambda: hj.exposure_pool(files, exposures, w.texts, w.excluded_psd2),
         )
-        a, scope, additional = discovery.first, discovery.scope, discovery.additional
-        candidates = self._built(
-            "record_assembly", "evidence_union", pid, lambda: w.corpus.sort(list(discovery.nodes))
+        first, scope = discovery.first, discovery.scope
+        listed = self._built(
+            "record_assembly", "evidence_union", pid, lambda: w.corpus.sort(discovery.listed)
         )
+        unlisted = self._built(
+            "record_assembly", "evidence_union", pid, lambda: w.corpus.sort(discovery.unlisted)
+        )
+        searched = self._inputs(pid, "lock", *NORMAL_SEARCHES)
 
+        # judge B on the listed candidates and the answerability
         b_ref = self._ref("judge_b", pid)
         b_ids = self._built(
             "packet_construction",
             "judge_b",
             pid,
-            lambda: self._item_ids(pid, "judge_b", candidates),
+            lambda: self._item_ids(pid, "judge_b", listed),
         )
         b_by_id = {v: k for k, v in b_ids.items()}
         b_answer = self._headless(
@@ -1617,102 +1652,128 @@ class Pipeline:
                 "packet_construction",
                 "judge_b",
                 pid,
-                lambda: hp.judge_b_packet(w.corpus, draft, candidates, scope, b_ids, ref=b_ref),
+                lambda: hp.judge_b_packet(w.corpus, draft, listed, scope, b_ids, ref=b_ref),
             ),
             b_ref,
-            self._inputs(pid, "lock", *SEARCHES),
+            searched,
             _admitted("judge_answer_complete", lambda v: ha.judge_b_problems(v, b_by_id)),
         )
         b = self._built(
             "record_assembly", "adjudication", pid, lambda: hj.b_judgments(b_answer, b_by_id)
         )
+        # the exposure pool's nodes no search listed: a blind judgment of each by judge B's
+        # pool variant; a grade >= 1 or an ambiguity gets a second blind judgment, and where the
+        # two differ judge C decides. A grade 0, or no grade, that is not ambiguous is final
+        pool_1, b1_stages = self._pool_round(
+            pid, draft, "pool_b1", "pool_judge_1", unlisted, searched
+        )
+        flagged = [n for n in unlisted if hj.needs_second_judgment(pool_1[n])]
+        pool_2, b2_stages = self._pool_round(
+            pid,
+            draft,
+            "pool_b2",
+            "pool_judge_2",
+            flagged,
+            {**searched, **self._inputs(pid, *b1_stages)},
+        )
+        pool_stages = [*b1_stages, *b2_stages]
+        candidates = self._built(
+            "record_assembly", "adjudication", pid, lambda: w.corpus.sort([*listed, *flagged])
+        )
+        a_all = {**first, **{n: pool_1[n] for n in flagged}}
+        b_all = {**b, **{n: pool_2[n] for n in flagged}}
         disputed = self._built(
-            "record_assembly", "adjudication", pid, lambda: hj.disagreements(candidates, a, b)
+            "record_assembly",
+            "adjudication",
+            pid,
+            lambda: hj.disagreements(candidates, a_all, b_all),
         )
         c_answers: dict[str, Any] = {}
         if disputed.nodes or disputed.answerability:
-            c_ref = self._ref("judge_c", pid)
-            c_targets = [*disputed.nodes, *([bm.ANSWERABILITY_TARGET] * disputed.answerability)]
-            packet, items = self._built(
-                "packet_construction",
-                "judge_c",
+            c_answers = self._judge_c(
                 pid,
-                lambda: hp.judge_c_packet(
-                    w.corpus,
-                    draft,
-                    candidates,
-                    scope,
-                    a,
-                    b,
-                    disputed.nodes,
-                    disputed.answerability,
-                    self._item_ids(pid, "judge_c", c_targets),
-                    ref=c_ref,
-                ),
-            )
-            admit_c = _admitted("judge_answer_complete", lambda v: ha.judge_c_problems(v, items))
-
-            c_reply = self._headless(
+                draft,
                 "judge_c",
-                pid,
-                "judge_c",
-                packet,
-                c_ref,
-                self._inputs(pid, "lock", *SEARCHES, "judge_b"),
-                admit_c,
+                candidates,
+                {**scope},
+                a_all,
+                b_all,
+                disputed.nodes,
+                disputed.answerability,
+                self._inputs(pid, "lock", *NORMAL_SEARCHES, "judge_b", *pool_stages),
             )
-            # each decision bound to its item by the opaque id alone, never by position
-            by_item = {i["item_id"]: i for i in c_reply.get("items", [])}
-            for item in items:
-                c_answers[item.target] = by_item[item.item_id]
         assembled = self._built(
             "record_assembly",
             "adjudication",
             pid,
             lambda: hj.assemble(
-                need_id, candidates, a, b, c_answers, a_file.get("gap_note"), w.texts
+                need_id,
+                candidates,
+                a_all,
+                b_all,
+                c_answers,
+                files[NORMAL_SEARCHES[0]].get("gap_note"),
+                w.texts,
             ),
         )
         final = _assembled(
             self._decide(
                 pid,
                 "adjudication",
-                self._inputs(pid, *SEARCHES, "judge_b", "judge_c"),
+                self._inputs(pid, *NORMAL_SEARCHES, "judge_b", *pool_stages, "judge_c"),
                 _assembled_record(assembled),
             )
         )
+        # the pool's own record: every node, who listed and who received it, and the final
+        # label of those judge B's pool variant graded alone (no qrel: the record format holds
+        # two judgments, and an unjudged node and a grade 0 count alike in every S4 metric)
+        screened = {n: pool_1[n] for n in unlisted if n not in flagged}
+        pool_record = self._decide(
+            pid,
+            "exposure_pool",
+            self._inputs(pid, *NORMAL_SEARCHES, *pool_stages),
+            {
+                **discovery.record(),
+                "second_judgment": flagged,
+                "screened": {
+                    n: {"grade": j.get("grade"), "ambiguous": bool(j.get("ambiguous"))}
+                    for n, j in screened.items()
+                },
+                "batches": {"pool_b1": len(b1_stages), "pool_b2": len(b2_stages)},
+            },
+        )
         if any(q.ambiguous for q in final.qrels):
             raise self._ineligible("final_qrels_unambiguous", "adjudication")
-        omitted = [q for q in final.qrels if f"{q.act}:{q.path}" in additional]
         if cell.cell_id in w.omission:
-            # bound to this attempt: the audit of the attempt that becomes READY is the one a
-            # checkpoint and the freeze read; an earlier attempt's stays as provenance
-            self.omission_log.append(
-                {
-                    "cell_id": cell.cell_id,
-                    "proposal_id": pid,
-                    "need_id": need_id,
-                    "additional_nodes": additional,
-                    "additional_final_grades": {f"{q.act}:{q.path}": q.grade for q in omitted},
-                }
+            assert audit_file is not None
+            normal: dict[str, int | None] = {f"{q.act}:{q.path}": q.grade for q in final.qrels}
+            normal |= {n: j.get("grade") for n, j in screened.items()}
+            self._omission_audit(
+                cell, pid, need_id, draft, discovery.pool, normal, audit_file, audit_exposure
             )
-            if any(q.grade >= 1 for q in omitted):
-                raise ConstructionStop(
-                    f"the omission audit of {cell.cell_id} found evidence the union of searches "
-                    "A and B missed, adjudicated grade >= 1: stop before the freeze and review "
-                    "the procedure",
-                    reason="omission_audit",
-                    cell_id=cell.cell_id,
-                    proposal_id=pid,
-                    stage="adjudication",
-                )
+        # judge D and the diagnostic: the same candidates, by the frozen rule of the design
+        pool_labels = {
+            n: [
+                pool_1[n],
+                *([pool_2[n]] if n in pool_2 else []),
+                *([c_answers[n]] if n in c_answers else []),
+            ]
+            for n in unlisted
+        }
+        final_grades = {f"{q.act}:{q.path}": q.grade for q in final.qrels}
+        d_set = self._built(
+            "record_assembly",
+            "adjudication",
+            pid,
+            lambda: w.corpus.sort(hj.diagnostic_set(listed, pool_labels, final_grades)),
+        )
 
         limit = w.local_runtime["generation"]["max_prompt_tokens"]
         q_ids = self._built(
             "packet_construction",
             "diagnostic",
             pid,
-            lambda: self._item_ids(pid, "diagnostic", candidates),
+            lambda: self._item_ids(pid, "diagnostic", d_set),
         )
         q_by_id = {v: k for k, v in q_ids.items()}
 
@@ -1756,12 +1817,10 @@ class Pipeline:
                 "packet_construction",
                 "diagnostic",
                 pid,
-                lambda: hp.diagnostic_messages(
-                    w.corpus, draft, candidates, scope, q_ids, ref=q_ref
-                ),
+                lambda: hp.diagnostic_messages(w.corpus, draft, d_set, scope, q_ids, ref=q_ref),
             ),
             q_ref,
-            self._inputs(pid, "lock", *SEARCHES),
+            self._inputs(pid, "lock", *NORMAL_SEARCHES, "adjudication"),
             admit_q,
         )
         unavailable = hj.diagnostic_unavailable(diagnostic)
@@ -1769,7 +1828,7 @@ class Pipeline:
         if unavailable:
             # Qwen unavailable is not Qwen agreeing: judge D, blind, grades every candidate and
             # the answerability, and holds the consensus or not by the rule of a discrepancy
-            targets = [*candidates, bm.ANSWERABILITY_TARGET]
+            targets = [*d_set, bm.ANSWERABILITY_TARGET]
         else:
             discrepancies = hj.material_discrepancies(q_by_id, final, diagnostic).discrepancies
             targets = discrepancies
@@ -1780,7 +1839,7 @@ class Pipeline:
                 "packet_construction",
                 "judge_d",
                 pid,
-                lambda: self._item_ids(pid, "judge_d", [*candidates, bm.ANSWERABILITY_TARGET]),
+                lambda: self._item_ids(pid, "judge_d", [*d_set, bm.ANSWERABILITY_TARGET]),
             )
             d_by_id = {d_ids[t]: t for t in targets}
             admit_d = _admitted("judge_answer_complete", lambda v: ha.judge_d_problems(v, d_by_id))
@@ -1790,9 +1849,7 @@ class Pipeline:
                 "packet_construction",
                 "judge_d",
                 pid,
-                lambda: hp.judge_d_packet(
-                    w.corpus, draft, candidates, scope, targets, d_ids, ref=d_ref
-                ),
+                lambda: hp.judge_d_packet(w.corpus, draft, d_set, scope, targets, d_ids, ref=d_ref),
             )
             d_reply = self._headless(
                 "judge_d",
@@ -1916,16 +1973,213 @@ class Pipeline:
                     "cell_id": cell.cell_id,
                     "proposal_id": pid,
                     "attempt": attempt.number,
-                    "judge_a_consumption": judged_a["consumption"],
-                    "second_search_consumption": searched_b["consumption"],
-                    # which search found each candidate, and the counts of the union
-                    "evidence_discovery": discovery.record(),
+                    "search_consumption": consumption,
+                    # which searches listed and received each node, the pool's counts, and the
+                    # label of each node judge B's pool variant graded alone
+                    "evidence_discovery": pool_record,
                     "omission_audit": cell.cell_id in w.omission,
                     "deviations": hl.deviations(cell, need),
                     "metadata_source": meta.source,
                 },
             ),
         )
+
+    def _pool_round(
+        self,
+        pid: str,
+        draft: bm.Need,
+        kind: str,
+        role: str,
+        nodes: Sequence[str],
+        inputs: Mapping[str, str],
+    ) -> tuple[dict[str, dict[str, Any]], list[str]]:
+        """One blind judgment, by judge B's pool variant (judge_b_pool.v1), of nodes no search
+        listed: in document order, cut into deterministic batches (hp.pool_batches), each a
+        stage "<kind>:<n>" and a context of its own. Each node is shown under its pool id, the
+        same in its first and its second judgment. Returns node -> label, and the stages."""
+        if not nodes:
+            return {}, []
+        w = self.world
+        ref = self._ref(role, pid)
+        ids = self._built(
+            "packet_construction", kind, pid, lambda: self._item_ids(pid, "pool", nodes)
+        )
+
+        def render(batch: Sequence[str]) -> str:
+            return hp.judge_b_pool_packet(w.corpus, draft, batch, ids, ref=ref)
+
+        batches = self._built(
+            "packet_construction", kind, pid, lambda: hp.pool_batches(nodes, render)
+        )
+        labels: dict[str, dict[str, Any]] = {}
+        stages: list[str] = []
+        for number, batch in enumerate(batches, start=1):
+            stage = f"{kind}:{number}"
+            by_id = {ids[n]: n for n in batch}
+            answer = self._headless(
+                role,
+                pid,
+                stage,
+                self._built("packet_construction", stage, pid, functools.partial(render, batch)),
+                ref,
+                inputs,
+                _admitted("judge_answer_complete", functools.partial(ha.pool_problems, ids=by_id)),
+            )
+            labels |= self._built(
+                "record_assembly",
+                "adjudication",
+                pid,
+                functools.partial(hj.pool_judgments, answer, by_id),
+            )
+            stages.append(stage)
+        return labels, stages
+
+    def _judge_c(
+        self,
+        pid: str,
+        draft: bm.Need,
+        stage: str,
+        candidates: Sequence[str],
+        scope: Mapping[str, Sequence[str]],
+        a: Mapping[str, Any],
+        b: Mapping[str, Any],
+        nodes: Sequence[str],
+        answerability: bool,
+        inputs: Mapping[str, str],
+    ) -> dict[str, Any]:
+        """Judge C on the disputed items of one adjudication (judge_c.v2): the two positions of
+        each in an order drawn for it, each item under its opaque id. Each decision is bound to
+        its item by the id alone, never by its position: target -> judge C's answer."""
+        w = self.world
+        c_ref = self._ref("judge_c", pid)
+        c_targets = [*nodes, *([bm.ANSWERABILITY_TARGET] * answerability)]
+        packet, items = self._built(
+            "packet_construction",
+            stage,
+            pid,
+            lambda: hp.judge_c_packet(
+                w.corpus,
+                draft,
+                candidates,
+                scope,
+                a,
+                b,
+                nodes,
+                answerability,
+                self._item_ids(pid, stage, c_targets),
+                ref=c_ref,
+            ),
+        )
+        admit_c = _admitted("judge_answer_complete", lambda v: ha.judge_c_problems(v, items))
+        c_reply = self._headless("judge_c", pid, stage, packet, c_ref, inputs, admit_c)
+        by_item = {i["item_id"]: i for i in c_reply.get("items", [])}
+        return {item.target: by_item[item.item_id] for item in items}
+
+    def _omission_audit(
+        self,
+        cell: ho.Cell,
+        pid: str,
+        need_id: str,
+        draft: bm.Need,
+        pool: Sequence[str],
+        normal: Mapping[str, int | None],
+        audit_file: Mapping[str, Any],
+        audit_exposure: Sequence[str],
+    ) -> None:
+        """The omission audit of one attempt (config/holdout/evidence-discovery.md): the nodes the
+        audit search listed or received in full outside the normal exposure pool, adjudicated
+        by the pool's rules (its own label as the first judgment of a node it listed). Any of
+        them with a final grade >= 1 stops the construction before the freeze; a grade 0 is a
+        diagnostic. Its labels on nodes already in the pool change nothing: each difference with
+        the normal final grade (normal: node -> grade) is an audit judgment discrepancy, kept as
+        provenance and counted, never a label, a judge C, a rejection or a stop."""
+        w = self.world
+        nodes = self._built(
+            "record_assembly",
+            "omission_audit",
+            pid,
+            lambda: hj.audit_nodes(audit_file, audit_exposure, pool, w.texts, w.excluded_psd2),
+        )
+        new = self._built(
+            "record_assembly",
+            "omission_audit",
+            pid,
+            lambda: w.corpus.sort([*nodes.listed, *nodes.exposed]),
+        )
+        inputs = self._inputs(pid, "lock", *NORMAL_SEARCHES, "audit_search")
+        first, b1 = self._pool_round(pid, draft, "audit_b1", "pool_judge_1", new, inputs)
+        flagged = [n for n in nodes.exposed if hj.needs_second_judgment(first[n])]
+        second, b2 = self._pool_round(
+            pid, draft, "audit_b2", "pool_judge_2", flagged, {**inputs, **self._inputs(pid, *b1)}
+        )
+        candidates = w.corpus.sort([*nodes.listed, *flagged])
+        a = {**nodes.listed, **{n: first[n] for n in flagged}}
+        b = {**{n: first[n] for n in nodes.listed}, **{n: second[n] for n in flagged}}
+        disputed = [n for n in candidates if hj.label(a[n]) != hj.label(b[n])]
+        c_answers: dict[str, Any] = {}
+        if disputed:
+            c_answers = self._judge_c(
+                pid,
+                draft,
+                "audit_judge_c",
+                candidates,
+                nodes.scope,
+                a,
+                b,
+                disputed,
+                False,
+                {**inputs, **self._inputs(pid, *b1, *b2)},
+            )
+        decided = self._built(
+            "record_assembly",
+            "omission_audit",
+            pid,
+            lambda: hj.assemble_audit(need_id, candidates, a, b, c_answers, w.texts),
+        )
+        finals = {x.target: x.final.grade for x in decided.adjudications}
+        screened = {n: first[n].get("grade") for n in nodes.exposed if n not in flagged}
+        discrepancies = []
+        for node, label in sorted(nodes.on_pool.items()):
+            audit_grade, normal_grade = label.get("grade") or 0, normal.get(node) or 0
+            if normal_grade == 0 and audit_grade >= 1:
+                discrepancies.append({"node": node, "direction": "0_to_1_or_more"})
+            elif normal_grade >= 1 and audit_grade == 0:
+                discrepancies.append({"node": node, "direction": "1_or_more_to_0"})
+        record = self._decide(
+            pid,
+            "omission_audit",
+            self._inputs(pid, "adjudication", "audit_search", *b1, *b2, "audit_judge_c"),
+            {
+                "new_listed": sorted(nodes.listed),
+                "new_exposed": list(nodes.exposed),
+                "second_judgment": flagged,
+                "final_grades": dict(sorted(finals.items())),
+                "screened": dict(sorted(screened.items())),
+                "judgment_discrepancies": discrepancies,
+            },
+        )
+        # bound to this attempt: the audit of the attempt that becomes READY is the one a
+        # checkpoint and the freeze read; an earlier attempt's stays as provenance
+        self.omission_log.append(
+            {
+                "cell_id": cell.cell_id,
+                "proposal_id": pid,
+                "need_id": need_id,
+                "additional_nodes": [*record["new_listed"], *record["new_exposed"]],
+                "additional_final_grades": {**record["screened"], **record["final_grades"]},
+                "judgment_discrepancies": record["judgment_discrepancies"],
+            }
+        )
+        if any((g or 0) >= 1 for g in record["final_grades"].values()):
+            raise ConstructionStop(
+                f"the omission audit of {cell.cell_id} found evidence outside the exposure pool of "
+                "the three normal searches, adjudicated grade >= 1: stop before the freeze and "
+                "review the procedure",
+                reason="omission_audit",
+                cell_id=cell.cell_id,
+                proposal_id=pid,
+                stage="omission_audit",
+            )
 
     def _evidence_gate(self, pid: str, need: bm.Need, qrels: Sequence[bm.Qrel]) -> None:
         w = self.world
@@ -2069,7 +2323,7 @@ class Pipeline:
             logged = [o for o in self.omission_log if o["proposal_id"] == ready_attempt[cell_id]]
             if len(logged) != 1:
                 problems.append(f"{cell_id}: the omission audit of its READY attempt is not one")
-            elif any(g >= 1 for g in logged[0]["additional_final_grades"].values()):
+            elif any((g or 0) >= 1 for g in logged[0]["additional_final_grades"].values()):
                 problems.append(f"{cell_id}: its omission audit did not pass")
         problems += self._ledger_problems()
         gate_ids = {g["proposal_id"] for g in self.gate_log if g["stage"] == "statement"}
@@ -2080,6 +2334,7 @@ class Pipeline:
         }:
             problems.append("a gate verdict belongs to no attempt")
         problems += self._consumption_problems()
+        problems += self._exposure_problems()
         problems += self._diagnostic_coverage_problems()
         problems += self._durable_problems()
         return problems
@@ -2125,6 +2380,27 @@ class Pipeline:
             found = hj.diagnostic_problems(q_by_id, diagnostic["value"])
             if found:
                 problems.append(f"{pid}: an admitted diagnostic is incomplete: {found[:3]}")
+        return problems
+
+    def _exposure_problems(self) -> list[str]:
+        """Every admitted search's exposure is the one its own recorded broker log gives
+        (hj.exposure): the pool is rebuilt from the logs, never from what a model wrote."""
+        problems = []
+        runs = {r["run_id"]: r for r in self.store.runs()}
+        for row in self.store.stages():
+            if row["stage"] not in SEARCHES:
+                continue
+            admitted = self.store.stage(row["proposal_id"], row["stage"])
+            run = runs.get(row["run_id"]) if admitted is not None else None
+            if admitted is None or run is None or not run["response"]:
+                problems.append(f"{row['proposal_id']} {row['stage']}: no run behind its exposure")
+                continue
+            kept = json.loads(run["response"])["kept"]
+            log = json.loads(self.store.text(kept, "kept"))["run"]["log"]
+            if hj.exposure(log) != admitted["value"].get("exposure"):
+                problems.append(
+                    f"{row['proposal_id']} {row['stage']}: its exposure is not its broker log's"
+                )
         return problems
 
     def _consumption_problems(self) -> list[str]:
@@ -2227,14 +2503,15 @@ class Pipeline:
                 "statement_writer",
                 "gatekeeper",
                 "query_writer",
-                "judge_a",
-                "second_searcher",
+                "searcher_1",
+                "searcher_2",
+                "searcher_3",
                 "judge_b",
                 "qwen_diagnostic",
                 "metadata_adjudicator",
             }
             if r.cell_id in self.world.omission:
-                needed.add("omission_searcher")
+                needed.add("audit_searcher")
             missing = needed - roles
             if missing:
                 problems.append(f"{r.need.need_id}: no audited run of {sorted(missing)}")
@@ -2287,9 +2564,20 @@ class Pipeline:
                 "cells": len(audited),
                 "additional_nodes": sum(len(o["additional_nodes"]) for o in audited),
                 "grade_0_additions": sum(
-                    g == 0 for o in audited for g in o["additional_final_grades"].values()
+                    not g for o in audited for g in o["additional_final_grades"].values()
                 ),
                 "attempts_audited": len(self.omission_log),
+                # the audit search's labels on nodes the pool held already: provenance, counted
+                "judgment_discrepancies": dict(
+                    Counter(d["direction"] for o in audited for d in o["judgment_discrepancies"])
+                ),
+                "judgment_discrepancies_all_attempts": dict(
+                    Counter(
+                        d["direction"]
+                        for o in self.omission_log
+                        for d in o["judgment_discrepancies"]
+                    )
+                ),
             },
             "evidence_discovery": self._discovery_report(),
             "diagnostic": {
@@ -2320,25 +2608,32 @@ class Pipeline:
         }
 
     def _discovery_report(self) -> dict[str, Any]:
-        """What the two searches found across the READY needs, as counts: how many candidates
-        each listed, how many only search B listed, and how many of those the adjudication
-        made relevant (grade >= 2, not ambiguous) or grade >= 1."""
+        """What the three searches and the exposure pool found across the READY needs, as counts:
+        how many candidates each search listed, how many only one search listed, the pool's
+        size and its unlisted nodes, how many of those needed a second judgment, and how many
+        of them the adjudication made grade >= 1 and relevant (grade >= 2, not ambiguous)."""
         out: Counter[str] = Counter()
         for r in self.ready.values():
             found = r.provenance.get("evidence_discovery", {})
             grades = {f"{q.act}:{q.path}": q for q in r.qrels}
-            for key in ("search_a", "search_b", "both", "only_b", "union"):
+            for search, count in found.get("listed", {}).items():
+                out[f"listed_{search}"] += int(count)
+            for key in ("listed_union", "listed_by_one", "pool", "unlisted"):
                 out[key] += int(found.get(key, 0))
-            only_b = [
-                n for n, by in found.get("found_by", {}).items() if "B" in by and "A" not in by
-            ]
-            out["only_b_grade_1_or_more"] += sum(
-                n in grades and grades[n].grade >= 1 for n in only_b
+            second = list(found.get("second_judgment", []))
+            out["second_judgment"] += len(second)
+            out["screened"] += len(found.get("screened", {}))
+            out["unlisted_grade_1_or_more"] += sum(
+                n in grades and grades[n].grade >= 1 for n in second
             )
-            out["only_b_relevant"] += sum(
-                n in grades and hj.relevant(grades[n].grade, grades[n].ambiguous) for n in only_b
+            out["unlisted_relevant"] += sum(
+                n in grades and hj.relevant(grades[n].grade, grades[n].ambiguous) for n in second
             )
-            out["answerability_a_b_agree"] += bool(found.get("answerability_a_b_agree"))
+            by_one = [n for n, by in found.get("listed_by", {}).items() if len(by) == 1]
+            out["listed_by_one_grade_1_or_more"] += sum(
+                n in grades and grades[n].grade >= 1 for n in by_one
+            )
+            out["answerabilities_agree"] += bool(found.get("answerabilities_agree"))
         return {"needs": len(self.ready), **dict(sorted(out.items()))}
 
     def freeze(

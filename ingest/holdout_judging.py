@@ -85,73 +85,198 @@ def a_judgments(data: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     return out
 
 
+# The broker operations whose pages hold a node's whole own text (ingest/holdout_broker.py): a
+# `search` page shows a snippet of each node it names, and `titles` names no node
+FULL_TEXT_OPS = ("article", "nodes")
+
+
+def exposure(log: Sequence[Mapping[str, Any]]) -> list[str]:
+    """Every node one search received in full: the ids on the pages the broker returned for its
+    `article` and `nodes` requests (each log entry's own record of its page), sorted. Mechanical:
+    read from the broker's log, never from what the model wrote, and the same on every replay."""
+    return sorted({n for e in log if e["op"] in FULL_TEXT_OPS for n in e.get("nodes", [])})
+
+
+def poolable(node: str, texts: Mapping[bm.NodeKey, str], excluded: frozenset[str]) -> bool:
+    """A node received in full that can be judged: one of the corpus with its own, non-empty
+    text (a structural parent whose text is all in its children has nothing to judge), outside
+    the PSD2 articles excluded from TEST."""
+    act, _, path = node.partition(":")
+    own = texts.get((act, path))
+    return bool(own and own.strip()) and not (act == "PSD2" and path.split(".")[0] in excluded)
+
+
 @dataclass(frozen=True)
 class Discovery:
-    """The candidates of one need and their first judgment (config/holdout/evidence-discovery.md).
+    """The evidence of one need after its three blind searches (config/holdout/
+    evidence-discovery.md).
 
-    nodes: every node search A or search B listed, once (by its exact ACT:path), then the
-    audit's nodes new to search C; the caller puts them in document order.
-    first: each node's first judgment, the one the adjudication compares with judge B: search
-    A's own label when A listed the node, else search B's, else search C's; and the
-    answerability, its reason and the gap note, search A's. Search B's label on a node A also
-    listed, and its answerability, are kept in found_by's record only, as provenance: no vote.
-    scope: the provisions that fix each node's scope, from the search whose label is first.
-    found_by: which searches listed each node.
-    additional: the nodes only search C listed: what the omission audit adds."""
+    listed: every node a search listed, once (by its exact ACT:path), in the order first listed;
+    the caller puts them in document order.
+    first: each listed node's first judgment, the one the adjudication compares with judge B:
+    the label of the first search, in the order search_1, search_2, search_3, that listed it;
+    and the answerability, its reason and the gap note, search_1's. A later search's label on
+    a node an earlier one listed, and its answerability, are provenance only: no vote.
+    scope: the provisions that fix each listed node's scope, from the search whose label is
+    first.
+    listed_by: which searches listed each node.
+    exposed_by: which searches received each node in full (an `article` or `nodes` page).
+    pool: the exposure pool: every node a search received in full or listed, that can be
+    judged (poolable). No model decides that a node enters it.
+    unlisted: the pool's nodes no search listed: each has no first judgment (an abstention),
+    and is judged explicitly by judge B's pool variant.
+    answerabilities: each search's answerability, as provenance."""
 
-    nodes: list[str]
+    listed: list[str]
     first: dict[str, dict[str, Any]]
     scope: dict[str, list[str]]
-    found_by: dict[str, list[str]]
-    additional: list[str]
-    b_answerability: str
+    listed_by: dict[str, list[str]]
+    exposed_by: dict[str, list[str]]
+    pool: list[str]
+    unlisted: list[str]
+    answerabilities: dict[str, str]
 
     def record(self) -> dict[str, Any]:
-        """Counts, and which search listed each candidate."""
-        by = self.found_by
+        """Counts, and which searches listed and received each node."""
+        searches = list(self.answerabilities)
         return {
-            "search_a": sum("A" in s for s in by.values()),
-            "search_b": sum("B" in s for s in by.values()),
-            "both": sum("A" in s and "B" in s for s in by.values()),
-            "only_b": sum("B" in s and "A" not in s for s in by.values()),
-            "union": sum("A" in s or "B" in s for s in by.values()),
-            "audit_additional": len(self.additional),
-            "answerability_a_b_agree": self.first[bm.ANSWERABILITY_TARGET]["answerability"]
-            == self.b_answerability,
-            "found_by": {n: list(s) for n, s in sorted(by.items())},
+            "searches": searches,
+            "listed": {s: sum(s in v for v in self.listed_by.values()) for s in searches},
+            "exposed": {s: sum(s in v for v in self.exposed_by.values()) for s in searches},
+            "listed_union": len(self.listed),
+            "listed_by_one": sum(len(v) == 1 for v in self.listed_by.values()),
+            "pool": len(self.pool),
+            "unlisted": len(self.unlisted),
+            "answerabilities_agree": len(set(self.answerabilities.values())) == 1,
+            "listed_by": {n: list(v) for n, v in sorted(self.listed_by.items())},
+            "exposed_by": {n: list(v) for n, v in sorted(self.exposed_by.items())},
         }
 
 
-def evidence_union(
-    a_file: Mapping[str, Any],
-    b_file: Mapping[str, Any],
-    c_file: Mapping[str, Any] | None = None,
+def exposure_pool(
+    files: Mapping[str, Mapping[str, Any]],
+    exposures: Mapping[str, Sequence[str]],
+    texts: Mapping[bm.NodeKey, str],
+    excluded: frozenset[str],
 ) -> Discovery:
-    """Search A's and search B's candidates joined, with the first judgment of each, and the
-    audit's search C's nodes new to that union. Each file is admitted already, with no declared
+    """The three searches' candidates joined, with the first judgment of each, and the exposure
+    pool. files and exposures map each search to its admitted answer and to the nodes it
+    received in full, in the search order. Each file is admitted already, with no declared
     problem (ingest/holdout_admission.py search_problems)."""
+    order = list(files)
     first: dict[str, dict[str, Any]] = {}
     scope: dict[str, list[str]] = {}
-    found_by: dict[str, list[str]] = {}
-    additional: list[str] = []
-    for letter, data in (("A", a_file), ("B", b_file), ("C", c_file)):
-        if data is None:
-            continue
+    listed_by: dict[str, list[str]] = {}
+    for stage in order:
+        data = files[stage]
         labels = a_judgments(data)
         for c in data["candidates"]:
             node = c["node"]
             if node in first:
-                if letter not in found_by[node]:
-                    found_by[node].append(letter)
+                if stage not in listed_by[node]:
+                    listed_by[node].append(stage)
                 continue
-            if letter == "C" and node not in additional:
-                additional.append(node)
             first[node] = labels[node]
             scope[node] = list(c.get("scope", []))
-            found_by[node] = [letter]
-    first[bm.ANSWERABILITY_TARGET] = a_judgments(a_file)[bm.ANSWERABILITY_TARGET]
-    nodes = [n for n in first if n != bm.ANSWERABILITY_TARGET]
-    return Discovery(nodes, first, scope, found_by, additional, str(b_file["answerability"]))
+            listed_by[node] = [stage]
+    first[bm.ANSWERABILITY_TARGET] = a_judgments(files[order[0]])[bm.ANSWERABILITY_TARGET]
+    listed = [n for n in first if n != bm.ANSWERABILITY_TARGET]
+    exposed_by: dict[str, list[str]] = {}
+    for stage in order:
+        for node in exposures.get(stage, []):
+            if poolable(node, texts, excluded) and stage not in exposed_by.get(node, []):
+                exposed_by.setdefault(node, []).append(stage)
+    pool = sorted({*listed, *exposed_by})
+    unlisted = [n for n in pool if n not in listed_by]
+    answerabilities = {stage: str(files[stage]["answerability"]) for stage in order}
+    return Discovery(listed, first, scope, listed_by, exposed_by, pool, unlisted, answerabilities)
+
+
+@dataclass(frozen=True)
+class AuditNodes:
+    """What the omission audit's search brings outside the normal exposure pool.
+
+    listed: the new nodes it listed, with its own label as their first judgment.
+    scope: the provisions that fix each of those nodes' scope, from its answer.
+    exposed: the new nodes it received in full and did not list (no first judgment).
+    on_pool: its labels on nodes already in the pool: provenance only, never a label of the
+    need, a stop or a rejection (an audit judgment discrepancy, counted)."""
+
+    listed: dict[str, dict[str, Any]]
+    scope: dict[str, list[str]]
+    exposed: list[str]
+    on_pool: dict[str, dict[str, Any]]
+
+
+def audit_nodes(
+    audit_file: Mapping[str, Any],
+    audit_exposure: Sequence[str],
+    pool: Sequence[str],
+    texts: Mapping[bm.NodeKey, str],
+    excluded: frozenset[str],
+) -> AuditNodes:
+    """The audit search's nodes, split by the normal exposure pool: a node is new for the
+    omission audit when the audit search listed it or received it in full, and it was in no
+    normal search's exposure pool."""
+    labels = a_judgments(audit_file)
+    in_pool = set(pool)
+    listed: dict[str, dict[str, Any]] = {}
+    scope: dict[str, list[str]] = {}
+    on_pool: dict[str, dict[str, Any]] = {}
+    for c in audit_file["candidates"]:
+        node = c["node"]
+        if node in in_pool:
+            on_pool[node] = labels[node]
+        else:
+            listed[node] = labels[node]
+            scope[node] = list(c.get("scope", []))
+    exposed = sorted(
+        {
+            n
+            for n in audit_exposure
+            if poolable(n, texts, excluded) and n not in in_pool and n not in listed
+        }
+    )
+    return AuditNodes(listed, scope, exposed, on_pool)
+
+
+def pool_judgments(data: Mapping[str, Any], ids: Mapping[str, str]) -> dict[str, dict[str, Any]]:
+    """Judge B's pool variant's labels by node (judge_b_pool.v1): each entry's opaque id resolved
+    by the orchestrator's own mapping (ids: id -> node), never by what the judge wrote."""
+    return {
+        ids[g["item_id"]]: {
+            "grade": g.get("grade"),
+            "ambiguous": bool(g.get("ambiguous")),
+            "scope_basis": g.get("scope_basis", []),
+            "rationale": g.get("reason", ""),
+        }
+        for g in data["grades"]
+    }
+
+
+def needs_second_judgment(j: Mapping[str, Any]) -> bool:
+    """A blind label on a node no search listed that cannot stand alone: a grade of 1 or more,
+    or an ambiguity. A grade 0, or no grade (unjudged), that is not ambiguous is final."""
+    grade, ambiguous = _label(j)
+    return ambiguous or (grade is not None and grade >= 1)
+
+
+def diagnostic_set(
+    listed: Sequence[str],
+    pool_labels: Mapping[str, Sequence[Mapping[str, Any]]],
+    final_grades: Mapping[str, int | None],
+) -> list[str]:
+    """The candidates judge D and the diagnostic receive: every node a search listed; every
+    pool node whose final grade is 1 or more; every pool node any blind judgment graded 1 or
+    more or found ambiguous (pool_labels: each unlisted pool node's labels, in the order they
+    were given). A pool node nobody listed, graded 0 or left unjudged by judge B, with no
+    positive or ambiguous label, is not among them. Unique and sorted; the caller puts them in
+    document order."""
+    out = set(listed)
+    for node, labels in pool_labels.items():
+        if (final_grades.get(node) or 0) >= 1 or any(needs_second_judgment(j) for j in labels):
+            out.add(node)
+    return sorted(out)
 
 
 def b_judgments(data: Mapping[str, Any], ids: Mapping[str, str]) -> dict[str, dict[str, Any]]:
@@ -177,6 +302,11 @@ def b_judgments(data: Mapping[str, Any], ids: Mapping[str, str]) -> dict[str, di
 def _label(j: Mapping[str, Any]) -> tuple[int | None, bool]:
     grade = j.get("grade")
     return grade, bool(j.get("ambiguous")) if grade is not None else False
+
+
+def label(j: Mapping[str, Any]) -> tuple[int | None, bool]:
+    """A label as agreement reads it: the grade, and the ambiguity of a grade."""
+    return _label(j)
 
 
 @dataclass(frozen=True)
@@ -230,24 +360,16 @@ class Assembled:
     gap_note: str | None = None
 
 
-def assemble(
+def assemble_nodes(
     need_id: str,
     candidates: Sequence[str],
     a: Mapping[str, Any],
     b: Mapping[str, Any],
     c: Mapping[str, Any],
-    a_gap_note: str | None,
     texts: Mapping[bm.NodeKey, str],
 ) -> Assembled:
-    """One need: an adjudication record for every candidate and for the answerability, and
-    a qrel for every candidate whose final label is a grade. c maps each disputed target to
-    judge C's answer; a target without a dispute must not appear in it."""
-    found = disagreements(candidates, a, b)
-    disputed = set(found.nodes) | ({bm.ANSWERABILITY_TARGET} if found.answerability else set())
-    if set(c) != disputed:
-        raise ValueError(
-            f"{need_id}: judge C answered {sorted(c)}, the disputes are {sorted(disputed)}"
-        )
+    """The adjudication record of each candidate node and a qrel for every one whose final
+    label is a grade: two judgments, a and b, and judge C's where they differ."""
     out = Assembled()
     for ref in candidates:
         record = bm.Adjudication(
@@ -272,6 +394,46 @@ def assemble(
                     ambiguous=final.ambiguous,
                 )
             )
+    return out
+
+
+def assemble_audit(
+    need_id: str,
+    candidates: Sequence[str],
+    a: Mapping[str, Any],
+    b: Mapping[str, Any],
+    c: Mapping[str, Any],
+    texts: Mapping[bm.NodeKey, str],
+) -> Assembled:
+    """The omission audit's new nodes, adjudicated like the pool's: no answerability. c maps
+    each disputed node to judge C's answer; a node without a dispute must not appear in it."""
+    disputed = {r for r in candidates if _label(a[r]) != _label(b[r])}
+    if set(c) != disputed:
+        raise ValueError(
+            f"{need_id}: judge C answered {sorted(c)}, the disputes are {sorted(disputed)}"
+        )
+    return assemble_nodes(need_id, candidates, a, b, c, texts)
+
+
+def assemble(
+    need_id: str,
+    candidates: Sequence[str],
+    a: Mapping[str, Any],
+    b: Mapping[str, Any],
+    c: Mapping[str, Any],
+    a_gap_note: str | None,
+    texts: Mapping[bm.NodeKey, str],
+) -> Assembled:
+    """One need: an adjudication record for every candidate and for the answerability, and
+    a qrel for every candidate whose final label is a grade. c maps each disputed target to
+    judge C's answer; a target without a dispute must not appear in it."""
+    found = disagreements(candidates, a, b)
+    disputed = set(found.nodes) | ({bm.ANSWERABILITY_TARGET} if found.answerability else set())
+    if set(c) != disputed:
+        raise ValueError(
+            f"{need_id}: judge C answered {sorted(c)}, the disputes are {sorted(disputed)}"
+        )
+    out = assemble_nodes(need_id, candidates, a, b, c, texts)
     target = bm.ANSWERABILITY_TARGET
     record = bm.Adjudication(
         need_id=need_id,

@@ -38,9 +38,10 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   BM25 come out level there, and E could not complete: its frozen reranker ran out of memory on
   long articles
 - **Internal TEST set (S3):** its construction and S4's analysis plan are frozen by content in a
-  pre-authoring contract, committed before any TEST need is written. Four constructions were
+  pre-authoring contract, committed before any TEST need is written. Five constructions were
   aborted and are kept as provenance; TEST restarts under one final evidence procedure for every
-  need (two blind searches, their union adjudicated once), and is not built yet
+  need (three blind searches, and every node one of them read in full judged), and is not built
+  yet
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -97,7 +98,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 1426 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 1461 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -146,7 +147,7 @@ uv pip install --require-hashes --no-deps -r requirements-embed.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest skips the 227 tests marked `corpus`: they need `data/raw/`, which is
+Without the corpus, pytest skips the 245 tests marked `corpus`: they need `data/raw/`, which is
 not in the repository (see [Data and reproducibility](#data-and-reproducibility)). The 31 tests
 marked `embedding_model` need the `embed` extra and the weights of the three embedding models and
 the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`); two of them also
@@ -161,7 +162,7 @@ against a service container of the same pinned image. The one test marked
 does not exist; every other test of the internal TEST set makes a synthetic one. One contract
 test needs the history back to E's DEV result and is skipped in a shallow clone such as CI's,
 and the host identity test runs on macOS only. In CI (no corpus, no model, PostgreSQL up)
-pytest reports `1164 passed, 262 skipped`.
+pytest reports `1181 passed, 280 skipped`.
 
 ## Docker
 
@@ -229,7 +230,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 | `data/external/` | no | the external benchmark of T4 (third-party data, CC BY-NC-SA 4.0) and everything derived from it |
 
-Without the corpus you can run the test suite (in CI, 1164 tests pass and 262 are skipped with
+Without the corpus you can run the test suite (in CI, 1181 tests pass and 280 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported` and PostgreSQL up), the linters and
 type checks, and both Docker images. The vector index is derived data too: it lives in a Docker
 volume and is rebuilt from `data/chunks/` and `data/embeddings/`.
@@ -447,12 +448,17 @@ access to the systems, DEV or their results write each need's concept and statem
 gatekeeper drops what overlaps DEV, judges grade the evidence, and a local Qwen3-8B gives a
 diagnostic. No person reads or approves a statement.
 
-Every need's evidence is found the same way (`config/holdout/evidence-discovery.md`): two
-blind searches, A and B, each a fresh isolated context with the same frozen packet, reading the
-corpus only through an evidence broker and seeing nothing of the other; their candidates are
-joined, and one adjudication grades the union. In 12 cells fixed before authoring, a third blind
-search, C, is the omission audit: a node new to C that the adjudication grades 1 or more stops the
-construction before the freeze. Every answer is admitted only after its complete contract holds
+Every need's evidence is found the same way (`config/holdout/evidence-discovery.md`): three
+blind searches, each a fresh isolated context with the same frozen packet, reading the corpus
+only through an evidence broker and seeing nothing of the others. Their listed candidates are
+joined, and every node the broker gave any of them in full enters an exposure pool, listed or
+not: coverage does not depend on what a search chooses to list. A pool node no search listed is
+graded blind by judge B's pool variant, in batches of at most 34 nodes and 9,773 tokens. A grade
+1 or more, or an ambiguity, gets a second blind judgment, and judge C decides where the two
+differ. In 12 cells fixed before authoring, a fourth blind search is the omission audit: a node
+it listed or read in full outside the pool, adjudicated grade 1 or more, stops the construction
+before the freeze. Its label on a node the pool held already is counted as a discrepancy, never
+used as a label. Every answer is admitted only after its complete contract holds
 (`ingest/holdout_admission.py`), every execution is bounded and its processes verified gone
 (`ingest/holdout_process.py`), and every reachable failure has a classified, durable outcome
 (`config/holdout/failure-paths.md`). A well-formed answer that violates a frozen semantic
@@ -467,7 +473,7 @@ may run START or RESUME and resume again only under its own policy: a technical 
 the invocation just produced, of a kind the protocol retries. It never freezes.
 
 Before the first need, the construction is frozen. `config/holdout/pre-authoring-contract.json`
-(SHA-256 `b824db37fb9e13202f4d3efdc38a706a03c9c56fe030607a39ae5a6a167846d7`) fixes by content 76 files (the code and
+(SHA-256 `5bba6ef7306b496381442fef71061113983e6a3ccf8bbee572f4821940a07d50`) fixes by content 77 files (the code and
 configs of E, E5, BM25 and the evaluation, the S4 plan, and the construction's code, inputs and
 templates), the corpus snapshot and chunk layer, and the identity of every model runtime: the
 requested and effective Claude model and its binary, and the MLX packages, model files and host
@@ -483,7 +489,7 @@ construction (SQLite, an append-only event log). What is published is its commit
 `data/benchmark/test-commitment.json` (hashes, counts and distributions, no text), pushed before
 S4 runs any system. No TEST need is ready yet.
 
-Four earlier constructions were aborted and are kept privately, whole, as provenance; nothing
+Five earlier constructions were aborted and are kept privately, whole, as provenance; nothing
 of them is reused (the contract's `aborted_runs`). The first, under contract
 `fe18917551276d676a6f3e0c5c20d14ee34f2f4a66c9de18407f264366a858f9` (commit `3226afa`), stopped
 with no ready need on the diagnostic's recovery policy: Qwen3-8B decodes greedily, so executing it
@@ -505,8 +511,14 @@ under contract `433edd5d633777c575e81302423c19b8646c566e20ceb0a9698b7250c1634225
 `3740fc7`), stopped with 5 ready needs when three executions of judge C answered the item they
 were given for another legal node: a candidate's identity was carried by its act and path, which
 the model wrote back itself. It is now an opaque id the orchestrator owns, as described above.
+The fifth, under contract `b824db37fb9e13202f4d3efdc38a706a03c9c56fe030607a39ae5a6a167846d7`
+(commit `808762e`), stopped with 3 ready needs on its omission audit: the audit search listed a
+node outside the two searches' union, adjudicated grade 1. A structural review of the
+development runs (counts, ids and grades only) found that most omissions were nodes the search
+that missed them had read in full and not listed. Coverage is now mechanical, as described above.
 
-DEV keeps its historical qrels, built from one search per need; TEST's come from two. The paired
+DEV keeps its historical qrels, built from one search per need and its listing; TEST's come from
+three searches and their exposure pool. The paired
 comparison of the systems within TEST, on one common set of qrels, is not affected; the absolute
 difference between DEV's metrics and TEST's cannot be attributed to overfitting alone
 (`config/holdout/s4-analysis-plan.md`, section 5).
@@ -624,7 +636,7 @@ retrieval candidate.
   benchmark, whose judgments come from one expert per area, drawn from candidate pools built by
   keyword search; its intervals are wide. E could not be evaluated there on this machine. The
   internal TEST set, which will measure the selection bias of DEV on the same task, has its
-  construction frozen and no ready need yet; four earlier constructions were aborted.
+  construction frozen and no ready need yet; five earlier constructions were aborted.
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4
