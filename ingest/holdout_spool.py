@@ -1,14 +1,14 @@
 """Each model execution's raw output on disk while it is received (S3, D-055).
 
-The isolation of a run is Gate 1's, unchanged: the same pinned binary, the same command, the
-same minimal environment and the same new empty directory (ingest/holdout_isolation.py, whose
-file is byte for byte the audit module Gate 1 passed with). What changes is only where the
-output goes. Instead of a pipe this process holds in memory, the run writes its standard
-output and error straight into the files of a private folder, its spool, which are flushed to
-disk when it ends. If the orchestrator dies during or just after the call, the response is
-still there: recover_headless reads it back when it is complete, and the orchestrator records,
-audits and admits it like any other (ingest/holdout_pipeline.py). A spooled response is never
-an admitted one.
+The isolation policy remains Gate 1's: the same pinned binary, command, minimal environment
+and fresh empty directory (ingest/holdout_isolation.py). The spool now also records the
+launcher-created path and host-clock observations so Gate 1 can validate the exact directory
+and a legitimate date rollover. Instead of a pipe this process holds in memory, the run writes
+its standard output and error straight into the files of a private folder, its spool, which are
+flushed to disk when it ends. If the orchestrator dies during or just after the call, the
+response is still there: recover_headless reads it back when it is complete, and the
+orchestrator records, audits and admits it like any other (ingest/holdout_pipeline.py). A
+spooled response is never an admitted one.
 
 A spool lives under the raw folder outside git, readable by this user only, and is never
 reused: one run, one spool.
@@ -41,21 +41,25 @@ def put(spool: Path, name: str, data: Any) -> None:
 
 def begin(spool: Path, workdir: Path, kind: str) -> None:
     """A run's spool, before its process starts: a new private folder, and a note of the run's
-    directory written atomically."""
+    directory and the host's local clock written atomically."""
+    clock_start = hi.runtime_clock_observation()
     if spool.exists():
         raise RuntimeError(f"{spool} exists: a spool belongs to one run")
     spool.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     spool.mkdir(mode=0o700)
-    note = {"kind": kind, "workdir": str(workdir.resolve()), "workdir_created": str(workdir)}
+    note = {
+        "kind": kind,
+        "workdir": str(workdir.resolve()),
+        "workdir_created": str(workdir),
+        "clock_start": clock_start,
+    }
     put(spool, "meta.json", note)
 
 
 def end(spool: Path, returncode: int | None) -> None:
-    """The process ended and was observed: its exit code, written last."""
-    with open(spool / "exit.json", "w", encoding="utf-8") as out:
-        out.write(json.dumps({"returncode": returncode}))
-        out.flush()
-        os.fsync(out.fileno())
+    """The process ended and was observed: its exit code and local clock, written last."""
+    clock_end = hi.runtime_clock_observation()
+    put(spool, "exit.json", {"returncode": returncode, "clock_end": clock_end})
 
 
 def note(spool: Path) -> dict[str, Any] | None:
@@ -69,6 +73,30 @@ def exit_code(spool: Path) -> int:
     if not path.exists():
         return UNOBSERVED
     return int(json.loads(path.read_text(encoding="utf-8"))["returncode"])
+
+
+def gate1_context(spool: Path, workdir: str | Path) -> dict[str, Any]:
+    """Launcher-owned path and clock evidence, carried beside the raw model artifacts."""
+    started = note(spool)
+    if started is None:
+        raise RuntimeError("the spool has no launcher metadata")
+    recorded = started.get("workdir")
+    created = started.get("workdir_created")
+    if (
+        not isinstance(recorded, str)
+        or not isinstance(created, str)
+        or str(Path(recorded).resolve(strict=False)) != recorded
+        or str(Path(created).resolve(strict=False)) != recorded
+        or str(Path(workdir).resolve(strict=False)) != recorded
+    ):
+        raise RuntimeError("the spool and launcher disagree about the working directory")
+    exit_path = spool / "exit.json"
+    ended = json.loads(exit_path.read_text(encoding="utf-8")) if exit_path.exists() else {}
+    return {
+        "launcher_workdir": recorded,
+        "clock_start": started.get("clock_start"),
+        "clock_end": ended.get("clock_end"),
+    }
 
 
 def text(spool: Path, name: str) -> str:
@@ -98,7 +126,11 @@ def remove_empty(workdir: Path) -> None:
 
 
 def _collected(
-    workdirs: Sequence[str], returncode: int, stdout: str, stderr: str
+    workdirs: Sequence[str],
+    returncode: int,
+    stdout: str,
+    stderr: str,
+    runtime_context: Mapping[str, Any],
 ) -> hi.HeadlessRun:
     events = [json.loads(line) for line in stdout.splitlines() if line.startswith("{")]
     init: dict[str, Any] = next((e for e in events if e.get("subtype") == "init"), {})
@@ -113,6 +145,7 @@ def _collected(
         transcript_path,
         transcript,
         result.get("result"),
+        dict(runtime_context),
     )
 
 
@@ -169,7 +202,13 @@ def run_headless(
         raise
     remove_empty(workdir)
     workdirs = [str(workdir.resolve()), str(workdir)]
-    return _collected(workdirs, returncode, text(spool, "stdout"), text(spool, "stderr"))
+    return _collected(
+        workdirs,
+        returncode,
+        text(spool, "stdout"),
+        text(spool, "stderr"),
+        gate1_context(spool, workdir),
+    )
 
 
 def recover_headless(spool: Path) -> hi.HeadlessRun | None:
@@ -194,4 +233,10 @@ def recover_headless(spool: Path) -> hi.HeadlessRun | None:
     if workdir.exists():
         remove_empty(workdir)
     workdirs = [found["workdir"], found["workdir_created"]]
-    return _collected(workdirs, exit_code(spool), stdout, text(spool, "stderr"))
+    return _collected(
+        workdirs,
+        exit_code(spool),
+        stdout,
+        text(spool, "stderr"),
+        gate1_context(spool, workdir),
+    )

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 
 import pytest
 
@@ -18,6 +19,7 @@ from ingest import holdout_isolation as hi
 from ingest import holdout_packets as hp
 from ingest import holdout_roles as hr
 from ingest.corpus_tools import CorpusTools
+from tests.holdout_fakes import session as runtime_session
 
 pytestmark = pytest.mark.corpus
 
@@ -25,8 +27,8 @@ PIN = {"version": "2.1.301 (Claude Code)", "organization_sha256": hi.CONTROL_ORG
 GENERIC = "/code-review ultra launches a multi-agent cloud review of the current branch."
 
 
-def _attachments() -> list[dict]:
-    snapshot = {**hi._SNAPSHOT}
+def _attachments(workdir: str, local_date: str) -> list[dict]:
+    snapshot = {**hi._SNAPSHOT, "workingDirectory": workdir}
     return [
         {"type": "environment", "snapshot": snapshot},
         {
@@ -36,7 +38,7 @@ def _attachments() -> list[dict]:
         },
         {"type": "total_tokens_reminder", "text": "<total_tokens>1</total_tokens>"},
         {"type": "session_context", "context": {"userEmail": hi.CONTROL_EMAIL}},
-        {"type": "date", "date": "2026-10-19"},
+        {"type": "date", "date": local_date},
         {"type": "credential_org", "organizationUuid": hi.CONTROL_ORG},
         {
             "type": "prompt_snapshot",
@@ -48,9 +50,12 @@ def _attachments() -> list[dict]:
     ]
 
 
-def session(sent, replies, reminder="", extra=()) -> dict[str, str]:
+def session(sent, replies, reminder="", extra=()) -> dict:
+    workdir = str(Path("/tmp/tmp.x").resolve(strict=False))
+    clock = hi.runtime_clock_observation()
     records: list[dict] = [
-        {"type": "attachment", "attachment": a} for a in [*_attachments(), *extra]
+        {"type": "attachment", "attachment": a}
+        for a in [*_attachments(workdir, clock["local_date"]), *extra]
     ]
     records.append(
         {
@@ -72,7 +77,7 @@ def session(sent, replies, reminder="", extra=()) -> dict[str, str]:
             "message": {
                 "role": "system",
                 "content": [
-                    {"type": "text", "text": "# Environment\nPrimary working directory: /tmp/tmp.x"}
+                    {"type": "text", "text": f"# Environment\nPrimary working directory: {workdir}"}
                 ],
             },
         }
@@ -102,7 +107,7 @@ def session(sent, replies, reminder="", extra=()) -> dict[str, str]:
         "subtype": "init",
         "tools": [],
         "mcp_servers": [],
-        "cwd": "/tmp/tmp.x",
+        "cwd": workdir,
         "model": "m",
         "plugins": list(hi.BUILTIN_PLUGINS),
         "claude_code_version": "2.1.301",
@@ -111,6 +116,11 @@ def session(sent, replies, reminder="", extra=()) -> dict[str, str]:
         "transcript": "\n".join(json.dumps(r) for r in records),
         "stream": json.dumps(init),
         "stderr": "",
+        "_gate1_context": {
+            "launcher_workdir": workdir,
+            "clock_start": clock,
+            "clock_end": clock,
+        },
     }
 
 
@@ -156,6 +166,17 @@ def audit(world, run):
         tmp_root="/tmp/",
         tools=world["tools"],
     )
+
+
+def test_role_audit_normalizes_the_real_cwd_positions_and_keeps_unverified_content(world):
+    run = real_runs(world)["concept_author"]
+    run.session = runtime_session(run.sent, run.replies, workdir="/tmp/tmp.abnDCGxy")
+    report = audit(world, run)
+    assert report.ok, report.problems
+    # This is outside any authorized input or reply and must still be caught.
+    run.session["transcript"] += '\n{"type":"unknown","content":"nDCG"}'
+    report = audit(world, run)
+    assert not report.ok and "dev_metrics" in report.findings
 
 
 def _need(world) -> bm.Need:

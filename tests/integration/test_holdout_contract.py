@@ -19,7 +19,7 @@ from ingest import holdout_isolation as hi
 from ingest import holdout_pipeline as hpl
 from ingest import holdout_roles as hr
 from ingest import holdout_state as hs
-from tests.holdout_fakes import FAKE_RUNTIME
+from tests.holdout_fakes import FAKE_CERTIFICATION, FAKE_RUNTIME
 
 
 def _history_reaches_e() -> bool:
@@ -45,6 +45,7 @@ def contract(tmp_path_factory):
         hr.contracts_record(),
         runtime["claude_runtime"],
         runtime["mlx_runtime"],
+        FAKE_CERTIFICATION,
     )
     pinned = json.loads(hc.CONTRACT_PATH.read_text(encoding="utf-8"))
     with pytest.MonkeyPatch.context() as patch:
@@ -194,6 +195,7 @@ def test_the_contract_carries_every_new_identity_and_no_account(contract):
             {},
             {**claude, "organization_sha256": "x"},
             mlx,
+            FAKE_CERTIFICATION,
         )
 
 

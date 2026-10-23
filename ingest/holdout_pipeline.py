@@ -337,14 +337,14 @@ def _evidence_packet(
 @dataclass
 class Session:
     reply: str
-    session: dict[str, str] = field(default_factory=dict)
+    session: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class BrokerSession:
     run: hb.BrokerRun
     replies: list[str]
-    session: dict[str, str] = field(default_factory=dict)
+    session: dict[str, Any] = field(default_factory=dict)
 
 
 class Executor(Protocol):

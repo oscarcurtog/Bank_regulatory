@@ -76,6 +76,7 @@ CONSTRUCTION_FILES = (
     "ingest/holdout.py",
     "ingest/holdout_admission.py",
     "ingest/holdout_broker.py",
+    "ingest/holdout_certification.py",
     "ingest/holdout_checks.py",
     "ingest/holdout_contract.py",
     "ingest/holdout_controller.py",
@@ -349,13 +350,16 @@ def construction(
     roles: Mapping[str, Any],
     claude_runtime: Mapping[str, Any],
     mlx_runtime: Mapping[str, Any],
+    certification: Mapping[str, Any],
 ) -> dict[str, Any]:
     """What fixes how TEST is built, also frozen before authoring: the grid, the order of the
-    cells, the omission audit, the role contracts, the templates, the broker's limits, and the
-    Claude and MLX runtimes (ingest/holdout_runtime.py). The lists themselves stay in the
-    private TEST directory; the contract publishes their hashes. The account's email and
-    organization never enter it."""
-    text = json.dumps([claude_runtime, mlx_runtime]).lower()
+    cells, the omission audit, the role contracts, the templates, the broker's limits, the
+    Claude and MLX runtimes (ingest/holdout_runtime.py), and the sealed Gate 1 certification
+    Claude's runtime is read from (ingest/holdout_certification.py reference), which the
+    launcher selects by it and nothing else. The lists themselves stay in the private TEST
+    directory; the contract publishes their hashes. The account's email and organization never
+    enter it."""
+    text = json.dumps([claude_runtime, mlx_runtime, certification]).lower()
     if "email" in text or "organization" in text:
         raise ContractError("a runtime identity carries the account's identity: never public")
     from ingest import holdout_broker as hb
@@ -432,6 +436,7 @@ def construction(
         "checks": hk.record(),
         "claude_runtime": dict(claude_runtime),
         "mlx_runtime": dict(mlx_runtime),
+        "certification": dict(certification),
     }
 
 

@@ -7,6 +7,7 @@ import copy
 import json
 import os
 import re
+import shlex
 import signal
 import stat
 import sys
@@ -54,10 +55,18 @@ def test_a_headless_run_writes_its_output_into_a_private_spool(tmp_path):
     result = run.headless("judge_b", "R-0", "PACKET")
     assert json.loads(result.reply) == {"ok": 1}
     spool = tmp_path / "raw" / "spool" / "R-0"
+    context = result.session["_gate1_context"]
+    spool_meta = json.loads((spool / "meta.json").read_text())
+    assert context["launcher_workdir"] == spool_meta["workdir"]
+    assert context["clock_start"] == spool_meta["clock_start"]
+    assert context["clock_end"] == json.loads((spool / "exit.json").read_text())["clock_end"]
     assert stat.S_IMODE(spool.stat().st_mode) == 0o700
     assert '"subtype": "init"' in (spool / "stdout").read_text()
     assert (spool / "stderr").read_text() == "a warning\n"
-    assert json.loads((spool / "exit.json").read_text()) == {"returncode": 0}
+    exit_record = json.loads((spool / "exit.json").read_text())
+    assert exit_record["returncode"] == 0
+    assert set(exit_record) == {"returncode", "clock_end"}
+    assert hi._clock_observation_date(exit_record["clock_end"])[0] is not None
     with pytest.raises(hpl.TechnicalFailure, match="belongs to one run"):  # never reused
         run.headless("judge_b", "R-0", "PACKET")
 
@@ -67,6 +76,10 @@ def test_a_spooled_answer_is_recovered_whole_or_not_at_all(tmp_path):
     run.headless("judge_b", "R-1", "PACKET")
     again = run.recover_headless("judge_b", "R-1", "PACKET")
     assert again is not None and json.loads(again.reply) == {"ok": 1}
+    assert (
+        again.session["_gate1_context"]["launcher_workdir"]
+        == json.loads((tmp_path / "raw" / "spool" / "R-1" / "meta.json").read_text())["workdir"]
+    )
     assert run.recover_headless("judge_b", "R-none", "PACKET") is None
     spool = tmp_path / "raw" / "spool" / "R-1"
     (spool / "exit.json").unlink()  # the orchestrator died before it saw the process end
@@ -103,6 +116,11 @@ def test_a_judge_a_run_is_rebuilt_from_its_spooled_replies(tmp_path):
     found = hb.recover_conversation(spool, "PACKET", FakeTools())
     assert found is not None
     run, used, session = found
+    assert (
+        session["_gate1_context"]["clock_start"]
+        == json.loads((spool / "meta.json").read_text())["clock_start"]
+    )
+    assert session["_gate1_context"]["clock_end"] is None
     assert (run.outcome, run.final, run.sent, run.log) == (
         live.outcome,
         live.final,
@@ -113,6 +131,157 @@ def test_a_judge_a_run_is_rebuilt_from_its_spooled_replies(tmp_path):
     cut = tmp_path / "spool" / "R-4"
     _stream(cut, replies[:2])  # the final answer never arrived
     assert hb.recover_conversation(cut, "PACKET", FakeTools()) is None
+
+
+def test_real_broker_execution_and_recovery_preserve_auditable_launcher_context(
+    tmp_path, monkeypatch
+):
+    """Exercise the actual process, spool, executor projection and recovery; no model.
+    The transcript imitates the runtime's cwd envelopes, including the old nDCG collision."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    cwd = tmp_path / "tmp.abnDCGxy"
+    cwd.mkdir()
+    monkeypatch.setattr(hb.tempfile, "mkdtemp", lambda **kwargs: str(cwd))
+    replies = [req("titles", act="DORA"), req("article", act="DORA", article="16"), FINAL]
+    program = tmp_path / "stand-in.py"
+    program.write_text(
+        "import json,os,re,sys\nfrom pathlib import Path\nfrom datetime import datetime\n"
+        "if '--version' in sys.argv:\n print('2.1.301 (Claude Code)'); sys.exit(0)\n"
+        "cwd=os.getcwd()\n"
+        "folder=Path.home()/'.claude'/'projects'/re.sub(r'[^A-Za-z0-9]', '-', cwd)\n"
+        "folder.mkdir(parents=True)\n"
+        "transcript=(folder/'s-broker.jsonl').open('w')\n"
+        "def keep(r):\n transcript.write(json.dumps(r)+'\\n'); transcript.flush()\n"
+        f"plugins={list(hi.BUILTIN_PLUGINS)!r}\n"
+        "init={'type':'system','subtype':'init','tools':[],'cwd':cwd,'original_cwd':cwd,"
+        "'plugins':plugins,'session_id':'s-broker','claude_code_version':'2.1.301'}\n"
+        "print(json.dumps(init),flush=True)\n"
+        "keep({'type':'attachment','cwd':cwd,'attachment':"
+        "{'type':'date','date':datetime.now().date().isoformat()}})\n"
+        f"replies={replies!r}\n"
+        "for line,reply in zip(sys.stdin,replies):\n"
+        " r=json.loads(line); r['cwd']=cwd; keep(r)\n"
+        " keep({'type':'assistant','cwd':cwd,'message':{'content':json.dumps(reply)}})\n"
+        " print(json.dumps({'type':'result','result':json.dumps(reply),'is_error':False}),"
+        "flush=True)\n"
+    )
+    binary = tmp_path / "claude"
+    binary.write_text(
+        f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(program))} "$@"\n'
+    )
+    binary.chmod(0o755)
+    real = executor(tmp_path, binary)
+    live = real.broker("search_1", "R-live", "PACKET", FakeTools())
+    monkeypatch.setattr(hi, "runtime_clock_observation", _never_observed_again)
+    recovered = real.recover_broker("search_1", "R-live", "PACKET", FakeTools())
+    assert recovered is not None
+    assert recovered.session == live.session
+    assert live.session["_gate1_context"]["launcher_workdir"] == str(cwd.resolve())
+    assert not cwd.exists()
+    for session in (live, recovered):
+        report = hi.audit_run(
+            session.session,
+            [hi._literal("metric", "nDCG")],
+            expected_cwd=str(cwd.resolve()),
+            runtime_context=session.session["_gate1_context"],
+        )
+        assert report.ok and report.cwd_validated and report.date_validated, report.problems
+    # the document the pipeline records, read back as the run its audit reads
+    document = {
+        "kind": "broker",
+        "run": hpl._broker_record(live.run),
+        "replies": list(live.replies),
+        "session": dict(live.session),
+    }
+    run = hpl.role_run("search_1", "R-live", "PACKET", json.loads(json.dumps(document)))
+    assert run.session["_gate1_context"] == live.session["_gate1_context"]
+
+
+def _never_observed_again() -> dict[str, str]:
+    raise AssertionError("a recovery observed the clock again instead of reading the spool")
+
+
+HEADLESS_STAND_IN = """import json, os, re, sys
+from datetime import datetime
+from pathlib import Path
+if "--version" in sys.argv:
+    print("2.1.301 (Claude Code)"); sys.exit(0)
+packet = sys.stdin.read()
+cwd = os.getcwd()
+folder = Path.home() / ".claude" / "projects" / re.sub(r"[^A-Za-z0-9]", "-", cwd)
+folder.mkdir(parents=True)
+day = datetime.now().date().isoformat()
+environment = "# Environment\\n - Primary working directory: " + cwd
+def reminder(text):
+    return [{"content": "<system-reminder>\\n" + text + "\\n</system-reminder>"}]
+records = [
+    {"type": "attachment", "cwd": cwd, "rendered": reminder(environment),
+     "attachment": {"type": "environment", "snapshot": {**SNAPSHOT, "workingDirectory": cwd}}},
+    {"type": "attachment", "cwd": cwd, "rendered": reminder("Today's date is " + day + "."),
+     "attachment": {"type": "date", "date": day}},
+    {"type": "user", "cwd": cwd, "message": {"role": "user", "content": packet}},
+    {"type": "assistant", "cwd": cwd, "message": {"content": [{"type": "text", "text": "{}"}]}},
+]
+(folder / "s-headless.jsonl").write_text("\\n".join(map(json.dumps, records)) + "\\n")
+init = {"type": "system", "subtype": "init", "session_id": "s-headless", "tools": [],
+        "cwd": cwd, "original_cwd": cwd, "plugins": PLUGINS, "claude_code_version": "2.1.301"}
+print(json.dumps(init))
+print(json.dumps({"type": "result", "result": "{}", "is_error": False}))
+"""
+
+
+def test_real_headless_execution_and_recovery_keep_the_original_launcher_context(
+    tmp_path, monkeypatch
+):
+    """The actual process, spool, executor and recovery, no model: the launcher's directory and
+    clock reach the session, a recovery reads them back from the spool and never observes
+    again, and the run the audit reads carries them. The directory's suffix holds a term."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    cwd = tmp_path / "tmp.k_ndcg4x"
+    cwd.mkdir()
+    monkeypatch.setattr(hsp.tempfile, "mkdtemp", lambda **kwargs: str(cwd))
+    program = tmp_path / "stand-in.py"
+    program.write_text(
+        f"SNAPSHOT = {dict(hi._SNAPSHOT)!r}\nPLUGINS = {list(hi.BUILTIN_PLUGINS)!r}\n"
+        + HEADLESS_STAND_IN
+    )
+    binary = tmp_path / "claude"
+    binary.write_text(
+        f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(program))} "$@"\n'
+    )
+    binary.chmod(0o755)
+    real = executor(tmp_path, binary)
+    live = real.headless("judge_b", "R-h", "PACKET")
+    spool = tmp_path / "raw" / "spool" / "R-h"
+    context = live.session["_gate1_context"]
+    assert context == {
+        "launcher_workdir": str(cwd.resolve()),
+        "clock_start": json.loads((spool / "meta.json").read_text())["clock_start"],
+        "clock_end": json.loads((spool / "exit.json").read_text())["clock_end"],
+    }
+    monkeypatch.setattr(hi, "runtime_clock_observation", _never_observed_again)
+    recovered = real.recover_headless("judge_b", "R-h", "PACKET")
+    assert recovered is not None and recovered.session == live.session
+    (spool / "exit.json").unlink()  # the orchestrator died before it saw the process end
+    unobserved = real.recover_headless("judge_b", "R-h", "PACKET")
+    assert unobserved is not None
+    assert unobserved.session["_gate1_context"] == {**context, "clock_end": None}
+    for session in (live.session, recovered.session, unobserved.session):
+        report = hi.audit_run(
+            session,
+            [hi._literal("metric", "nDCG")],
+            expected_cwd=str(cwd.resolve()),
+            runtime_context=session["_gate1_context"],
+        )
+        assert report.ok and report.cwd_validated and report.date_validated, report.problems
+    # the document the pipeline records, read back as the run its audit reads
+    document = {"kind": "headless", "reply": live.reply, "session": dict(live.session)}
+    run = hpl.role_run("judge_b", "R-h", "PACKET", json.loads(json.dumps(document)))
+    assert run.session["_gate1_context"] == context
 
 
 def _changed(path: tuple[str, ...], value: object) -> dict:

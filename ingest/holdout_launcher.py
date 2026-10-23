@@ -60,6 +60,7 @@ from typing import Any
 
 from ingest import benchmark as bm
 from ingest import holdout as ho
+from ingest import holdout_certification as hcert
 from ingest import holdout_checks as hk
 from ingest import holdout_contract as hc
 from ingest import holdout_executor as hx
@@ -88,6 +89,9 @@ class Paths:
     test: Path = ho.HOLDOUT_DIR
     raw: Path = hs.RAW_DIR
     backups: Path = ho.BACKUP_DIR
+    # the Gate 1 certifications: the contract names the one it relies on
+    certifications: Path = hcert.CERTIFICATIONS_DIR
+    certification_raw: Path = hcert.CERTIFICATION_RAW_DIR
 
     @property
     def provenance(self) -> Path:
@@ -222,14 +226,15 @@ def contract_problems(paths: Paths) -> tuple[Frozen | None, list[str]]:
             problems.append("the templates differ from their provenance freeze")
         if json.loads(json.dumps(hk.record())) != construction["checks"]:
             problems.append("the classification of the checks is not the contract's")
-        claude = json.loads(json.dumps(hrt.claude_runtime(paths.provenance)))
+        gate_1 = certification_provenance(paths, construction)
+        claude = json.loads(json.dumps(hrt.claude_runtime(gate_1)))
         differ = hrt.runtime_differences(claude, construction["claude_runtime"])
         if differ:  # the requested model, the binary, the effective model or the policy
             problems.append(f"the Claude runtime is not the contract's: {differ[:5]}")
-        gate1 = _read(paths.provenance / "gate1.json")
+        gate1 = _read(gate_1 / "gate1.json")
         if _sha(paths.repo / AUDIT_MODULE) != gate1["audit"]["module_sha256"]:
             problems.append("the audit's implementation is not the one Gate 1 passed with")
-        runtime = _read(paths.provenance / "runtime.json")
+        runtime = _read(gate_1 / "runtime.json")
         if gate1["gate_1"] != "PASS" or any(
             gate1["binary"][k] != runtime[k] for k in ("version", "sha256")
         ):
@@ -237,7 +242,7 @@ def contract_problems(paths: Paths) -> tuple[Frozen | None, list[str]]:
         salt = (paths.provenance / "opaque_salt.hex").read_text(encoding="utf-8").strip()
         if len(salt) != 64 or any(c not in "0123456789abcdef" for c in salt):
             problems.append("the opaque-id salt is not 32 bytes in hex")
-    except (LaunchRefused, KeyError, OSError, hrt.RuntimeIdentityError) as error:
+    except (LaunchRefused, KeyError, OSError, hrt.RuntimeIdentityError, ho.HoldoutError) as error:
         return None, [*problems, f"provenance: {error}"]
     problems += _private_problems(paths)
     inherited = list(gate1["environment_allowlist"]["inherited"])
@@ -252,6 +257,21 @@ def contract_problems(paths: Paths) -> tuple[Frozen | None, list[str]]:
         extra_env,
     )
     return frozen, problems
+
+
+def certification_provenance(paths: Paths, construction: Mapping[str, Any]) -> Path:
+    """The provenance of the Gate 1 certification the contract names, selected by its id and
+    its manifest's SHA-256 and verified (ingest/holdout_certification.py selected), whose
+    reference must be exactly the contract's: Claude's runtime, its pin and Gate 1's record are
+    read from there, never from TEST's own provenance."""
+    named = construction.get("certification")
+    if not isinstance(named, dict):
+        raise LaunchRefused("the contract names no Gate 1 certification")
+    roots = (paths.certifications, paths.certification_raw)
+    namespace = hcert.selected(named["id"], named["manifest_sha256"], paths.repo, roots)
+    if hcert.reference(namespace) != named:
+        raise LaunchRefused(f"{named['id']} is not the certification the contract records")
+    return namespace / hcert.PROVENANCE
 
 
 def _private_problems(paths: Paths) -> list[str]:

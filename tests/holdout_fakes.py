@@ -13,6 +13,7 @@ import json
 import os
 import re
 import signal
+import tempfile
 from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -126,6 +127,17 @@ FAKE_RUNTIME: dict[str, Any] = {
     },
     "mlx_runtime": FAKE_MLX,
 }
+# What a contract records of the Gate 1 certification it relies on, for the stand-in
+FAKE_CERTIFICATION: dict[str, Any] = {
+    "id": "gate1-stand-in",
+    "schema": "gate1-certification.v1",
+    "manifest_sha256": "c" * 64,
+    "public_commit": "d" * 40,
+    "private_commit": "e" * 40,
+    "certified_code_sha256": {"ingest/holdout_isolation.py": "f" * 64},
+    "gate1_run": "run-1",
+    "broker_test_run": "run-1",
+}
 
 
 class Crash(BaseException):
@@ -141,16 +153,18 @@ def session(
     workdir: str = "/tmp/tmp.x",
     identity: Mapping[str, Any] | None = None,
     records_extra: tuple = (),
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """A session as the runtime records it; identity is the model it reports (FAKE_EFFECTIVE
     unless another is given); records_extra, more transcript records after the conversation."""
+    workdir = str(Path(workdir).resolve(strict=False))
+    clock = hi.runtime_clock_observation()
     model = dict(identity or FAKE_EFFECTIVE)
     attachments = [
         {"type": "environment", "snapshot": {**hi._SNAPSHOT, "workingDirectory": workdir}},
         {"type": "model", "identity": model["model_attachment"], "text": "x"},
         {"type": "total_tokens_reminder", "text": "<total_tokens>1</total_tokens>"},
         {"type": "session_context", "context": {"userEmail": hi.CONTROL_EMAIL}},
-        {"type": "date", "date": "2026-10-19"},
+        {"type": "date", "date": clock["local_date"]},
         {"type": "credential_org", "organizationUuid": hi.CONTROL_ORG},
         {
             "type": "prompt_snapshot",
@@ -161,7 +175,21 @@ def session(
         },
         *extra,
     ]
-    records: list[dict[str, Any]] = [{"type": "attachment", "attachment": a} for a in attachments]
+    records: list[dict[str, Any]] = [
+        {"type": "attachment", "attachment": a, "cwd": workdir} for a in attachments
+    ]
+    for record in records:
+        attachment = record["attachment"]
+        if attachment["type"] == "date":
+            rendered_content = (
+                f"<system-reminder>\n{hi.rendered_date(attachment)}\n</system-reminder>"
+            )
+            record["rendered"] = [{"content": rendered_content}]
+        elif attachment["type"] == "environment":
+            rendered_content = (
+                f"<system-reminder>\n - Primary working directory: {workdir}\n</system-reminder>"
+            )
+            record["rendered"] = [{"content": rendered_content}]
     reminder_text = f"<system-reminder>{hi.CONTROL_EMAIL}{reminder}</system-reminder>"
     records.append(
         {
@@ -171,11 +199,13 @@ def session(
     )
     for i, message in enumerate(sent):
         content = [{"type": "text", "text": message}]
-        records.append({"type": "user", "message": {"role": "user", "content": content}})
+        records.append(
+            {"type": "user", "message": {"role": "user", "content": content}, "cwd": workdir}
+        )
         if i < len(replies):
             text = [{"type": "text", "text": replies[i]}]
             answer = {"model": model["assistant_model"], "content": text}
-            records.append({"type": "assistant", "message": answer})
+            records.append({"type": "assistant", "message": answer, "cwd": workdir})
     records += list(records_extra)
     init = {
         "type": "system",
@@ -183,6 +213,7 @@ def session(
         "tools": [],
         "mcp_servers": [],
         "cwd": workdir,
+        "original_cwd": workdir,
         "plugins": list(hi.BUILTIN_PLUGINS),
         "claude_code_version": "2.1.301",
         **model["init"],
@@ -192,6 +223,11 @@ def session(
         "transcript": "\n".join(json.dumps(r) for r in records),
         "stream": json.dumps(init) + "\n" + json.dumps(result),
         "stderr": "",
+        "_gate1_context": {
+            "launcher_workdir": workdir,
+            "clock_start": clock,
+            "clock_end": clock,
+        },
     }
 
 
@@ -315,12 +351,12 @@ class FakeExecutor:
         self,
         scenario: Scenario | None = None,
         spool: Path | None = None,
-        workdir: str = "/tmp/tmp.x",
+        workdir: str | None = None,
         runtime: Mapping[str, Any] | None = None,
     ) -> None:
         self.scenario = scenario or Scenario()
         self.spool = spool
-        self.workdir = workdir  # the run's directory the sessions report
+        self.workdir = workdir or str(Path(tempfile.gettempdir()) / "tmp.x")
         self.runtime = dict(runtime or FAKE_RUNTIME)  # what the sessions and outputs report
         self.pipeline: hpl.Pipeline | None = None
         self.calls: list[tuple[str, str, int]] = []  # (role, cell, attempt)
@@ -804,7 +840,7 @@ def world(base: dict[str, Any], identities: dict[str, str] | None = None) -> hpl
         terms=base["terms"],
         frozen_templates=hr.template_hashes(),
         pin=PIN,
-        tmp_root="/tmp/",
+        tmp_root=str(Path(tempfile.gettempdir()).resolve()),
         salt=b"test-salt",
         identities=dict(identities or IDENTITIES),
         contract_check=lambda: None,

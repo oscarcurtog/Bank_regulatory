@@ -1,7 +1,9 @@
 """The real launcher of TEST's construction (D-055), on a copy of the frozen machinery: a public
 repository holding exactly the files the pre-authoring contract freezes, pushed to a local
-remote, and a private TEST directory of its own, made here: Gate 1's records and sessions of
-the stand-in model, the grid built again from DEV, and a fresh salt. Only the model boundary (a
+remote; the sealed Gate 1 certification the contract names, made, run and sealed here by the
+real code with the stand-in model (tests/certification_fakes.py); and a private TEST directory
+of its own, made here: the grid built again from DEV, a fresh salt, and run 6's kind of Gate 1
+records as a decoy that is never read. Only the model boundary (a
 stand-in executor) and the probes of the binary and of the MLX runtime are replaced. No model
 runs, no TEST content exists, and nothing here reads the real private TEST directory.
 
@@ -29,6 +31,7 @@ import pytest
 from ingest import benchmark as bm
 from ingest import holdout as ho
 from ingest import holdout_broker as hb
+from ingest import holdout_certification as hcert
 from ingest import holdout_contract as hc
 from ingest import holdout_executor as hx
 from ingest import holdout_isolation as hi
@@ -39,6 +42,7 @@ from ingest import holdout_roles as hr
 from ingest import holdout_runtime as hrt
 from ingest import holdout_spool as hsp
 from ingest import holdout_state as hs
+from tests import certification_fakes as cf
 from tests.holdout_fakes import (
     FAKE_EFFECTIVE,
     FAKE_MLX,
@@ -59,16 +63,19 @@ RUNTIME: dict[str, Any] = {
     "model": MODEL,
     "organization_sha256": hi.CONTROL_ORG_SHA256,
 }
-# Gate 1's record of that binary and model, and of the audit's module it passed with
-GATE_1: dict[str, Any] = {
+# the certification the contract names: made by the real code for that binary and model
+CERTIFICATION = "gate1-fixture"
+# What a TEST folder of run 6's kind holds of its own Gate 1: another binary, another model.
+# Contracts name a certification, so it is never read; a fallback to it would show.
+DECOY_RUNTIME: dict[str, Any] = {**RUNTIME, "sha256": "d" * 64, "model": "claude-opus-5-4"}
+DECOY_GATE_1: dict[str, Any] = {
     "gate_1": "PASS",
     "run": "run-4",
-    "model": MODEL,
-    "binary": {"version": RUNTIME["version"], "sha256": RUNTIME["sha256"]},
+    "model": DECOY_RUNTIME["model"],
+    "binary": {"version": DECOY_RUNTIME["version"], "sha256": DECOY_RUNTIME["sha256"]},
     "audit": {"module_sha256": hashlib.sha256(hla.AUDIT_MODULE.read_bytes()).hexdigest()},
-    "environment_allowlist": {"inherited": [*hi.ENV_INHERITED, "USER"]},
+    "environment_allowlist": {"inherited": [*hi.ENV_INHERITED, "HOME"]},
 }
-BROKER_TEST: dict[str, Any] = {"run": "run-1"}
 WORKDIR = str(Path(tempfile.gettempdir()).resolve() / "tmp.fake")
 
 
@@ -102,15 +109,14 @@ def order() -> list[str]:
     return ho.cell_order(grid())
 
 
-def gate_1_records(test: Path) -> None:
-    """What hrt.claude_runtime reads, for the stand-in: the pin, Gate 1's and the broker test's
-    records, and their two sessions, each reporting the stand-in's effective model."""
+def run_6_provenance(test: Path) -> None:
+    """The decoy: run 6's kind of Gate 1 records in TEST's own provenance, and their sessions."""
     provenance = test / "provenance"
     provenance.mkdir(parents=True, exist_ok=True)
-    ho.write_json(provenance / "runtime.json", RUNTIME)
-    ho.write_json(provenance / "gate1.json", GATE_1)
-    ho.write_json(provenance / "broker_test.json", BROKER_TEST)
-    for kind, run in (("isolation", GATE_1["run"]), ("broker", BROKER_TEST["run"])):
+    ho.write_json(provenance / "runtime.json", DECOY_RUNTIME)
+    ho.write_json(provenance / "gate1.json", DECOY_GATE_1)
+    ho.write_json(provenance / "broker_test.json", {"run": "run-1"})
+    for kind, run in (("isolation", "run-4"), ("broker", "run-1")):
         evidence = test / "audits" / kind / run
         evidence.mkdir(parents=True)
         texts = session(["P"], ["R"])
@@ -118,21 +124,36 @@ def gate_1_records(test: Path) -> None:
             (evidence / f"{name}.jsonl").write_text(texts[name], encoding="utf-8")
 
 
+def gate_1(paths: hla.Paths) -> Path:
+    """The provenance of the certification the contract names, in this test's copy of it."""
+    return paths.certifications / CERTIFICATION / hcert.PROVENANCE
+
+
 @pytest.fixture(scope="module")
 def machinery(tmp_path_factory):
     """The public repository as the pre-authoring commit holds it, pushed: the pinned contract,
     its construction record built again from the code for the stand-in's runtimes, and every
-    file it freezes. Not hc.build: a shallow clone has no history for the code record."""
+    file it freezes. Before it, the certified code's commit, pushed, and the certification
+    made, run and sealed from it, which the contract names. Not hc.build: a shallow clone has
+    no history for the code record."""
     # names as distinctive as the real ones: the project's terms forbid the repository's
     # name and its folder's in every session
     root = tmp_path_factory.mktemp("frozen-machinery-fixture")
-    repo = root / "fundamento-fixture-public"
+    repo = cf.public_repo(root, name="fundamento-fixture-public")
     evidence = root / "evidence"
-    gate_1_records(evidence)
+    evidence.mkdir()
     ho.write_json(evidence / ho.GRID_FILE, grid().model_dump(mode="json"))
     plan, roles = ho.plan_record(grid()), hr.contracts_record()
-    claude = hrt.claude_runtime(evidence / "provenance")
-    record = hc.construction(evidence / ho.GRID_FILE, plan, roles, claude, FAKE_MLX)
+    binary = {k: RUNTIME[k] for k in ("path", "version", "sha256")}
+    with pytest.MonkeyPatch.context() as patch:
+        cf.stand_ins(patch, repo, binary)
+        patch.setattr(cf.cli(), "HEADLESS_MODEL", MODEL)
+        namespace, _, _ = cf.certified(
+            patch, root, repo, CERTIFICATION, extra_env=("USER",), identity=binary
+        )
+    claude = hrt.claude_runtime(namespace / hcert.PROVENANCE)
+    reference = hcert.reference(namespace)
+    record = hc.construction(evidence / ho.GRID_FILE, plan, roles, claude, FAKE_MLX, reference)
     pinned = json.loads(hc.CONTRACT_PATH.read_text(encoding="utf-8"))
     # a base contract, as the pre-authoring commit holds it: an amendment is added by a test
     contract = {k: v for k, v in pinned.items() if k != "amends"} | {"construction": record}
@@ -141,17 +162,20 @@ def machinery(tmp_path_factory):
         shutil.copyfile(f, repo / f)
     sha = hc.write(contract, repo / hc.CONTRACT_PATH)
     (repo / ".gitignore").write_text("data/benchmark/test/\nprivate-*/\n", encoding="utf-8")
-    ho.git(root, "init", "-q", "--bare", "remote.git")
-    ho.git(repo, "init", "-q", "-b", "main")
-    ho.git(repo, "config", "user.name", "fixture")
-    ho.git(repo, "config", "user.email", "fixture@example.org")
     ho.git(repo, "add", "-A")
     ho.git(repo, "commit", "-q", "-m", "the pre-authoring machinery, frozen")
-    ho.git(repo, "remote", "add", "origin", str(root / "remote.git"))
     ho.git(repo, "push", "-q", "origin", "main")
     ho.git(repo, "fetch", "-q", "origin")
     grid_file = evidence / ho.GRID_FILE
-    return {"repo": repo, "sha": sha, "plan": plan, "roles": roles, "grid": grid_file}
+    certifications = (root / "certifications", root / "certification-raw")
+    return {
+        "repo": repo,
+        "sha": sha,
+        "plan": plan,
+        "roles": roles,
+        "grid": grid_file,
+        "certifications": certifications,
+    }
 
 
 @pytest.fixture
@@ -166,11 +190,16 @@ def sha(machinery):
 
 @pytest.fixture
 def paths(machinery, tmp_path):
-    """A private TEST directory of its own: Gate 1's records of the stand-in, the provenance of
-    that contract, the grid, and a fresh salt."""
+    """A private TEST directory of its own: run 6's kind of Gate 1 records as a decoy, the
+    provenance of that contract, the grid, and a fresh salt; and a copy of the certification
+    the contract names, for this test alone."""
     repo = machinery["repo"]
+    history, raw_root = machinery["certifications"]
+    certifications, certification_raw = tmp_path / "certifications", tmp_path / "certification-raw"
+    shutil.copytree(history, certifications)
+    shutil.copytree(raw_root, certification_raw)
     test = repo / f"private-{tmp_path.name}"
-    gate_1_records(test)
+    run_6_provenance(test)
     provenance = test / "provenance"
     pin = {"path": hc.CONTRACT_PATH.as_posix(), "sha256": machinery["sha"]}
     ho.write_json(provenance / "contract_pin.json", pin)
@@ -186,7 +215,8 @@ def paths(machinery, tmp_path):
     ho.guard_private_history(test)
     ho.git(test, "add", "-A")
     ho.git(test, "commit", "-q", "-m", "fixture: private history begins")
-    return hla.Paths(repo, test, tmp_path / "raw", tmp_path / "backups")
+    raw, backups = tmp_path / "raw", tmp_path / "backups"
+    return hla.Paths(repo, test, raw, backups, certifications, certification_raw)
 
 
 @pytest.fixture
@@ -351,9 +381,10 @@ CHANGES = {
     "contract": "files differ from the contract: ['ingest/holdout_ledger.py']",
     # not "corpus": a test id is a keyword, and conftest.py skips the corpus mark by keyword
     "corpus_on_disk": "the corpus differs from the contract",
-    "gate_1_audit": "the audit's implementation is not the one Gate 1 passed with",
+    # a sealed certification's record changed: its seal no longer verifies
+    "gate_1_audit": f"{CERTIFICATION} does not verify",
     "corrupt_state": "the state does not verify",
-    "claude_model": "the requested model is not the one Gate 1 ran",
+    "claude_model": f"{CERTIFICATION} does not verify",
     "mlx_python": "python.version",
     "mlx_mlx": "packages.mlx'",
     "mlx_lm": "packages.mlx-lm",
@@ -375,11 +406,11 @@ def changed(paths: hla.Paths, change: str, monkeypatch: Any) -> hla.Probes:
         found = ["DORA: not the contract's source"]
         monkeypatch.setattr(hc, "corpus_problems", lambda contract: found)
     if change == "gate_1_audit":  # the audit's module is not the one Gate 1 passed with
-        gate1 = json.loads((paths.provenance / "gate1.json").read_text())
-        ho.write_json(paths.provenance / "gate1.json", gate1 | {"audit": {"module_sha256": "0"}})
+        gate1 = json.loads((gate_1(paths) / "gate1.json").read_text())
+        ho.write_json(gate_1(paths) / "gate1.json", gate1 | {"audit": {"module_sha256": "0"}})
     if change == "claude_model":  # same binary, code and contract files, another model
-        pin = json.loads((paths.provenance / "runtime.json").read_text())
-        ho.write_json(paths.provenance / "runtime.json", {**pin, "model": "claude-opus-5-4"})
+        pin = json.loads((gate_1(paths) / "runtime.json").read_text())
+        ho.write_json(gate_1(paths) / "runtime.json", {**pin, "model": "claude-opus-5-4"})
     mlx_changes = {
         "mlx_python": {"python__version": "3.13.0"},
         "mlx_mlx": {"packages__mlx": "0.33.0"},
@@ -459,6 +490,41 @@ def test_a_mismatch_stops_resume_before_any_model(paths, sha, monkeypatch, no_co
 
 
 # ---------------------------------------------------------------------------
+# the certification the contract names, and only it
+# ---------------------------------------------------------------------------
+
+
+def test_the_launcher_reads_the_named_certification_never_tests_own_provenance(paths, no_corpus):
+    frozen, problems = hla.contract_problems(paths)
+    assert problems == [] and frozen is not None
+    assert frozen.runtime == json.loads((gate_1(paths) / "runtime.json").read_text())
+    assert frozen.runtime["sha256"] == RUNTIME["sha256"] != DECOY_RUNTIME["sha256"]
+    assert frozen.extra_env == ["USER"]  # the decoy's Gate 1 inherited HOME
+    construction = frozen.contract["construction"]
+    assert hla.certification_provenance(paths, construction) == gate_1(paths)
+    unnamed = {k: v for k, v in construction.items() if k != "certification"}
+    with pytest.raises(hla.LaunchRefused, match="names no Gate 1 certification"):
+        hla.certification_provenance(paths, unnamed)
+    other = construction | {"certification": construction["certification"] | {"gate1_run": "x"}}
+    with pytest.raises(hla.LaunchRefused, match="not the certification the contract records"):
+        hla.certification_provenance(paths, other)
+
+
+def test_without_its_certification_a_contract_never_falls_back(paths, sha, monkeypatch, no_corpus):
+    (paths.certifications / CERTIFICATION).rename(paths.certifications / "moved-away")
+    frozen, problems = hla.contract_problems(paths)
+    assert frozen is None and any(f"no certification {CERTIFICATION}" in p for p in problems)
+    fakes = Fakes(monkeypatch)
+    for refused in (
+        lambda: hla.record_public_commit(paths, "HEAD"),
+        lambda: hla.start(paths, sha, fakes, PROBES),
+    ):
+        with pytest.raises(hs.StateError, match=f"no certification {CERTIFICATION}"):
+            refused()
+    assert fakes.calls == [] and not (paths.test / hs.STATE_DIR).exists()
+
+
+# ---------------------------------------------------------------------------
 # no model outside START and RESUME
 # ---------------------------------------------------------------------------
 
@@ -492,6 +558,8 @@ def commands_without_models(paths: hla.Paths, monkeypatch: Any) -> list[str]:
     monkeypatch.setattr(hla.hi, "binary_identity", probe)
     monkeypatch.setattr(hla.hrt, "mlx_runtime", mlx)
     monkeypatch.setattr(cli(), "REPO", paths.repo)
+    monkeypatch.setattr(hcert, "CERTIFICATIONS_DIR", paths.certifications)
+    monkeypatch.setattr(hcert, "CERTIFICATION_RAW_DIR", paths.certification_raw)
     common = ["--dir", str(paths.test), "--raw-dir", str(paths.raw)]
     common += ["--backup-dir", str(paths.backups)]
     assert cli().main([*common, "validate"]) == 0

@@ -31,8 +31,10 @@ import subprocess
 import tempfile
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 # The only attachments a headless author may receive, each with the exact shape seen in the
 # authenticated runtime of Claude Code 2.1.301 (isolation test 3): every key, and the type of
@@ -59,7 +61,9 @@ RUNTIME_ATTACHMENTS: dict[str, list[Shape]] = {
         {"identity": {"modelId": str, "marketingName": str, "knowledgeCutoff": str}, "text": str}
     ],
     "total_tokens_reminder": [{"text": str}],
-    "date": [{"date": str}],
+    # Claude Code 2.1.301 emits either the initial date or a date-rollover reminder.
+    # The latter is accepted only after the launcher proves the observed local date change.
+    "date": [{"date": str}, {"date": str, "changed": bool}],
     "prompt_snapshot": [
         {
             "systemPrompt": list,
@@ -245,8 +249,8 @@ def decoded_text(raw: str) -> str:
     out: list[str] = []
     for line in raw.splitlines():
         try:
-            out.extend(_strings(json.loads(line)))
-        except json.JSONDecodeError:
+            out.extend(_strings(_load_json(line)))
+        except ValueError:
             out.append(line)
     return "\n".join(out)
 
@@ -298,6 +302,8 @@ class IsolationReport:
     model: str | None
     findings: dict[str, list[str]] = field(default_factory=dict)
     problems: list[str] = field(default_factory=list)
+    date_validated: bool = False
+    cwd_validated: bool = False
 
 
 def _attachment_kinds(records: Iterable[Mapping[str, Any]]) -> list[str]:
@@ -306,7 +312,8 @@ def _attachment_kinds(records: Iterable[Mapping[str, Any]]) -> list[str]:
         a = r.get("attachment")
         if isinstance(a, dict):
             kind = str(a.get("type"))
-            files = a.get("files") or []
+            raw_files = a.get("files")
+            files = raw_files if isinstance(raw_files, list) else []
             kinds.append(kind + "".join(f":{f.get('type')}" for f in files if isinstance(f, dict)))
     return kinds
 
@@ -356,9 +363,99 @@ def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _system_timezone() -> str:
+    """The child inherits the host timezone, not the controller's possible TZ override."""
+    localtime = Path("/etc/localtime").resolve()
+    marker = "/zoneinfo/"
+    resolved = localtime.as_posix()
+    if marker not in resolved:
+        raise RuntimeError("the host timezone cannot be identified from /etc/localtime")
+    zone = resolved.split(marker, 1)[1]
+    try:
+        ZoneInfo(zone)
+    except ZoneInfoNotFoundError as error:
+        raise RuntimeError("the host timezone is not an installed IANA zone") from error
+    return zone
+
+
+def runtime_clock_observation() -> dict[str, str]:
+    """A launcher-owned wall-clock observation, with a date reproducible from its UTC instant."""
+    now = datetime.now(UTC)
+    zone = _system_timezone()
+    local = now.astimezone(ZoneInfo(zone))
+    return {
+        "utc": now.isoformat(timespec="microseconds"),
+        "local_date": local.date().isoformat(),
+        "timezone": zone,
+    }
+
+
+def _clock_observation_date(value: Any) -> tuple[date | None, datetime | None, str | None]:
+    """Validate one persisted clock observation without trusting its claimed local date."""
+    if not isinstance(value, dict) or set(value) != {"utc", "local_date", "timezone"}:
+        return None, None, None
+    try:
+        instant = datetime.fromisoformat(value["utc"])
+        claimed = date.fromisoformat(value["local_date"])
+        zone_name = value["timezone"]
+        if not isinstance(zone_name, str) or not zone_name:
+            return None, None, None
+        zone = ZoneInfo(zone_name)
+    except (TypeError, ValueError, ZoneInfoNotFoundError):
+        return None, None, None
+    if instant.tzinfo is None or instant.utcoffset() != timedelta(0):
+        return None, None, None
+    if instant.astimezone(zone).date() != claimed or claimed.isoformat() != value["local_date"]:
+        return None, None, None
+    return claimed, instant, zone_name
+
+
+def _runtime_context(
+    value: Any,
+) -> tuple[list[str], str | None, tuple[date, ...], bool]:
+    """Check the launcher binding and the bounded local-date window used by Gate 1."""
+    if not isinstance(value, dict) or set(value) != {
+        "launcher_workdir",
+        "clock_start",
+        "clock_end",
+    }:
+        return ["launcher provenance is missing or has an unknown shape"], None, (), False
+    raw_cwd = value.get("launcher_workdir")
+    if not isinstance(raw_cwd, str) or not Path(raw_cwd).is_absolute():
+        return ["launcher working-directory provenance is invalid"], None, (), False
+    try:
+        expected_cwd = str(Path(raw_cwd).resolve(strict=False))
+    except (OSError, RuntimeError):
+        return ["launcher working-directory provenance cannot be resolved"], None, (), False
+    if raw_cwd != expected_cwd:
+        return ["launcher working-directory provenance is not canonical"], None, (), False
+
+    start_date, start_at, start_zone = _clock_observation_date(value.get("clock_start"))
+    if start_date is None or start_at is None or start_zone is None:
+        return ["launcher start-clock provenance is invalid"], expected_cwd, (), False
+    raw_end = value.get("clock_end")
+    if raw_end is None:
+        return [], expected_cwd, (start_date,), False
+    end_date, end_at, end_zone = _clock_observation_date(raw_end)
+    if end_date is None or end_at is None or end_zone is None:
+        return ["launcher end-clock provenance is invalid"], expected_cwd, (), False
+    if end_zone != start_zone or end_at < start_at:
+        return (
+            ["launcher clock window changed timezone or moved backwards"],
+            expected_cwd,
+            (),
+            False,
+        )
+    day_delta = (end_date - start_date).days
+    if day_delta < 0 or day_delta > 1:
+        return ["launcher clock window spans an unexplained date change"], expected_cwd, (), False
+    dates = (start_date,) if day_delta == 0 else (start_date, end_date)
+    return [], expected_cwd, dates, True
+
+
 def attachment_problems(
     records: Iterable[Mapping[str, Any]],
-    tmp_root: str | None = None,
+    expected_cwd: str | None = None,
     expected_org_sha256: str | None = None,
 ) -> tuple[list[str], bool]:
     """Every attachment against the policy: the runtime ones and the two identity ones,
@@ -369,6 +466,8 @@ def attachment_problems(
     for r in records:
         body = r.get("attachment")
         if not isinstance(body, dict):
+            if r.get("type") == "attachment":
+                problems.append("attachment body is not an object")
             continue
         kind = str(body.get("type"))
         shapes = RUNTIME_ATTACHMENTS.get(kind) or IDENTITY_ATTACHMENTS.get(kind)
@@ -383,8 +482,8 @@ def attachment_problems(
             snap = body["snapshot"]
             if snap["isGitRepo"] or snap["isWorktree"]:
                 problems.append("environment: a repository or another directory is visible")
-            if tmp_root is not None and not str(snap["workingDirectory"]).startswith(tmp_root):
-                problems.append("environment: the working directory is not a fresh temporary one")
+            if expected_cwd is not None and snap["workingDirectory"] != expected_cwd:
+                problems.append("environment: workingDirectory differs from the launcher path")
         if kind in IDENTITY_ATTACHMENTS:
             identity = True
         if kind == "credential_org" and expected_org_sha256 is not None:
@@ -419,67 +518,367 @@ def redact(text: str, values: Sequence[str]) -> str:
     return text
 
 
+def _unique_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError("duplicate JSON key")
+        value[key] = item
+    return value
+
+
+def _load_json(text: str) -> Any:
+    # A normal json.loads silently discards earlier values of duplicate keys. None of
+    # the audit's structural or content checks may lose those values.
+    return json.loads(text, object_pairs_hook=_unique_keys)
+
+
 def parse_records(texts: Mapping[str, str]) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for name in ("transcript", "stream"):
-        for line in texts.get(name, "").splitlines():
+        for number, line in enumerate(texts.get(name, "").splitlines(), 1):
             if line.strip():
                 try:
-                    records.append(json.loads(line))
-                except json.JSONDecodeError:
-                    records.append({"unparsed": line})
+                    record = _load_json(line)
+                    if not isinstance(record, dict):
+                        raise ValueError("JSON record is not an object")
+                    records.append(record)
+                except ValueError as error:
+                    records.append({"unparsed": line, "_parse_error": f"{name}:{number}: {error}"})
     return records
+
+
+def _date_attachments(text: str) -> list[tuple[Any, Any]]:
+    found: list[tuple[Any, Any]] = []
+    for line in text.splitlines():
+        try:
+            record = _load_json(line)
+        except ValueError:
+            continue
+        attachment = record.get("attachment") if isinstance(record, dict) else None
+        if not isinstance(attachment, dict) or attachment.get("type") != "date":
+            continue
+        value = attachment.get("date")
+        changed = attachment.get("changed") if "changed" in attachment else None
+        found.append((value, changed))
+    return found
+
+
+def _date_problems(
+    texts: Mapping[str, str], runtime_context: Any
+) -> tuple[list[str], str | None, bool]:
+    sequences = {
+        source: _date_attachments(texts.get(source, "")) for source in ("transcript", "stream")
+    }
+    nonempty = [sequence for sequence in sequences.values() if sequence]
+    if runtime_context is None:
+        if nonempty:
+            return ["date attachments have no launcher clock provenance"], None, False
+        return [], None, False
+
+    problems, expected_cwd, observed_dates, has_end = _runtime_context(runtime_context)
+    if problems:
+        return problems, expected_cwd, False
+    if not nonempty:
+        return ["the pinned Claude run has no date attachment"], expected_cwd, False
+    allowed = set(observed_dates)
+    end_date = observed_dates[-1]
+
+    for record in parse_records(texts):
+        attachment = record.get("attachment")
+        if not isinstance(attachment, dict) or attachment.get("type") != "date":
+            continue
+        problems += _matches("date", attachment, RUNTIME_ATTACHMENTS["date"])
+        if "rendered" in record:
+            content = f"<system-reminder>\n{rendered_date(attachment)}\n</system-reminder>"
+            expected = [{"content": content}]
+            if record["rendered"] != expected:
+                problems.append("date attachment has an unknown rendered template")
+
+    for sequence in nonempty:
+        previous: date | None = None
+        for raw_date, changed in sequence:
+            if not isinstance(raw_date, str):
+                problems.append("date attachment value is not text")
+                continue
+            try:
+                current = date.fromisoformat(raw_date)
+            except ValueError:
+                problems.append("date attachment is not a calendar date")
+                continue
+            if current.isoformat() != raw_date:
+                problems.append("date attachment is not in canonical YYYY-MM-DD form")
+                continue
+            if current not in allowed:
+                problems.append("date attachment is outside the launcher's observed date window")
+            if changed is not None and type(changed) is not bool:
+                problems.append("date attachment changed flag is not boolean")
+            elif changed is False:
+                problems.append("the pinned runtime does not emit changed=false")
+            elif changed is True:
+                if not has_end:
+                    problems.append("a rollover attachment has no launcher end-clock proof")
+                if previous is None or current == previous or current != end_date:
+                    problems.append("date rollover is not supported by the observed clock sequence")
+            elif previous is not None and current != previous:
+                problems.append("date changed without the pinned rollover marker")
+            previous = current
+
+    return problems, expected_cwd, not problems
+
+
+def rendered_date(attachment: Mapping[str, Any]) -> str:
+    """The two exact strings verified in the SHA-pinned Claude Code 2.1.301 binary."""
+    if attachment.get("changed") is True:
+        return (
+            f"The date has changed. Today's date is now {attachment.get('date')}. "
+            "No need to announce the new date — the user's own clock shows it."
+        )
+    return f"Today's date is {attachment.get('date')}."
+
+
+_ENV_CWD = re.compile(r"^ - Primary working directory: ([^\r\n]*)$", re.M)
+_CWD_RECORD_TYPES = frozenset({"system", "attachment", "user", "assistant"})
+
+
+def _environment_texts(record: Mapping[str, Any]) -> Iterable[str]:
+    """Only runtime-owned environment renderings, never a user's or model's text."""
+    attachment = record.get("attachment")
+    if isinstance(attachment, dict):
+        if attachment.get("type") == "environment":
+            renderings = record.get("rendered")
+            for rendered in renderings if isinstance(renderings, list) else []:
+                if isinstance(rendered, dict) and isinstance(rendered.get("content"), str):
+                    yield rendered["content"]
+        elif attachment.get("type") == "prompt_snapshot":
+            prompts = attachment.get("systemPrompt")
+            for prompt in prompts if isinstance(prompts, list) else []:
+                if isinstance(prompt, str):
+                    yield prompt
+    message = record.get("message")
+    if (
+        record.get("type") == "api-request-blob"
+        and isinstance(message, dict)
+        and message.get("role") == "system"
+    ):
+        content = message.get("content")
+        if isinstance(content, str):
+            yield content
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and isinstance(block.get("text"), str):
+                    yield block["text"]
+
+
+def _cwd_problems(records: Sequence[Mapping[str, Any]], expected_cwd: str | None) -> list[str]:
+    if expected_cwd is None:
+        return []
+    problems = []
+    for record in records:
+        kind = record.get("type")
+        for key in ("cwd", "original_cwd"):
+            if key not in record:
+                continue
+            known = isinstance(kind, str) and kind in _CWD_RECORD_TYPES
+            if key == "original_cwd":
+                known = kind == "system" and record.get("subtype") == "init"
+            if not known or record[key] != expected_cwd:
+                problems.append(f"{kind}: {key} is not the exact launcher-created path")
+        attachment = record.get("attachment")
+        if (
+            isinstance(attachment, dict)
+            and attachment.get("type") == "environment"
+            and "rendered" in record
+        ):
+            renderings = record["rendered"]
+            if (
+                not isinstance(renderings, list)
+                or not renderings
+                or any(
+                    not isinstance(item, dict)
+                    or set(item) != {"content"}
+                    or not isinstance(item["content"], str)
+                    or len(list(_ENV_CWD.finditer(item["content"]))) != 1
+                    for item in renderings
+                )
+            ):
+                problems.append("rendered environment has an unknown working-directory format")
+        for text in _environment_texts(record):
+            if any(match[1] != expected_cwd for match in _ENV_CWD.finditer(text)):
+                problems.append("rendered environment: working directory differs from launcher")
+    return problems
+
+
+def _normalize_environment(value: Any, expected_cwd: str) -> Any:
+    if isinstance(value, str):
+        return _ENV_CWD.sub(
+            lambda match: (
+                " - Primary working directory: <verified-launcher-cwd>"
+                if match[1] == expected_cwd
+                else match[0]
+            ),
+            value,
+        )
+    if isinstance(value, list):
+        return [_normalize_environment(item, expected_cwd) for item in value]
+    if isinstance(value, dict):
+        return {key: _normalize_environment(item, expected_cwd) for key, item in value.items()}
+    return value
+
+
+def audit_content_copy(text: str, expected_cwd: str | None, normalize_date: bool) -> str:
+    """Normalize only launcher-proven fields in an in-memory content-audit copy."""
+    output: list[str] = []
+    for line in text.splitlines():
+        try:
+            record = _load_json(line)
+        except ValueError:
+            output.append(line)
+            continue
+        if not isinstance(record, dict):
+            output.append(line)
+            continue
+        if expected_cwd is not None:
+            kind = record.get("type")
+            if (
+                isinstance(kind, str)
+                and kind in _CWD_RECORD_TYPES
+                and record.get("cwd") == expected_cwd
+            ):
+                record["cwd"] = "<verified-launcher-cwd>"
+            if (
+                record.get("type") == "system"
+                and record.get("subtype") == "init"
+                and record.get("original_cwd") == expected_cwd
+            ):
+                record["original_cwd"] = "<verified-launcher-cwd>"
+        if expected_cwd is not None and record.get("type") == "api-request-blob":
+            message = record.get("message")
+            if isinstance(message, dict) and message.get("role") == "system":
+                message["content"] = _normalize_environment(message.get("content"), expected_cwd)
+        attachment = record.get("attachment")
+        if isinstance(attachment, dict):
+            kind = attachment.get("type")
+            if expected_cwd is not None and kind == "environment":
+                snapshot = attachment.get("snapshot")
+                if isinstance(snapshot, dict) and snapshot.get("workingDirectory") == expected_cwd:
+                    snapshot["workingDirectory"] = "<verified-launcher-cwd>"
+                if "rendered" in record:
+                    record["rendered"] = _normalize_environment(record["rendered"], expected_cwd)
+            if expected_cwd is not None and kind == "prompt_snapshot":
+                attachment["systemPrompt"] = _normalize_environment(
+                    attachment.get("systemPrompt"), expected_cwd
+                )
+            if (
+                normalize_date
+                and kind == "date"
+                and set(attachment) in ({"type", "date"}, {"type", "date", "changed"})
+            ):
+                # changed is a runtime control flag, retained in the raw artifact and checked
+                # above; it is excluded only from this copy used to scan for leaked content.
+                attachment.pop("changed", None)
+        output.append(json.dumps(record, ensure_ascii=False, sort_keys=True))
+    return "\n".join(output)
 
 
 def audit_run(
     texts: Mapping[str, str],
     terms: Sequence[Term],
-    allowed_cwd_prefix: str | None = None,
+    expected_cwd: str | None = None,
     expected_version: str | None = None,
     expected_org_sha256: str | None = None,
     allowed_plugins: Sequence[Mapping[str, str]] = BUILTIN_PLUGINS,
+    runtime_context: Mapping[str, Any] | None = None,
 ) -> IsolationReport:
     """texts maps a source ("transcript", "stream", "stderr") to its raw content. The
     transcript and the stream are JSON Lines; the stream's init event says which tools,
     directory and model the run had."""
     records = parse_records(texts)
+    parse_problems = [str(record["_parse_error"]) for record in records if "_parse_error" in record]
     attachments = _attachment_kinds(records)
-    attached, identity = attachment_problems(records, allowed_cwd_prefix, expected_org_sha256)
+    date_findings, context_cwd, dates_valid = _date_problems(texts, runtime_context)
+    binding_valid = runtime_context is None or not _runtime_context(runtime_context)[0]
+    if context_cwd is not None:
+        if expected_cwd is not None and expected_cwd != context_cwd:
+            date_findings.append(
+                "launcher working-directory provenance differs from the expected path"
+            )
+            binding_valid = False
+            dates_valid = False
+        else:
+            expected_cwd = context_cwd
+    attached, identity = attachment_problems(records, expected_cwd, expected_org_sha256)
+    cwd_findings = _cwd_problems(records, expected_cwd)
+    cwd_valid = (
+        expected_cwd is not None
+        and binding_valid
+        and not (parse_problems or cwd_findings or attached)
+    )
+    attached += date_findings
+    attached += cwd_findings
+    dates_valid = dates_valid and not parse_problems
     init = next(
         (r for r in records if r.get("type") == "system" and r.get("subtype") == "init"), {}
     )
+    cwd_valid = cwd_valid and init.get("cwd") == expected_cwd
     tools = init.get("tools")
     cwd = init.get("cwd")
     model = init.get("model")
     findings: dict[str, list[str]] = {}
-    for source, text in texts.items():
-        decoded = decoded_text(text)
+    for source in ("transcript", "stream", "stderr"):
+        text = texts.get(source, "")
+        if not isinstance(text, str):
+            continue
+        audit_text = audit_content_copy(text, expected_cwd if cwd_valid else None, dates_valid)
+        decoded = decoded_text(audit_text)
         flat = normalize(decoded)
         for term in terms:
-            if term.found_in(decoded, flat) or term.found_in(text, normalize(text)):
+            if term.found_in(decoded, flat) or term.found_in(audit_text, normalize(audit_text)):
                 findings.setdefault(term.category, []).append(f"{source}: {term.label}")
-    problems = list(attached)
+    problems = [*parse_problems, *attached]
+    init_fields = ("tools", "mcp_servers", "cwd", "plugins", "claude_code_version")
+    if any(
+        any(record.get(key) != init.get(key) for key in init_fields)
+        for record in records
+        if record.get("type") == "system" and record.get("subtype") == "init"
+    ):
+        problems.append("the runtime artifacts contain conflicting init events")
     plugins = init.get("plugins") or []
-    if sorted(map(json.dumps, plugins)) != sorted(map(json.dumps, allowed_plugins)):
-        problems.append(f"plugins {[p.get('name') for p in plugins]}, not exactly the built-ins")
+    if (
+        not isinstance(plugins, list)
+        or any(not isinstance(plugin, dict) for plugin in plugins)
+        or sorted(json.dumps(plugin, sort_keys=True) for plugin in plugins)
+        != sorted(json.dumps(plugin, sort_keys=True) for plugin in allowed_plugins)
+    ):
+        problems.append("plugins are not exactly the built-ins")
     if not init:
         problems.append("no init event: the run cannot be checked")
     if tools:
         problems.append(f"tools offered: {tools}")
     if init.get("mcp_servers"):
         problems.append(f"MCP servers: {init['mcp_servers']}")
-    if allowed_cwd_prefix is not None and not str(cwd or "").startswith(allowed_cwd_prefix):
-        problems.append(f"working directory {cwd!r} is not a fresh temporary one")
-    if expected_version is not None and not expected_version.startswith(
-        str(init.get("claude_code_version") or "?")
-    ):
+    if expected_cwd is not None and cwd != expected_cwd:
+        problems.append("working directory differs from the exact launcher-created path")
+    if expected_version is not None and init.get(
+        "claude_code_version"
+    ) != expected_version.removesuffix(" (Claude Code)"):
         problems.append(
             f"the run says Claude Code {init.get('claude_code_version')}, pinned {expected_version}"
         )
     if findings:
         problems.append(f"forbidden strings: {sum(len(v) for v in findings.values())}")
     return IsolationReport(
-        not problems, attachments, attached, identity, tools, cwd, model, findings, problems
+        not problems,
+        attachments,
+        attached,
+        identity,
+        tools,
+        cwd,
+        model,
+        findings,
+        problems,
+        date_validated=dates_valid,
+        cwd_validated=cwd_valid,
     )
 
 
@@ -514,7 +913,7 @@ def positive_controls(terms: Sequence[Term], dev_transcript: Path) -> list[str]:
         "type": "system",
         "subtype": "init",
         "tools": [],
-        "cwd": "/tmp/x",
+        "cwd": str(Path("/tmp/tmp.x").resolve(strict=False)),
         "model": "m",
         "plugins": list(BUILTIN_PLUGINS),
     }
@@ -532,10 +931,46 @@ def positive_controls(terms: Sequence[Term], dev_transcript: Path) -> list[str]:
                 *({"type": "attachment", "attachment": a} for a in attachments),
             ]
         )
-        report = audit_run({"transcript": text}, terms, expected_org_sha256=CONTROL_ORG_SHA256)
+        runtime_context = attachment_control_context(attachments)
+        expected_cwd = runtime_context["launcher_workdir"] if runtime_context else None
+        report = audit_run(
+            {"transcript": text},
+            terms,
+            expected_cwd=expected_cwd,
+            expected_org_sha256=CONTROL_ORG_SHA256,
+            runtime_context=runtime_context,
+        )
+        if report.ok != should_pass:
+            failures.append(f"control {name!r}: {'passed' if report.ok else 'failed'}")
+    for name, transcript, runtime_context, should_pass in PROVENANCE_CONTROLS:
+        report = audit_run(
+            {"transcript": transcript},
+            terms,
+            expected_cwd=runtime_context["launcher_workdir"] if runtime_context else None,
+            runtime_context=runtime_context,
+        )
         if report.ok != should_pass:
             failures.append(f"control {name!r}: {'passed' if report.ok else 'failed'}")
     return failures
+
+
+def attachment_control_context(attachments: Sequence[Mapping[str, Any]]) -> dict[str, Any] | None:
+    """A fixed, independently reproducible clock window for the recorded date controls."""
+    if not any(a.get("type") == "date" for a in attachments):
+        return None
+    return {
+        "launcher_workdir": str(Path("/tmp/tmp.x").resolve(strict=False)),
+        "clock_start": {
+            "utc": "2026-10-19T21:59:00+00:00",
+            "local_date": "2026-10-19",
+            "timezone": "Europe/Madrid",
+        },
+        "clock_end": {
+            "utc": "2026-10-19T22:01:00+00:00",
+            "local_date": "2026-10-20",
+            "timezone": "Europe/Madrid",
+        },
+    }
 
 
 CONTROL_EMAIL = "The user's email address is someone@example.org. Use it only to identify the user."
@@ -544,7 +979,7 @@ CONTROL_ORG_SHA256 = hashlib.sha256(CONTROL_ORG.encode("utf-8")).hexdigest()
 _EMAIL_ONLY = {"type": "session_context", "context": {"userEmail": CONTROL_EMAIL}}
 _ORG = {"type": "credential_org", "organizationUuid": CONTROL_ORG}
 _SNAPSHOT: dict[str, Any] = {
-    "workingDirectory": "/tmp/tmp.x",
+    "workingDirectory": str(Path("/tmp/tmp.x").resolve(strict=False)),
     "isWorktree": False,
     "isGitRepo": False,
     "additionalWorkingDirectories": [],
@@ -607,6 +1042,34 @@ ATTACHMENT_CONTROLS: list[tuple[str, dict[str, Any], list[dict[str, Any]], bool]
         False,
     ),
     ("the runtime attachments", {}, [_ENV, {"type": "date", "date": "2026-10-19"}, _PROMPT], True),
+    (
+        "a clock-proven date rollover",
+        {},
+        [
+            {"type": "date", "date": "2026-10-19"},
+            {"type": "date", "date": "2026-10-20", "changed": True},
+        ],
+        True,
+    ),
+    (
+        "a rollover without a previous date",
+        {},
+        [{"type": "date", "date": "2026-10-20", "changed": True}],
+        False,
+    ),
+    (
+        "a false rollover flag",
+        {},
+        [{"type": "date", "date": "2026-10-19", "changed": False}],
+        False,
+    ),
+    ("a date outside the clock window", {}, [{"type": "date", "date": "2026-10-18"}], False),
+    (
+        "a date with an unknown key",
+        {},
+        [{"type": "date", "date": "2026-10-19", "retrieval_results": []}],
+        False,
+    ),
     ("the generic system prompt phrase", {}, [_PROMPT], True),
     (
         "a real git status in the system prompt",
@@ -655,6 +1118,310 @@ ATTACHMENT_CONTROLS: list[tuple[str, dict[str, Any], list[dict[str, Any]], bool]
     ("an MCP server", {"mcp_servers": [{"name": "x"}]}, [], False),
 ]
 
+# The launcher's provenance (D-064), on transcripts in the shape the pinned runtime writes them
+# (Gate 1 run 4): a cwd on every record, the init's original_cwd, the rendered environment and
+# date. The directory's random suffix holds a static term, as in run 3: the verified cwd must
+# pass, and the same path anywhere else, or any other deviation, must not.
+CONTROL_CWD = str(Path("/tmp/tmp.k_ndcg4x").resolve(strict=False))
+_LEAK = "The answer comes from pipeline E."
+_DAY = {"type": "date", "date": "2026-10-19"}
+_ROLLOVER = {"type": "date", "date": "2026-10-20", "changed": True}
+
+
+def _clock(utc: str, local_date: str, zone: str = "Europe/Madrid") -> dict[str, str]:
+    return {"utc": utc, "local_date": local_date, "timezone": zone}
+
+
+_SAME_DAY = (
+    _clock("2026-10-19T10:00:00+00:00", "2026-10-19"),
+    _clock("2026-10-19T10:05:00+00:00", "2026-10-19"),
+)
+_MIDNIGHT = (
+    _clock("2026-10-19T21:59:00+00:00", "2026-10-19"),
+    _clock("2026-10-19T22:01:00+00:00", "2026-10-20"),
+)
+
+
+def _provenance(
+    start: dict[str, str] | None, end: dict[str, str] | None, cwd: str = CONTROL_CWD
+) -> dict[str, Any]:
+    return {"launcher_workdir": cwd, "clock_start": start, "clock_end": end}
+
+
+def _control_run(
+    dates: Sequence[Mapping[str, Any]],
+    reply: str = "{}",
+    moved: Mapping[str, str] | None = None,
+    extra: Sequence[str] = (),
+) -> str:
+    """One control's transcript: every runtime position of the cwd holds CONTROL_CWD unless
+    moved gives another path for one of them ("init", "record" or "environment"); the extra
+    lines are appended as they are."""
+    at = {"init": CONTROL_CWD, "record": CONTROL_CWD, "environment": CONTROL_CWD, **(moved or {})}
+    environment = (
+        "# Environment\nYou have been invoked in the following environment: \n"
+        f" - Primary working directory: {at['environment']}\n - Is a git repository: false"
+    )
+    records: list[dict[str, Any]] = [
+        {
+            "type": "system",
+            "subtype": "init",
+            "tools": [],
+            "cwd": at["init"],
+            "original_cwd": at["init"],
+            "model": "m",
+            "plugins": list(BUILTIN_PLUGINS),
+        },
+        {
+            "type": "attachment",
+            "cwd": at["record"],
+            "attachment": {
+                "type": "environment",
+                "snapshot": {**_SNAPSHOT, "workingDirectory": at["environment"]},
+            },
+            "rendered": [{"content": f"<system-reminder>\n{environment}\n</system-reminder>"}],
+        },
+        *(
+            {
+                "type": "attachment",
+                "cwd": at["record"],
+                "attachment": dict(date),
+                "rendered": [
+                    {"content": f"<system-reminder>\n{rendered_date(date)}\n</system-reminder>"}
+                ],
+            }
+            for date in dates
+        ),
+        {
+            "type": "user",
+            "cwd": at["record"],
+            "message": {"role": "user", "content": "A synthetic packet."},
+        },
+        {
+            "type": "assistant",
+            "cwd": at["record"],
+            "message": {"content": [{"type": "text", "text": reply}]},
+        },
+    ]
+    return "\n".join([*map(json.dumps, records), *extra])
+
+
+_CWD_JSON = json.dumps(CONTROL_CWD)
+# (name, transcript, the launcher's provenance, whether the audit must pass)
+PROVENANCE_CONTROLS: list[tuple[str, str, dict[str, Any] | None, bool]] = [
+    (
+        "a verified cwd whose random suffix holds a forbidden term",
+        _control_run([_DAY]),
+        _provenance(*_SAME_DAY),
+        True,
+    ),
+    (
+        "a verified midnight rollover",
+        _control_run([_DAY, _ROLLOVER]),
+        _provenance(*_MIDNIGHT),
+        True,
+    ),
+    (
+        "the verified cwd copied into a model reply",
+        _control_run([_DAY], reply=f"I work in {CONTROL_CWD}."),
+        _provenance(*_SAME_DAY),
+        False,
+    ),
+    (
+        "a leak beside a verified cwd",
+        _control_run([_DAY], reply=_LEAK),
+        _provenance(*_SAME_DAY),
+        False,
+    ),
+    (
+        "a leak beside a verified rollover",
+        _control_run([_DAY, _ROLLOVER], reply=_LEAK),
+        _provenance(*_MIDNIGHT),
+        False,
+    ),
+    (
+        "a sibling directory",
+        _control_run([_DAY], moved={"init": CONTROL_CWD + "-sibling"}),
+        _provenance(*_SAME_DAY),
+        False,
+    ),
+    (
+        "a directory under the launcher's",
+        _control_run([_DAY], moved={"record": CONTROL_CWD + "/sub"}),
+        _provenance(*_SAME_DAY),
+        False,
+    ),
+    (
+        "the launcher directory's parent",
+        _control_run([_DAY], moved={"environment": str(Path(CONTROL_CWD).parent)}),
+        _provenance(*_SAME_DAY),
+        False,
+    ),
+    (
+        "provenance for another directory",
+        _control_run([_DAY]),
+        _provenance(*_SAME_DAY, cwd=CONTROL_CWD + "-sibling"),
+        False,
+    ),
+    (
+        "a launcher directory that is not canonical",
+        _control_run([_DAY]),
+        _provenance(*_SAME_DAY, cwd=str(Path(CONTROL_CWD).parent / ".." / "tmp.k_ndcg4x")),
+        False,
+    ),
+    (
+        "a relative launcher directory",
+        _control_run([_DAY]),
+        _provenance(*_SAME_DAY, cwd="tmp/tmp.k_ndcg4x"),
+        False,
+    ),
+    (
+        "a cwd on a record kind never seen",
+        _control_run([_DAY], extra=[json.dumps({"type": "progress", "cwd": CONTROL_CWD})]),
+        _provenance(*_SAME_DAY),
+        False,
+    ),
+    (
+        "a rollover flag as text",
+        _control_run([_DAY, {**_ROLLOVER, "changed": "true"}]),
+        _provenance(*_MIDNIGHT),
+        False,
+    ),
+    (
+        "a rollover flag as a number",
+        _control_run([_DAY, {**_ROLLOVER, "changed": 1}]),
+        _provenance(*_MIDNIGHT),
+        False,
+    ),
+    (
+        "a null rollover flag",
+        _control_run([_DAY, {**_ROLLOVER, "changed": None}]),
+        _provenance(*_MIDNIGHT),
+        False,
+    ),
+    (
+        "an impossible calendar date",
+        _control_run([{"type": "date", "date": "2026-02-30"}]),
+        _provenance(*_SAME_DAY),
+        False,
+    ),
+    (
+        "a date in another form",
+        _control_run([{"type": "date", "date": "20261019"}]),
+        _provenance(*_SAME_DAY),
+        False,
+    ),
+    (
+        "a date going back",
+        _control_run([{"type": "date", "date": "2026-10-20"}, {**_DAY, "changed": True}]),
+        _provenance(*_MIDNIGHT),
+        False,
+    ),
+    (
+        "a date change without the rollover flag",
+        _control_run([_DAY, {"type": "date", "date": "2026-10-20"}]),
+        _provenance(*_MIDNIGHT),
+        False,
+    ),
+    (
+        "two rollovers",
+        _control_run([_DAY, _ROLLOVER, _ROLLOVER]),
+        _provenance(*_MIDNIGHT),
+        False,
+    ),
+    (
+        "a rollover inside one day",
+        _control_run([_DAY, _ROLLOVER]),
+        _provenance(*_SAME_DAY),
+        False,
+    ),
+    (
+        "a rollover without the launcher's end clock",
+        _control_run([_DAY, _ROLLOVER]),
+        _provenance(_MIDNIGHT[0], None),
+        False,
+    ),
+    (
+        "a rollover rendered with another text",
+        _control_run(
+            [_DAY],
+            extra=[
+                json.dumps(
+                    {
+                        "type": "attachment",
+                        "cwd": CONTROL_CWD,
+                        "attachment": _ROLLOVER,
+                        "rendered": [
+                            {"content": "<system-reminder>\nIt is late.\n</system-reminder>"}
+                        ],
+                    }
+                )
+            ],
+        ),
+        _provenance(*_MIDNIGHT),
+        False,
+    ),
+    (
+        "a duplicate key in a record",
+        _control_run(
+            [_DAY],
+            extra=[
+                '{"type": "attachment", "cwd": '
+                + _CWD_JSON
+                + ', "attachment": {"type": "date", "date": "2026-10-19", "date": "2026-10-18"}}'
+            ],
+        ),
+        _provenance(*_SAME_DAY),
+        False,
+    ),
+    (
+        "a duplicate key nested in a message",
+        _control_run(
+            [_DAY],
+            extra=[
+                '{"type": "assistant", "cwd": '
+                + _CWD_JSON
+                + ', "message": {"content": '
+                + json.dumps(_LEAK)
+                + ', "content": "{}"}}'
+            ],
+        ),
+        _provenance(*_SAME_DAY),
+        False,
+    ),
+    (
+        "a cut record",
+        _control_run([_DAY], extra=['{"type": "assistant", "message": {"content": "{}"']),
+        _provenance(*_SAME_DAY),
+        False,
+    ),
+    ("no launcher provenance", _control_run([_DAY]), None, False),
+    (
+        "a launcher clock that changes timezone",
+        _control_run([_DAY]),
+        _provenance(_SAME_DAY[0], _clock("2026-10-19T10:05:00+00:00", "2026-10-19", "UTC")),
+        False,
+    ),
+    (
+        "a launcher clock that moves backwards",
+        _control_run([_DAY]),
+        _provenance(_SAME_DAY[1], _SAME_DAY[0]),
+        False,
+    ),
+    (
+        "a launcher window longer than a day",
+        _control_run([_DAY]),
+        _provenance(_SAME_DAY[0], _clock("2026-10-21T10:00:00+00:00", "2026-10-21")),
+        False,
+    ),
+    (
+        "a local date its instant contradicts",
+        _control_run([_DAY]),
+        _provenance(_clock("2026-10-19T10:00:00+00:00", "2026-10-20"), _SAME_DAY[1]),
+        False,
+    ),
+]
+
 
 # ---------------------------------------------------------------------------
 # the run
@@ -671,6 +1438,7 @@ class HeadlessRun:
     transcript_path: str | None
     transcript: str
     answer: str | None
+    runtime_context: dict[str, Any] = field(default_factory=dict)
 
 
 DUMMY_PACKET = """This message is your whole input. Do not use any tool.
@@ -801,6 +1569,7 @@ def run_headless(
         workdir.rmdir()
         raise RuntimeError(f"an AGENTS.md could reach the author: {found}")
     real = str(workdir.resolve())
+    clock_start = runtime_clock_observation()
     try:
         done = subprocess.run(
             headless_command(binary, model),
@@ -813,6 +1582,7 @@ def run_headless(
             check=False,
         )
     finally:
+        clock_end = runtime_clock_observation()
         for child in workdir.iterdir():
             raise RuntimeError(f"the run left {child} in its directory")
         workdir.rmdir()
@@ -839,4 +1609,9 @@ def run_headless(
         transcript_path,
         transcript,
         result.get("result"),
+        {
+            "launcher_workdir": real,
+            "clock_start": clock_start,
+            "clock_end": clock_end,
+        },
     )

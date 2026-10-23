@@ -19,6 +19,12 @@
     PYTHONPATH=. .venv/bin/python scripts/holdout.py amend --contract <amended sha256>
     PYTHONPATH=. .venv/bin/python scripts/holdout.py controller --contract <pinned sha256> \
         --policy holdout-controller.v1 --start | --resume
+    PYTHONPATH=. .venv/bin/python scripts/holdout.py certification-init <certification id> \
+        --claude-bin <binary> --binary-sha256 <its sha256> --account-evidence <raw transcript>
+    PYTHONPATH=. .venv/bin/python scripts/holdout.py isolation-test --certification <id> \
+        --claude-bin <binary>
+    PYTHONPATH=. .venv/bin/python scripts/holdout.py broker-test --certification <id> \
+        --claude-bin <binary>
 
 init creates data/benchmark/test/, which git ignores, with a local git history of its own
 that refuses to push. grid writes the coverage grid and refuses to overwrite a different
@@ -38,9 +44,15 @@ typed again; start also needs the public pre-authoring commit recorded (record-p
 after the push). validate runs every check of the launcher and builds nothing. freeze replays
 the state with every write refused, so it runs no model, then exports, seals and writes
 freeze.json and the public commitment. isolation-test and broker-test run the pinned binary on
-synthetic packets only, never on TEST. An amended contract (CONSTRUCTION_AMENDMENT_1) has its
-public commit recorded with record-amendment-commit, and amend records the amendment in the
-durable state at the point it names, after a replay under the amended code that runs no model.
+synthetic packets only, never on TEST, and only inside a Gate 1 certification: a namespace of
+its own, never a construction's, made once by certification-init with its own runtime pin
+(provenance/runtime.json), in the private history of certifications. Each run's raw folder is
+reserved, with an exclusive mkdir, in the folder its raw evidence goes to, before anything
+runs; every evidence file is written as a new file, so nothing is ever overwritten, and a
+number is never reused, not even one whose run died. An amended contract
+(CONSTRUCTION_AMENDMENT_1) has its public commit recorded with record-amendment-commit, and
+amend records the amendment in the durable state at the point it names, after a replay under
+the amended code that runs no model.
 controller runs START or RESUME unattended and RESUME again only under its own policy
 (ingest/holdout_controller.py), for the person who typed the pinned contract's SHA-256 and the
 policy's id; it never freezes.
@@ -54,7 +66,6 @@ import argparse
 import json
 import subprocess
 import sys
-import tempfile
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
@@ -62,6 +73,7 @@ from typing import Any
 
 from ingest import benchmark as bm
 from ingest import holdout as ho
+from ingest import holdout_certification as hcert
 from ingest import holdout_isolation as hi
 from ingest import holdout_launcher as hla
 from ingest import holdout_process as hproc
@@ -254,40 +266,235 @@ def isolation_terms() -> list[hi.Term]:
 
 RUNTIME_PIN = "runtime.json"
 # Raw transcripts hold the account's email and organization id: they stay outside every git
-# history, in a private folder; the TEST history keeps redacted copies and their hashes.
+# history, in a private folder; the TEST history keeps redacted copies and their hashes. This
+# folder holds Gate 1's runs of 2026-10-19, which run 6 was built on: it is never written again.
 RAW_DIR = Path.home() / ".fundamento-private" / "transcripts"
+# A Gate 1 certification (ingest/holdout_certification.py): its provenance and its redacted
+# audits in a private history of certifications, its raw transcripts beside it, outside every
+# git history, under the same id
+CERTIFICATIONS_README = """# Gate 1 certifications (private)
+
+One folder per certification, named by its id: made once by scripts/holdout.py
+certification-init, written by isolation-test and broker-test, sealed by certification-seal.
+Never pushed: this history refuses every push.
+
+- <id>/provenance/runtime.json: the pinned Claude Code binary, the requested model, the host
+  and the organization hash the certification expects, with the evidence it was read from
+- <id>/provenance/certification.json: the clean public commit it was made from, the code's
+  hashes, and the execution substrate (VS Code, the extension, macOS's automatic installs)
+- <id>/provenance/gate1.json, broker_test.json: written once, when the test passes
+- <id>/audits/isolation|broker/run-N/: the redacted copies of a run's evidence and its report
+- <id>/provenance/suites/, <id>/manifest.json: the suites' reports and the seal of a PASS
+
+The raw transcripts hold the account's email and organization id: they live outside every git
+history, in ~/.fundamento-private/certification-raw/<id>/isolation|broker/run-N/. A run-N there
+holds reserved.json from the moment its number is taken and complete.json once its evidence is
+whole; one without complete.json died, and its number is never used again.
+"""
 
 
-def private_folder(path: Path) -> Path:
-    created = [p for p in (path, *path.parents) if not p.exists()]
-    path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    for p in {path, *created}:
-        p.chmod(0o700)
-    return path
+def next_run(root: Path) -> str:
+    """The next run of a raw folder: one above the highest run-N it holds, so no number is
+    reused, not even one whose run died before its evidence was whole."""
+    numbers = [int(m.group(1)) for p in root.iterdir() if (m := hcert.RUN_NAME.fullmatch(p.name))]
+    return f"run-{max(numbers, default=0) + 1}"
+
+
+def reserve_run(root: Path) -> Path:
+    """A run's raw folder, reserved before anything runs, in the folder its raw evidence goes
+    to. The exclusive mkdir is the reservation: a name that exists, even one another process
+    took an instant ago, is a stop, and nothing is overwritten, removed or reused."""
+    run = root / next_run(root)
+    try:
+        run.mkdir(mode=0o700)
+    except FileExistsError as error:
+        raise ho.HoldoutError(f"{run} exists: another run took it; nothing was written") from error
+    reserved = {"run": run.name, "reserved_at": datetime.now(UTC).isoformat()}
+    hcert.write_new_json(run / hcert.RESERVED, reserved)
+    return run
+
+
+def open_run(namespace: Path, raw: Path, kind: str) -> tuple[Path, Path]:
+    """A certification's next run of a kind: its raw folder reserved first, then its audit
+    folder by the same name, created as new. A stop after the reservation leaves the number
+    taken."""
+    reserved = reserve_run(raw / kind)
+    out = namespace / "audits" / kind / reserved.name
+    try:
+        out.mkdir()
+    except FileExistsError as error:
+        raise ho.HoldoutError(f"{out} exists: {reserved.name} stays taken") from error
+    return out, reserved
 
 
 def keep_evidence(out: Path, raw: Path, texts: dict[str, str], values: list[str]) -> dict[str, str]:
-    """The raw texts to the private folder, redacted copies to the TEST history. Returns
-    the SHA-256 of each raw file, which the history keeps instead of the values."""
-    private_folder(raw)
+    """The raw texts into the run's reserved raw folder, redacted copies into its audit folder,
+    each a new file. Returns the SHA-256 of each raw file, which the history keeps instead of
+    the values."""
     hashes = {}
     for name, text in texts.items():
-        (raw / name).write_text(text, encoding="utf-8")
+        hcert.write_new(raw / name, text)
         hashes[name] = bm.sha256_file(raw / name)
-        (out / name).write_text(hi.redact(text, values), encoding="utf-8")
+        hcert.write_new(out / name, hi.redact(text, values))
     return hashes
 
 
-def pinned_runtime(directory: Path, binary: Path) -> dict[str, str] | None:
-    """The pinned Claude Code binary of S3 (provenance/runtime.json): pinned on first use,
-    and from then on the only one allowed. None means it changed: stop."""
+def complete_run(raw: Path, verdict: str, hashes: dict[str, str]) -> None:
+    hcert.write_new_json(
+        raw / hcert.COMPLETE,
+        {
+            "run": raw.name,
+            "verdict": verdict,
+            "raw_evidence_sha256": hashes,
+            "completed_at": datetime.now(UTC).isoformat(),
+        },
+    )
+
+
+def overlaps(a: Path, b: Path) -> bool:
+    a, b = a.resolve(), b.resolve()
+    return a.is_relative_to(b) or b.is_relative_to(a)
+
+
+def certification_problems(history: Path, raw_root: Path) -> list[str]:
+    """Where certifications may not live: in or around the repository (TEST and its runs
+    included) or a folder that holds a construction's or Gate 1's historical evidence."""
+    from ingest import holdout_controller as hct
+
+    historical = (RAW_DIR, hs.RAW_DIR, ho.BACKUP_DIR, hct.LOG_DIR)
+    problems = []
+    for root in (history, raw_root):
+        if overlaps(root, REPO):
+            problems.append(f"{root} overlaps the repository")
+        problems += [f"{root} overlaps {h}" for h in historical if overlaps(root, h)]
+    if overlaps(history, raw_root):
+        problems.append(f"{raw_root} overlaps {history}: raw transcripts stay outside git")
+    return problems
+
+
+def certification_history(history: Path) -> None:
+    """The private history of the certifications: made once, with the private author and the
+    hook that refuses every push. An existing folder must be that history."""
+    if not history.exists():
+        ho.private_folder(history, REPO)
+        git(history, "init", "-q", "-b", "main")
+        ho.guard_private_history(history)
+        hcert.write_new(history / "README.md", CERTIFICATIONS_README)
+        git(history, "add", "-A")
+        git(history, "commit", "-q", "-m", "certifications: private history begins")
+        return
+    hook = history / ".git" / "hooks" / "pre-push"
+    if not hook.is_file() or hook.read_text(encoding="utf-8") != ho.NO_PUSH_HOOK:
+        raise ho.HoldoutError(f"{history} exists and is not the private history of certifications")
+
+
+def account_organization(transcript: Path) -> str:
+    """The organization hash a certification expects, read from a raw transcript of the same
+    login, its credential_org attachment, never typed: exactly one organization, or a stop."""
+    found = {
+        hi.sha256_text(str(body["organizationUuid"]))
+        for r in hi.parse_records({"transcript": transcript.read_text(encoding="utf-8")})
+        if isinstance(body := r.get("attachment"), dict)
+        and body.get("type") == "credential_org"
+        and body.get("organizationUuid")
+    }
+    if len(found) != 1:
+        raise ho.HoldoutError(f"{transcript} holds {len(found)} organizations, not one")
+    return found.pop()
+
+
+def certification_init(
+    history: Path,
+    raw_root: Path,
+    certification: str,
+    binary: Path,
+    binary_sha256: str,
+    account_evidence: Path,
+) -> Path:
+    """A new Gate 1 certification: its namespace in the private history of certifications, its
+    raw folder beside it, its own runtime pin, from the binary (its SHA-256 typed again), the
+    host and the account evidence named, and what it is made from: the clean public commit
+    checked out and the execution substrate, which must keep VS Code, the extension and macOS
+    from changing anything. Everything is read and checked before anything is made; an id is
+    used once: an existing namespace or raw folder is a stop, never reused or removed."""
+    from ingest import holdout_runtime as hrt
+
+    hcert.folders(history, raw_root, certification)  # the id's form
+    problems = certification_problems(history, raw_root)
+    if problems:
+        raise ho.HoldoutError("; ".join(problems))
+    code = hcert.code_identity(REPO)
+    identity = hi.binary_identity(binary)
+    if identity["sha256"] != binary_sha256:
+        raise ho.HoldoutError(f"{binary} is {identity['sha256'][:12]}, not the SHA-256 typed")
+    substrate = hcert.execution_substrate(binary)
+    problems = hcert.substrate_problems(substrate)
+    if problems:
+        raise ho.HoldoutError("; ".join(problems))
+    pin = identity | {
+        "model": HEADLESS_MODEL,
+        "organization_sha256": account_organization(account_evidence),
+        "identity_source": {
+            "logical": logical_source(account_evidence),
+            "path": str(account_evidence),
+            "sha256": bm.sha256_file(account_evidence),
+            "attachment": "credential_org",
+        },
+        "host": hrt.host_identity(),
+        "certification": certification,
+        "pinned_at": datetime.now(UTC).isoformat(),
+    }
+    record = {
+        "schema": hcert.SCHEMA,
+        "certification": certification,
+        "code": code,
+        "substrate": substrate,
+        "created_at": pin["pinned_at"],
+    }
+    certification_history(history)
+    namespace, raw = history / certification, raw_root / certification
+    ho.private_folder(raw_root, REPO)
+    for folder in (namespace, raw):
+        try:
+            folder.mkdir(mode=0o700)
+        except FileExistsError as error:
+            raise ho.HoldoutError(f"{folder} exists: a certification id is used once") from error
+    for kind in hcert.KINDS:
+        (namespace / "audits" / kind).mkdir(parents=True)
+        hcert.write_new(namespace / "audits" / kind / ".keep", "")
+        (raw / kind).mkdir(mode=0o700)
+    (namespace / hcert.PROVENANCE).mkdir()
+    hcert.write_new_json(namespace / hcert.PROVENANCE / RUNTIME_PIN, pin)
+    hcert.write_new_json(namespace / hcert.PROVENANCE / hcert.IDENTITY, record)
+    git(history, "add", "-A")
+    git(history, "commit", "-q", "-m", f"certification {certification}: namespace and runtime pin")
+    return namespace
+
+
+def logical_source(path: Path) -> str:
+    """Where a piece of private evidence is, named from the private root when it is under it."""
+    found, root = path.resolve(), hcert.PRIVATE_ROOT.resolve()
+    return found.relative_to(root).as_posix() if found.is_relative_to(root) else str(found)
+
+
+def certification_paths(certification: str) -> tuple[Path, Path]:
+    """An existing certification's namespace and raw folder, by its id."""
+    namespace, raw = hcert.folders(
+        hcert.CERTIFICATIONS_DIR, hcert.CERTIFICATION_RAW_DIR, certification
+    )
+    if not namespace.is_dir() or not raw.is_dir():
+        raise ho.HoldoutError(f"no certification {certification}: certification-init makes one")
+    return namespace, raw
+
+
+def pinned_runtime(directory: Path, binary: Path) -> dict[str, Any] | None:
+    """The certification's pinned Claude Code binary (provenance/runtime.json), written by
+    certification-init and the only one allowed. None means it is missing or changed: stop."""
     path = directory / "provenance" / RUNTIME_PIN
-    current = hi.binary_identity(binary)
     if not path.exists():
-        pin = current | {"model": HEADLESS_MODEL, "pinned_at": datetime.now(UTC).isoformat()}
-        ho.write_json(path, pin)
-        print(f"pinned {current['version']} {current['sha256'][:12]} at {binary}")
-        return pin
+        print(f"STOP: {path} does not exist: certification-init pins the runtime")
+        return None
+    current = hi.binary_identity(binary)
     pin = json.loads(path.read_text(encoding="utf-8"))
     if (current["version"], current["sha256"]) != (pin["version"], pin["sha256"]):
         print(
@@ -298,12 +505,39 @@ def pinned_runtime(directory: Path, binary: Path) -> dict[str, str] | None:
     return dict(pin)
 
 
-def isolation_test(directory: Path, binary: Path, extra_env: list[str]) -> int:
+RECORDS = {"isolation": "gate1.json", "broker": "broker_test.json"}
+
+
+def refused_run(namespace: Path, raw: Path, kind: str) -> str | None:
+    """Why a certification cannot run a test of a kind now, or None. It must be OPEN (a FAILED
+    one never runs again: a new attempt is a new certification), hold no final run of that kind
+    nor its record (one each), and, for the broker test, have passed Gate 1. A run that died
+    is no final run: the next takes another number."""
+    found = hcert.status(namespace, raw)
+    if found != "OPEN":
+        return f"the certification is {found}: a new attempt needs a new certification"
+    provenance = namespace / hcert.PROVENANCE
+    if hcert.finals(raw, kind) or (provenance / RECORDS[kind]).exists():
+        return f"this certification has its final {kind} run already: one of each"
+    gate1 = (
+        hcert.finals(raw, "isolation") == ["PASS"] and (provenance / RECORDS["isolation"]).exists()
+    )
+    if kind == "broker" and not gate1:
+        return "the broker test runs only after Gate 1 passed in this certification"
+    return None
+
+
+def isolation_test(namespace: Path, raw: Path, binary: Path, extra_env: list[str]) -> int:
     """The safe-mode check D-054 requires before any need is written: positive controls
     first, then one dummy context through the exact mechanism the authors will use. PASS
-    only if every check of the audit passes; any failure is a stop."""
-    pin = pinned_runtime(directory, binary)
+    only if every check of the audit passes; any failure is a stop. It runs inside a
+    certification (namespace and raw folder), which keeps one final Gate 1."""
+    pin = pinned_runtime(namespace, binary)
     if pin is None:
+        return 2
+    refused = refused_run(namespace, raw, "isolation")
+    if refused:
+        print(f"STOP: {refused}")
         return 2
     terms = isolation_terms()
     failures = hi.positive_controls(terms, DEV_SUBAGENT)
@@ -314,23 +548,22 @@ def isolation_test(directory: Path, binary: Path, extra_env: list[str]) -> int:
     if not expected_org:
         print("STOP: the pin has no expected organization hash")
         return 2
-    runs = directory / "audits" / "isolation"
-    name = f"run-{len([p for p in runs.glob('run-*') if p.is_dir()]) + 2}"
-    out = runs / name
-    out.mkdir(parents=True)
+    out, reserved = open_run(namespace, raw, "isolation")
+    name = reserved.name
     run = hi.run_headless(hi.DUMMY_PACKET, HEADLESS_MODEL, binary, pin, extra_env)
-    tmp_root = str(Path(tempfile.gettempdir()).resolve())
     texts = {
         "transcript.jsonl": run.transcript,
         "stream.jsonl": run.stream,
         "stderr.txt": run.stderr,
+        "launcher-context.json": json.dumps(run.runtime_context, sort_keys=True),
     }
     report = hi.audit_run(
         {"transcript": run.transcript, "stream": run.stream, "stderr": run.stderr},
         terms,
-        allowed_cwd_prefix=tmp_root,
+        expected_cwd=run.workdir,
         expected_version=pin["version"],
         expected_org_sha256=expected_org,
+        runtime_context=run.runtime_context,
     )
     if run.returncode != 0:
         report.problems.append(f"the run exited with {run.returncode}")
@@ -349,10 +582,10 @@ def isolation_test(directory: Path, binary: Path, extra_env: list[str]) -> int:
     values = hi.identity_values(
         hi.parse_records({"transcript": run.transcript, "stream": run.stream})
     )
-    (out / "dummy_packet.txt").write_text(hi.DUMMY_PACKET, encoding="utf-8")
-    raw_hashes = keep_evidence(out, RAW_DIR / "isolation" / name, texts, values)
+    hcert.write_new(out / "dummy_packet.txt", hi.DUMMY_PACKET)
+    raw_hashes = keep_evidence(out, reserved, texts, values)
     answer_text = hi.redact(json.dumps(answer, ensure_ascii=False), values) if answer else None
-    ho.write_json(
+    hcert.write_new_json(
         out / "report.json",
         {
             "verdict": "PASS" if report.ok else "FAIL",
@@ -363,10 +596,12 @@ def isolation_test(directory: Path, binary: Path, extra_env: list[str]) -> int:
                 "set": {k: v for k, v in environment.items() if k in hi.ENV_SET or k == "PATH"},
             },
             "workdir": run.workdir,
+            "runtime_context": run.runtime_context,
             "session_id": run.session_id,
             "transcript_path": run.transcript_path,
             "terms": len(terms),
             "attachment_controls": len(hi.ATTACHMENT_CONTROLS),
+            "provenance_controls": len(hi.PROVENANCE_CONTROLS),
             "positive_controls": "passed",
             "account_identity_metadata_present": report.account_identity_metadata_present,
             "raw_evidence_sha256": raw_hashes,
@@ -378,8 +613,8 @@ def isolation_test(directory: Path, binary: Path, extra_env: list[str]) -> int:
     print(f"tools {report.tools_offered}; attachments {report.attachments}")
     print(f"answer: {answer}")
     if report.ok:
-        ho.write_json(
-            directory / "provenance" / "gate1.json",
+        hcert.write_new_json(
+            namespace / "provenance" / "gate1.json",
             {
                 "gate_1": "PASS",
                 "run": name,
@@ -395,32 +630,38 @@ def isolation_test(directory: Path, binary: Path, extra_env: list[str]) -> int:
                 "attachment_schemas": hi.schema_description(),
                 "audit": hi.audit_identity(terms),
                 "attachment_controls": len(hi.ATTACHMENT_CONTROLS),
+                "provenance_controls": len(hi.PROVENANCE_CONTROLS),
                 "account_identity_metadata_present": report.account_identity_metadata_present,
             },
         )
+    complete_run(reserved, "PASS" if report.ok else "FAIL", raw_hashes)
     print("GATE 1 PASS" if report.ok else f"GATE 1 FAIL: {report.problems} {report.findings}")
     return 0 if report.ok else 1
 
 
-def broker_test(directory: Path, binary: Path, extra_env: list[str]) -> int:
+def broker_test(namespace: Path, raw: Path, binary: Path, extra_env: list[str]) -> int:
     """The synthetic test of judge A's transport (D-054): one isolated judge in one
     stream-json process, a task on the corpus that is neither DEV nor TEST, the broker in
     between. PASS only if the whole session passes the Gate 1 audit, every user message was
-    the broker's, the judge kept the state of the conversation, and the answer is right."""
+    the broker's, the judge kept the state of the conversation, and the answer is right. It
+    runs inside a certification (namespace and raw folder), after its Gate 1 passed, and the
+    certification keeps one final broker test."""
     from ingest import holdout_broker as hb
 
-    pin = pinned_runtime(directory, binary)
+    pin = pinned_runtime(namespace, binary)
     if pin is None:
+        return 2
+    refused = refused_run(namespace, raw, "broker")
+    if refused:
+        print(f"STOP: {refused}")
         return 2
     terms = isolation_terms()
     failures = hi.positive_controls(terms, DEV_SUBAGENT)
     print(f"positive controls: {len(terms)} terms; failures {failures or 'none'}")
     if failures:
         return 1
-    runs = directory / "audits" / "broker"
-    name = f"run-{len([p for p in runs.glob('run-*') if p.is_dir()]) + 1}"
-    out = runs / name
-    out.mkdir(parents=True)
+    out, reserved = open_run(namespace, raw, "broker")
+    name = reserved.name
     conversation = hb.StreamJsonConversation(binary, HEADLESS_MODEL, pin, extra_env)
     problems: list[str] = []
     try:
@@ -436,9 +677,10 @@ def broker_test(directory: Path, binary: Path, extra_env: list[str]) -> int:
             "stderr": session["stderr"],
         },
         terms,
-        allowed_cwd_prefix=str(Path(tempfile.gettempdir()).resolve()),
+        expected_cwd=session["_gate1_context"]["launcher_workdir"],
         expected_version=pin["version"],
         expected_org_sha256=pin["organization_sha256"],
+        runtime_context=session["_gate1_context"],
     )
     problems += report.problems
     if session["returncode"] != 0:
@@ -467,8 +709,9 @@ def broker_test(directory: Path, binary: Path, extra_env: list[str]) -> int:
         "transcript.jsonl": session["transcript"],
         "stream.jsonl": session["stream"],
         "stderr.txt": session["stderr"],
+        "launcher-context.json": json.dumps(session["_gate1_context"], sort_keys=True),
     }
-    raw_hashes = keep_evidence(out, RAW_DIR / "broker" / name, texts, values)
+    raw_hashes = keep_evidence(out, reserved, texts, values)
     verdict = "PASS" if not problems else "FAIL"
     record = {
         "verdict": verdict,
@@ -478,6 +721,7 @@ def broker_test(directory: Path, binary: Path, extra_env: list[str]) -> int:
         "audit": hi.audit_identity(terms),
         "account_identity_metadata_present": report.account_identity_metadata_present,
         "raw_evidence_sha256": raw_hashes,
+        "runtime_context": session["_gate1_context"],
         "outcome": run.outcome if run else None,
         "log": run.log if run else [],
         "violations": run.violations if run else [],
@@ -486,12 +730,13 @@ def broker_test(directory: Path, binary: Path, extra_env: list[str]) -> int:
         "problems": problems,
         "findings": report.findings,
     }
-    ho.write_json(out / "report.json", json.loads(hi.redact(json.dumps(record), values)))
+    hcert.write_new_json(out / "report.json", json.loads(hi.redact(json.dumps(record), values)))
     if verdict == "PASS":
-        ho.write_json(
-            directory / "provenance" / "broker_test.json",
+        hcert.write_new_json(
+            namespace / "provenance" / "broker_test.json",
             {"broker_test": "PASS", "run": name, **record},
         )
+    complete_run(reserved, verdict, raw_hashes)
     print(f"requests: {[(e['op'], e['args']) for e in (run.log if run else [])]}")
     print(f"final: {run.final if run else None}; violations: {run.violations if run else None}")
     print(f"attachments: {report.attachments}")
@@ -499,16 +744,36 @@ def broker_test(directory: Path, binary: Path, extra_env: list[str]) -> int:
     return 0 if verdict == "PASS" else 1
 
 
-def pre_authoring_freeze(directory: Path) -> int:
+def certified(certification: str, manifest_sha256: str) -> Path:
+    """The sealed certification the person names for a contract, by its id and its manifest's
+    SHA-256 typed again: verified (ingest/holdout_certification.py selected), with the pinned
+    binary still the one it certified. Its namespace, or a stop."""
+    roots = (hcert.CERTIFICATIONS_DIR, hcert.CERTIFICATION_RAW_DIR)
+    namespace = hcert.selected(certification, manifest_sha256, REPO, roots)
+    pin = hcert.read_json(namespace / hcert.PROVENANCE / RUNTIME_PIN)
+    live = hi.binary_identity(Path(pin["path"]))
+    if (live["version"], live["sha256"]) != (pin["version"], pin["sha256"]):
+        raise hcert.CertificationError(f"the binary at {pin['path']} is not the certified one")
+    return namespace
+
+
+def pre_authoring_freeze(directory: Path, certification: str, manifest_sha256: str) -> int:
     """Fix everything decided before authoring (Codex Gate 2, P1.2, P1.4, P1.5): the order of
     the cells, the omission audit, the role contracts, the opaque-id salt, the templates, and
     the evaluation contract of E, E5, BM25 and S4. Written once; the contract's hash is pinned
-    in the private provenance, and every later step checks it."""
+    in the private provenance, and every later step checks it. Claude's runtime comes from the
+    sealed certification the person names, checked before anything is written, and the
+    contract records it; never from TEST's own provenance."""
     import secrets
 
     from ingest import holdout_contract as hc
     from ingest import holdout_roles as hr
 
+    try:
+        gate_1 = certified(certification, manifest_sha256)
+    except hcert.CertificationError as error:
+        print(f"STOP: {error}")
+        return 1
     dev = bm.load_benchmark(bm.DEV_DIR)
     areas = ho.load_areas()
     grid_ = ho.load_grid(directory)
@@ -535,9 +800,11 @@ def pre_authoring_freeze(directory: Path) -> int:
     ho.write_json(frozen, record)
     from ingest import holdout_runtime as hrt
 
-    claude = hrt.claude_runtime(provenance)
+    claude = hrt.claude_runtime(gate_1 / hcert.PROVENANCE)
     mlx = hrt.mlx_runtime()
-    contract = hc.build(REPO, hc.construction(directory / ho.GRID_FILE, plan, roles, claude, mlx))
+    reference = hcert.reference(gate_1)
+    record = hc.construction(directory / ho.GRID_FILE, plan, roles, claude, mlx, reference)
+    contract = hc.build(REPO, record)
     digest = hc.write(contract)
     ho.write_json(
         provenance / "contract_pin.json",
@@ -605,14 +872,46 @@ def main(argv: list[str] | None = None) -> int:
     rec = sub.add_parser("record", help="commit the private history")
     rec.add_argument("message")
     sub.add_parser("isolation", help="check that no run, embedding or result holds TEST")
+    cert = sub.add_parser(
+        "certification-init", help="a new Gate 1 certification: its namespace and runtime pin"
+    )
+    cert.add_argument("certification", help="the new certification's id, used once")
+    cert.add_argument("--claude-bin", type=Path, required=True, help="the Claude Code binary")
+    cert.add_argument("--binary-sha256", required=True, help="the binary's SHA-256, typed again")
+    cert.add_argument(
+        "--account-evidence",
+        type=Path,
+        required=True,
+        help="a raw transcript of the same login: its credential_org gives the organization hash",
+    )
     iso = sub.add_parser("isolation-test", help="prove that a headless author receives no context")
+    iso.add_argument("--certification", required=True, help="the certification's id")
     iso.add_argument("--claude-bin", type=Path, required=True, help="the Claude Code binary")
     iso.add_argument("--env-extra", action="append", default=[], help="a variable proved necessary")
     sub.add_parser("figure-density", help="diagnostic: share of figure or date nodes per area")
-    sub.add_parser("pre-authoring-freeze", help="fix the order, roles and evaluation contract")
+    paf = sub.add_parser(
+        "pre-authoring-freeze", help="fix the order, roles and evaluation contract"
+    )
+    paf.add_argument("--certification", required=True, help="the sealed certification's id")
+    paf.add_argument(
+        "--certification-manifest", required=True, help="its manifest's SHA-256, typed again"
+    )
     brk = sub.add_parser("broker-test", help="the synthetic stream-json test of judge A")
+    brk.add_argument("--certification", required=True, help="the certification's id")
     brk.add_argument("--claude-bin", type=Path, required=True, help="the Claude Code binary")
     brk.add_argument("--env-extra", action="append", default=[], help="a variable proved necessary")
+    seal = sub.add_parser("certification-seal", help="seal a PASS certification, once")
+    seal.add_argument("certification", help="the certification's id")
+    seal.add_argument(
+        "--suite-report",
+        action="append",
+        required=True,
+        metavar="NAME=PATH",
+        help="a pytest JUnit report of a suite run on the certified commit (repeatable)",
+    )
+    ver = sub.add_parser("certification-verify", help="a certification's status and its seal")
+    ver.add_argument("certification", help="the certification's id")
+    ver.add_argument("--manifest", help="the manifest's SHA-256 it must have")
     desc = sub.add_parser("describe", help="the descriptive profile S4 compares, as JSON")
     desc.add_argument("benchmark", type=Path)
     sub.add_parser("overlap-statements", help="Jaccard diagnostic of the statements")
@@ -647,7 +946,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     directory: Path = args.dir
-    paths = hla.Paths(REPO, directory, args.raw_dir, args.backup_dir)
+    history, raw_root = hcert.CERTIFICATIONS_DIR, hcert.CERTIFICATION_RAW_DIR
+    paths = hla.Paths(REPO, directory, args.raw_dir, args.backup_dir, history, raw_root)
     if args.command == "init":
         init(directory)
     elif args.command == "grid":
@@ -656,14 +956,37 @@ def main(argv: list[str] | None = None) -> int:
         record(directory, args.message)
     elif args.command == "isolation":
         return 1 if isolation(directory) else 0
-    elif args.command == "isolation-test":
-        return isolation_test(directory, args.claude_bin, args.env_extra)
+    elif args.command == "certification-init":
+        namespace = certification_init(
+            history,
+            raw_root,
+            args.certification,
+            args.claude_bin,
+            args.binary_sha256,
+            args.account_evidence,
+        )
+        print(f"created {namespace}, history at {git(history, 'rev-parse', 'HEAD')[:12]}")
+    elif args.command in ("isolation-test", "broker-test"):
+        namespace, raw = certification_paths(args.certification)
+        run_test = isolation_test if args.command == "isolation-test" else broker_test
+        code = run_test(namespace, raw, args.claude_bin, args.env_extra)
+        record(history, f"certification {args.certification}: {args.command}, exit {code}")
+        return code
+    elif args.command == "certification-seal":
+        namespace, raw = certification_paths(args.certification)
+        reports = dict(r.split("=", 1) for r in args.suite_report)
+        digest = hcert.seal(namespace, raw, REPO, {n: Path(p) for n, p in reports.items()})
+        print(f"sealed {args.certification}: manifest {digest}")
+    elif args.command == "certification-verify":
+        namespace, raw = certification_paths(args.certification)
+        manifest, problems = hcert.verify(namespace, raw, REPO, args.manifest)
+        found = {"status": hcert.status(namespace, raw), "sealed": manifest is not None}
+        print(json.dumps(found | {"problems": problems}, indent=1))
+        return 1 if manifest is None or problems else 0
     elif args.command == "figure-density":
         figure_density(directory)
     elif args.command == "pre-authoring-freeze":
-        return pre_authoring_freeze(directory)
-    elif args.command == "broker-test":
-        return broker_test(directory, args.claude_bin, args.env_extra)
+        return pre_authoring_freeze(directory, args.certification, args.certification_manifest)
     elif args.command == "describe":
         print(json.dumps(describe(args.benchmark), indent=1, ensure_ascii=False))
     elif args.command == "overlap-statements":

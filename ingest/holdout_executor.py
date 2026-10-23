@@ -69,8 +69,10 @@ class _Recording:
         return reply
 
 
-def _texts(session: Mapping[str, Any]) -> dict[str, str]:
-    return {k: str(session[k]) for k in ("transcript", "stream", "stderr")}
+def _texts(session: Mapping[str, Any]) -> dict[str, Any]:
+    # Keep the launcher's evidence as well as the three text artifacts, on both the
+    # live and recovered broker paths. It must never be reconstructed from model output.
+    return {k: session[k] for k in ("transcript", "stream", "stderr", "_gate1_context")}
 
 
 class RealExecutor:
@@ -98,7 +100,12 @@ class RealExecutor:
     def _answer(self, role: str, run: hi.HeadlessRun) -> hpl.Session:
         """A completed run's answer; -1 is the exit code of a process that ended unobserved,
         after the orchestrator died, and whose spool holds a final result that is no error."""
-        texts = {"transcript": run.transcript, "stream": run.stream, "stderr": run.stderr}
+        texts: dict[str, Any] = {
+            "transcript": run.transcript,
+            "stream": run.stream,
+            "stderr": run.stderr,
+            "_gate1_context": dict(run.runtime_context),
+        }
         if run.returncode not in (0, hsp.UNOBSERVED) or run.answer is None:
             raise hpl.TechnicalFailure("model_api", f"{role}: exit {run.returncode}")
         return hpl.Session(run.answer, texts)

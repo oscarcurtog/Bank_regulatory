@@ -391,12 +391,16 @@ class StreamJsonConversation:
         )
         self.lines: list[str] = []
         self.spool = spool
+        self.launcher_workdir = str(self.workdir.resolve())
         self._stream: TextIO | None = None
         stderr: Any = subprocess.PIPE
         if spool is not None:
             hsp.begin(spool, self.workdir, "broker")
+            self.clock_start = (hsp.note(spool) or {}).get("clock_start")
             self._stream = open(spool / "stream", "w", encoding="utf-8")  # noqa: SIM115
             stderr = open(spool / "stderr", "w", encoding="utf-8")  # noqa: SIM115
+        else:
+            self.clock_start = hi.runtime_clock_observation()
         self._stderr = stderr
         # a stand-in command only in the tests of the transport's deadlines and cleanup
         self.command = list(
@@ -502,7 +506,19 @@ class StreamJsonConversation:
             stderr = (self.spool / "stderr").read_text(encoding="utf-8")
         else:
             stderr = self.process.stderr.read() if self.process.stderr else ""
-        found = _session(self.lines, [str(self.workdir.resolve()), str(self.workdir)])
+        if self.spool is not None:
+            runtime_context = hsp.gate1_context(self.spool, self.workdir)
+        else:
+            runtime_context = {
+                "launcher_workdir": self.launcher_workdir,
+                "clock_start": self.clock_start,
+                "clock_end": hi.runtime_clock_observation(),
+            }
+        found = _session(
+            self.lines,
+            [str(self.workdir.resolve()), str(self.workdir)],
+            runtime_context,
+        )
         left = list(self.workdir.iterdir())
         if left:
             raise RuntimeError(f"the judge left {left[0]} in its directory")
@@ -514,7 +530,11 @@ class StreamJsonConversation:
         }
 
 
-def _session(lines: Sequence[str], workdirs: Sequence[str]) -> dict[str, Any]:
+def _session(
+    lines: Sequence[str],
+    workdirs: Sequence[str],
+    runtime_context: Mapping[str, Any],
+) -> dict[str, Any]:
     events = [json.loads(x) for x in lines if x.startswith("{")]
     init: dict[str, Any] = next((e for e in events if e.get("subtype") == "init"), {})
     path, transcript = hsp.session_transcript(init, workdirs)
@@ -523,6 +543,7 @@ def _session(lines: Sequence[str], workdirs: Sequence[str]) -> dict[str, Any]:
         "session_id": init.get("session_id"),
         "transcript_path": path,
         "transcript": transcript,
+        "_gate1_context": dict(runtime_context),
     }
 
 
@@ -575,7 +596,11 @@ def recover_conversation(
     workdir = Path(found["workdir"])
     if workdir.exists():
         hsp.remove_empty(workdir)
-    session = _session(lines, [found["workdir"], found["workdir_created"]])
+    session = _session(
+        lines,
+        [found["workdir"], found["workdir_created"]],
+        hsp.gate1_context(spool, workdir),
+    )
     extra = {"returncode": hsp.exit_code(spool), "stderr": hsp.text(spool, "stderr")}
     return run, replies[: replay.used], session | extra
 

@@ -327,7 +327,7 @@ class RoleRun:
     packet_sha256: str
     sent: list[str]
     replies: list[str]
-    session: dict[str, str] = field(default_factory=dict)
+    session: dict[str, Any] = field(default_factory=dict)
     broker_log: list[dict[str, Any]] = field(default_factory=list)
     local: dict[str, Any] = field(default_factory=dict)
 
@@ -435,18 +435,50 @@ def audit_role_run(
         texts = {k: run.session.get(k, "") for k in ("transcript", "stream", "stderr")}
         if not texts["transcript"]:
             problems.append("no transcript: the run cannot be audited")
+        runtime_context = run.session.get("_gate1_context")
+        expected_cwd = None
+        if not isinstance(runtime_context, Mapping):
+            problems.append("the launcher supplied no Gate 1 provenance")
+        else:
+            raw_cwd = runtime_context.get("launcher_workdir")
+            try:
+                if not isinstance(raw_cwd, str):
+                    raise ValueError("the launcher path is not text")
+                launcher_cwd = Path(raw_cwd)
+                canonical_cwd = str(launcher_cwd.resolve(strict=False))
+                temp_root = str(Path(tmp_root).resolve(strict=False)) if tmp_root else None
+                if (
+                    not launcher_cwd.is_absolute()
+                    or str(launcher_cwd) != canonical_cwd
+                    or not launcher_cwd.name.startswith("tmp.")
+                    or (temp_root is not None and str(launcher_cwd.parent) != temp_root)
+                ):
+                    problems.append("the launcher path is not its exact fresh temporary directory")
+                else:
+                    expected_cwd = canonical_cwd
+            except (OSError, RuntimeError, TypeError, ValueError):
+                problems.append("the launcher path provenance is invalid")
         structural = hi.audit_run(
             texts,
             [],
-            allowed_cwd_prefix=tmp_root,
+            expected_cwd=expected_cwd,
             expected_version=pin["version"] if pin else None,
             expected_org_sha256=pin["organization_sha256"] if pin else None,
+            runtime_context=runtime_context if isinstance(runtime_context, Mapping) else None,
         )
         problems += structural.problems
         foreign = hb.foreign_user_messages(texts["transcript"], run.sent)
         if foreign:
             problems.append(f"{len(foreign)} user messages nobody authorized")
-        masked = _masked(texts, [*run.sent, *run.replies])
+        audit_texts = {
+            source: hi.audit_content_copy(
+                text,
+                expected_cwd if structural.cwd_validated else None,
+                structural.date_validated,
+            )
+            for source, text in texts.items()
+        }
+        masked = _masked(audit_texts, [*run.sent, *run.replies])
         for source, decoded in masked.items():
             flat = hi.normalize(decoded)
             for term in terms:
