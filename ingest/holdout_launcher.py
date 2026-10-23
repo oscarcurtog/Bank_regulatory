@@ -53,7 +53,7 @@ import stat
 import subprocess
 import tempfile
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -63,6 +63,7 @@ from ingest import holdout as ho
 from ingest import holdout_certification as hcert
 from ingest import holdout_checks as hk
 from ingest import holdout_contract as hc
+from ingest import holdout_exclusions as hxe
 from ingest import holdout_executor as hx
 from ingest import holdout_isolation as hi
 from ingest import holdout_packets as hp
@@ -117,6 +118,9 @@ class Frozen:
     salt: bytes
     templates: dict[str, str]
     extra_env: list[str]
+    # the development need exclusions the contract names (ingest/holdout_exclusions.py)
+    exclusions: tuple[hxe.Exclusion, ...] = ()
+    exclusions_identity: dict[str, Any] = field(default_factory=dict)
 
     @property
     def claude_runtime(self) -> dict[str, Any]:
@@ -242,6 +246,8 @@ def contract_problems(paths: Paths) -> tuple[Frozen | None, list[str]]:
         salt = (paths.provenance / "opaque_salt.hex").read_text(encoding="utf-8").strip()
         if len(salt) != 64 or any(c not in "0123456789abcdef" for c in salt):
             problems.append("the opaque-id salt is not 32 bytes in hex")
+        exclusions = development_exclusions(paths, construction)
+        problems += exclusions_problems(exclusions, contract)
     except (LaunchRefused, KeyError, OSError, hrt.RuntimeIdentityError, ho.HoldoutError) as error:
         return None, [*problems, f"provenance: {error}"]
     problems += _private_problems(paths)
@@ -255,8 +261,35 @@ def contract_problems(paths: Paths) -> tuple[Frozen | None, list[str]]:
         bytes.fromhex(salt) if not problems else b"",
         templates,
         extra_env,
+        exclusions.entries,
+        exclusions.identity,
     )
     return frozen, problems
+
+
+def development_exclusions(paths: Paths, construction: Mapping[str, Any]) -> hxe.Exclusions:
+    """The development need exclusions the contract names (D-066): the private file of the TEST
+    directory read once (ingest/holdout_exclusions.py read), so that the entries the gate uses
+    and the identity checked against the contract come from the same bytes, never from two reads.
+    A contract that names none is refused: a confirmatory TEST always has its exclusions."""
+    if not isinstance(construction.get("development_need_exclusions"), dict):
+        raise LaunchRefused("the contract names no development need exclusions")
+    return hxe.read(paths.provenance / hxe.FILE)
+
+
+def exclusions_problems(found: hxe.Exclusions, contract: Mapping[str, Any]) -> list[str]:
+    """What separates the exclusions read from the ones the contract names: their identity, and
+    the runs they were collected from, which must be exactly the contract's aborted runs."""
+    problems = []
+    if found.identity != contract["construction"]["development_need_exclusions"]:
+        problems.append("the development need exclusions are not the contract's")
+    collected = sorted(s.contract_sha256 for s in found.sources)
+    aborted = sorted(str(r["contract_sha256"]) for r in contract.get("aborted_runs", []))
+    if collected != aborted:
+        problems.append(
+            "the development need exclusions are not collected from the contract's aborted runs"
+        )
+    return problems
 
 
 def certification_provenance(paths: Paths, construction: Mapping[str, Any]) -> Path:
@@ -419,6 +452,8 @@ def build_world(paths: Paths, frozen: Frozen, probes: Probes | None) -> hpl.Worl
         contract_check=contract_check,
         runtime_check=runtime_check,
         runtime={"claude_runtime": frozen.claude_runtime, "mlx_runtime": frozen.mlx_runtime},
+        development_exclusions=frozen.exclusions,
+        development=frozen.exclusions_identity,
     )
 
 

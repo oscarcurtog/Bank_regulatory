@@ -1,13 +1,15 @@
-"""The exposure pool of the design of 2026-10-22 (config/holdout/evidence-discovery.md), end to
-end: every node a normal search received in full is judged, listed or not; judge B's pool
-variant, the second blind judgment and judge C; the batches; the audit search's own exposure
-and its judgment discrepancies; judge D's and the diagnostic's candidates; replay from the
-logs. On the real grid and corpus with synthetic replies (tests/holdout_fakes.py); no model
-runs, and no TEST text."""
+"""The exposure pool of the design of 2026-10-22 and exposure v2, rule A, of D-066
+(config/holdout/evidence-discovery.md), end to end: every node of a normal search's exposure
+v2 is judged, listed or not (received in full, named on a search page and followed up, or an
+ancestor with its own text), and no article is expanded; judge B's pool variant, the second
+blind judgment and judge C; the batches; the audit search's own exposure v2 and its judgment
+discrepancies; judge D's and the diagnostic's candidates; replay from the logs. On the real grid
+and corpus with synthetic replies (tests/holdout_fakes.py); no model runs, and no TEST text."""
 
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 import pytest
@@ -25,6 +27,7 @@ from tests.holdout_fakes import (
     load_base,
     make,
     reopen,
+    rule_a,
 )
 
 pytestmark = pytest.mark.corpus
@@ -62,6 +65,15 @@ def article_nodes(base: dict[str, Any], act: str, *numbers: str) -> list[str]:
     ]
     ordered: list[str] = corpus.sort(found)
     return ordered
+
+
+def block_of(packet: str, node: str) -> str:
+    """One candidate as a judge reads it: from its CANDIDATE line to the next blank line."""
+    found = re.search(
+        rf"^CANDIDATE C-[0-9a-f]{{12}}\n\[{re.escape(node)}\].*?(?=\n\n|\Z)", packet, re.M | re.S
+    )
+    assert found is not None, node
+    return found.group(0).rstrip("\n")  # the last block ends the packet
 
 
 def value_of(pipeline: hpl.Pipeline, pid: str, stage: str) -> Any:
@@ -114,7 +126,11 @@ def test_an_exposed_unlisted_node_enters_the_pool_and_is_judged_blind(base, firs
     pipeline, executor = built(base, tmp_path, [first], scenario)
     pid = f"{first}-a1"
     pool = value_of(pipeline, pid, "exposure_pool")
+    # rule A, computed here: the exposed nodes and their ancestors with their own text (the
+    # first is its point's lead-in), and no other node of their article
+    assert rule_a(base, pool["listed_by"], exposed) - set(pool["listed_by"]) == set(exposed)
     assert all(pool["exposed_by"][n] == ["search_2"] for n in exposed)
+    assert all(pool["paths"][n][0] == "full_text" for n in exposed)
     assert pool["unlisted"] == len(exposed) and pool["second_judgment"] == []
     # judged once, blind, explicitly 0: an explicit negative, in the pool's record, no qrel
     assert set(pool["explicit_negative"]) == set(exposed)
@@ -137,23 +153,72 @@ def test_an_exposed_unlisted_node_enters_the_pool_and_is_judged_blind(base, firs
     assert "answerability" not in packet.split("OUTPUT", 1)[1].split("THE NEED", 1)[0]
 
 
-def test_a_snippet_alone_never_enters_the_pool(base, first, tmp_path):
-    scenario = Scenario(snippet={(first, "searcher_1"): "crypto-asset"})
-    pipeline, _ = built(base, tmp_path, [first], scenario)
+def test_a_node_a_search_page_named_is_followed_up_and_judged_on_its_whole_text(
+    base, first, tmp_path
+):
+    """Exposure v2 (D-066), test A: a node only a `search` page named, which no search listed or
+    opened, enters the pool and is judged blind, explicitly; its judge reads the node's whole
+    own text from the frozen corpus, never the snippet the search saw."""
+    node = max(
+        article_nodes(base, "DORA", "28"), key=lambda n: len(base["texts"][hp.Corpus.key(n)])
+    )
+    text = base["texts"][hp.Corpus.key(node)]
+    middle = text[len(text) // 2 : len(text) // 2 + 60]
+    # a snippet holds at most 90 characters before the match and 110 after: never this text
+    assert len(text) > 90 + len(middle) + 110
+    scenario = Scenario(snippet={(first, "searcher_1"): re.escape(middle)})
+    pipeline, executor = built(base, tmp_path, [first], scenario)
     pid = f"{first}-a1"
     log = search_log(pipeline, pid, "search_1")
-    snipped = {n for e in log if e["op"] == "search" for n in e["nodes"]}
+    named = {n for e in log if e["op"] == "search" for n in e["nodes"]}
+    assert node in named and hj.snippets(log) == sorted(named)
     pool = value_of(pipeline, pid, "exposure_pool")
-    assert snipped - set(pool["listed_by"])  # the search showed nodes it never read in full
-    assert not (snipped - set(pool["listed_by"])) & set(pool["exposed_by"])
-    assert pool["unlisted"] == 0
+    assert node not in pool["listed_by"] and node not in pool["exposed_by"]  # never opened
+    assert pool["reached_by"][node] == ["search_1"]
+    assert pool["paths"][node] == ["snippet_follow_up"]
+    assert pool["by_path"]["snippet_follow_up"] >= 1 and pool["beyond_full_text"] >= 1
+    assert pool["pool_adjudication"][node]["first"] == {"grade": 0, "ambiguous": False}
+    (packet,) = [
+        p for p in packets_of(executor, "pool_judge_1") if node in dict(_candidates_in(p)).values()
+    ]
+    assert f"text: {text}" in block_of(packet, node)  # the whole own text, from the corpus
+    # nothing tells the judge how the node reached the pool, nor which search reached it
+    assert not any(p in packet for p in [*hj.EXPOSURE_PATHS, "search_1", "exposure"])
+
+
+def test_an_ancestor_with_its_own_text_becomes_a_candidate_judged_explicitly(base, first, tmp_path):
+    """Exposure v2 (D-066), test B: the lead-in of a point a search received in full is no longer
+    only the point's context: it enters the pool and is graded on its own."""
+    point = next(
+        n
+        for n in article_nodes(base, "DORA", "28")
+        if n.count(".") >= 2 and base["texts"].get(hp.Corpus.key(n.rsplit(".", 1)[0]), "").strip()
+    )
+    lead_in = point.rsplit(".", 1)[0]
+    scenario = Scenario(
+        expose={(first, "searcher_2"): [point]},
+        pool_grade={(first, "pool_judge_1"): {lead_in: 1}, (first, "pool_judge_2"): {lead_in: 1}},
+    )
+    pipeline, executor = built(base, tmp_path, [first], scenario)
+    pool = value_of(pipeline, f"{first}-a1", "exposure_pool")
+    assert pool["paths"][lead_in] == ["ancestor_closure"]
+    assert pool["reached_by"][lead_in] == ["search_2"] and lead_in not in pool["exposed_by"]
+    assert pool["pool_adjudication"][lead_in]["outcome"] == "agreed"
+    assert graded(ready_of(pipeline, first))[lead_in] == 1  # a qrel by its own grade
+    (packet,) = packets_of(executor, "pool_judge_1")
+    assert {lead_in, point} <= {n for _, n in _candidates_in(packet)}
+    assert f"context ({lead_in})" not in block_of(packet, point)  # a candidate beside it
 
 
 def test_a_listed_node_enters_the_pool_even_if_never_read_in_full(base, first, tmp_path):
     pipeline, _ = built(base, tmp_path, [first])
     pool = value_of(pipeline, f"{first}-a1", "exposure_pool")
     never_read = set(pool["listed_by"]) - set(pool["exposed_by"])
-    assert never_read and pool["pool"] == len(pool["listed_by"]) and pool["unlisted"] == 0
+    assert never_read and all("listed" in pool["paths"][n] for n in never_read)
+    # rule A: the listed nodes and their ancestors with their own text, and nothing else
+    expected = rule_a(base, pool["listed_by"])
+    assert set(pool["reached_by"]) == expected and pool["pool"] == len(expected)
+    assert pool["unlisted"] == len(expected - set(pool["listed_by"]))
 
 
 def test_the_pool_replays_identically_from_the_logs(base, first, tmp_path, monkeypatch):
@@ -185,6 +250,22 @@ def test_the_pool_replays_identically_from_the_logs(base, first, tmp_path, monke
     assert any("not its broker log's" in p for p in again._exposure_problems())
 
 
+def test_snippets_that_are_not_the_broker_logs_are_refused_at_the_freeze(
+    base, first, tmp_path, monkeypatch
+):
+    """The pool is rebuilt from the recorded logs: a value whose snippets are not its own log's,
+    by any change, is refused at every checkpoint and at the freeze."""
+    scenario = Scenario(snippet={(first, "searcher_2"): "crypto-asset service provider"})
+    pipeline, _ = built(base, tmp_path, [first], scenario)
+    assert pipeline._exposure_problems() == []
+    real = hj.snippets
+    for changed in (lambda log: [], lambda log: [*real(log), "DORA:1"]):
+        monkeypatch.setattr(hj, "snippets", changed)
+        found = pipeline._exposure_problems()
+        assert found and all("its snippets are not its broker log's" in p for p in found)
+        assert any("snippets are not" in p for p in pipeline.freeze_problems())
+
+
 # ---------------------------------------------------------------------------
 # the first blind judgment, the second, and judge C
 # ---------------------------------------------------------------------------
@@ -207,12 +288,12 @@ def test_a_positive_first_judgment_gets_a_second_and_judge_c_decides_a_differenc
     assert {"pool_b1:1", "pool_b2:1", "judge_c"} <= stage_names(pipeline, pid)
     (second,) = packets_of(executor, "pool_judge_2")
     (first_packet,) = packets_of(executor, "pool_judge_1")
-    # the same immutable id in both, and the second judge sees nothing of the first
-    assert _candidates_in(second) == _candidates_in(first_packet)
-    assert (
-        second.split("CANDIDATES (document order)", 1)[1]
-        == first_packet.split("CANDIDATES (document order)", 1)[1]
-    )  # the same nodes as the first judge saw them, and no label of anyone
+    # the same immutable id in both, and the second judge sees nothing of the first: the node
+    # as the first judge saw it, and no label of anyone
+    ids = {n: i for i, n in _candidates_in(first_packet)}
+    assert _candidates_in(second) == [(ids[node], node)]
+    assert block_of(second, node) == block_of(first_packet, node)
+    assert "A quotes the node" not in second
     ready = ready_of(pipeline, first)
     record = adjudication_of(ready, node)
     assert (record.a.grade, record.b.grade) == (1, 0)
@@ -258,6 +339,7 @@ def test_the_orchestrator_never_gives_a_pool_node_its_label(base, first, tmp_pat
     )
     pipeline, executor = built(base, tmp_path, [first], scenario)
     pool = value_of(pipeline, f"{first}-a1", "exposure_pool")
+    assert rule_a(base, pool["listed_by"], [zero, two]) - set(pool["listed_by"]) == {zero, two}
     assert pool["explicit_negative"] == [zero]
     assert pool["pool_adjudication"][two]["outcome"] == "agreed"
     assert pool["pool_adjudication"][two]["final"] == {"grade": 2, "ambiguous": False}
@@ -375,7 +457,10 @@ def test_the_qrels_leave_an_explicit_negative_out_and_the_provenance_keeps_it(
     discovery = record["provenance"]["evidence_discovery"]
     assert discovery["explicit_negative"] == [node]
     assert discovery["pool_adjudication"][node]["first"] == {"grade": 0, "ambiguous": False}
-    assert pipeline.report()["evidence_discovery"]["explicit_negative"] == 1
+    report = pipeline.report()["evidence_discovery"]
+    assert report["explicit_negative"] == 1
+    assert report["pool_by_path_full_text"] == discovery["by_path"]["full_text"] >= 1
+    assert report["pool_beyond_full_text"] == discovery["beyond_full_text"] == 0
 
 
 def test_a_broken_pool_identity_is_a_technical_failure(base, first, order, tmp_path):
@@ -425,7 +510,9 @@ def test_a_pool_larger_than_a_batch_runs_in_deterministic_batches(base, first, t
     assert all(len(b) <= hp.POOL_BATCH_MAX_NODES for b in shown)
     assert all(hp.packet_tokens(p) <= hp.POOL_BATCH_MAX_TOKENS for p in batches)
     # every node once, never split, in document order across the batches
-    assert [n for b in shown for n in b] == base["corpus"].sort(nodes)
+    pool = value_of(pipeline, pid, "exposure_pool")
+    unlisted = rule_a(base, pool["listed_by"], nodes) - set(pool["listed_by"])
+    assert [n for b in shown for n in b] == base["corpus"].sort(list(unlisted))
     stages = sorted(s for s in stage_names(pipeline, pid) if s.startswith("pool_b1:"))
     assert stages == [f"pool_b1:{i}" for i in range(1, len(batches) + 1)]
     pool = value_of(pipeline, pid, "exposure_pool")
@@ -476,7 +563,8 @@ def test_an_audit_label_on_a_pooled_node_is_provenance_only(base, audited, tmp_p
     pool = value_of(pipeline, pid, "exposure_pool")
     assert pool["explicit_negative"] == [EXTRA_NODE]
     audit = value_of(pipeline, pid, "omission_audit")
-    assert audit["new_listed"] == [] and audit["new_exposed"] == []
+    # the audit's listing expands no article: nothing of it is new to the normal pool
+    assert audit["new_listed"] == [] and audit["new_exposed"] == [] and audit["sources"] == {}
     assert audit["judgment_discrepancies"] == [{"node": EXTRA_NODE, "direction": "0_to_1_or_more"}]
     assert "audit_judge_c" not in stage_names(pipeline, pid)
     assert EXTRA_NODE not in graded(ready_of(pipeline, audited))

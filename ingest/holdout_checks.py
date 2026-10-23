@@ -390,7 +390,7 @@ ROLE_VERDICTS = (
         "gatekeeper",
         "paraphrase, same_legal_question, same_rule_superficial_change or uncertain",
         "overlap_*",
-        "overlap_gate.v1 and D-054 decision 2",
+        "overlap_gate.v2 and D-054 decision 2 (a DEVELOPMENT need counts alike, D-066)",
     ),
     RoleVerdict(
         "gatekeeper_evidence",

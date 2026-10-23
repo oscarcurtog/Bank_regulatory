@@ -14,6 +14,7 @@ reads the corpus: they run in a clean checkout, CI included, with the corpus sto
 from __future__ import annotations
 
 import ast
+import dataclasses
 import functools
 import hashlib
 import importlib
@@ -33,6 +34,7 @@ from ingest import holdout as ho
 from ingest import holdout_broker as hb
 from ingest import holdout_certification as hcert
 from ingest import holdout_contract as hc
+from ingest import holdout_exclusions as hxe
 from ingest import holdout_executor as hx
 from ingest import holdout_isolation as hi
 from ingest import holdout_launcher as hla
@@ -45,12 +47,15 @@ from ingest import holdout_state as hs
 from tests import certification_fakes as cf
 from tests.holdout_fakes import (
     FAKE_EFFECTIVE,
+    FAKE_EXCLUSIONS,
     FAKE_MLX,
     PIN,
     Crash,
     FakeExecutor,
     Scenario,
+    fake_sources,
     session,
+    write_exclusions,
 )
 
 MODEL = FAKE_EFFECTIVE["init"]["model"]
@@ -153,10 +158,14 @@ def machinery(tmp_path_factory):
         )
     claude = hrt.claude_runtime(namespace / hcert.PROVENANCE)
     reference = hcert.reference(namespace)
-    record = hc.construction(evidence / ho.GRID_FILE, plan, roles, claude, FAKE_MLX, reference)
+    exclusions = write_exclusions(evidence)  # the private file the contract names by identity
+    record = hc.construction(
+        evidence / ho.GRID_FILE, plan, roles, claude, FAKE_MLX, reference, exclusions
+    )
     pinned = json.loads(hc.CONTRACT_PATH.read_text(encoding="utf-8"))
     # a base contract, as the pre-authoring commit holds it: an amendment is added by a test
     contract = {k: v for k, v in pinned.items() if k != "amends"} | {"construction": record}
+    contract["aborted_runs"] = [dict(r) for r in hc.ABORTED_RUNS]  # as hc.build records them
     for f in hc.frozen_files(contract):
         (repo / f).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(f, repo / f)
@@ -175,6 +184,7 @@ def machinery(tmp_path_factory):
         "roles": roles,
         "grid": grid_file,
         "certifications": certifications,
+        "exclusions": evidence / hxe.FILE,
     }
 
 
@@ -191,8 +201,8 @@ def sha(machinery):
 @pytest.fixture
 def paths(machinery, tmp_path):
     """A private TEST directory of its own: run 6's kind of Gate 1 records as a decoy, the
-    provenance of that contract, the grid, and a fresh salt; and a copy of the certification
-    the contract names, for this test alone."""
+    provenance of that contract, the grid, a fresh salt and the development need exclusions the
+    contract names; and a copy of the certification the contract names, for this test alone."""
     repo = machinery["repo"]
     history, raw_root = machinery["certifications"]
     certifications, certification_raw = tmp_path / "certifications", tmp_path / "certification-raw"
@@ -207,6 +217,7 @@ def paths(machinery, tmp_path):
     ho.write_json(provenance / "role_contracts.json", machinery["roles"])
     ho.write_json(provenance / "frozen_templates.json", {"files": hr.template_hashes()})
     (provenance / "opaque_salt.hex").write_text(secrets.token_hex(32) + "\n")
+    shutil.copyfile(machinery["exclusions"], provenance / hxe.FILE)
     shutil.copyfile(machinery["grid"], test / ho.GRID_FILE)
     for folder in ("overlap", "packets", "audits"):
         (test / folder).mkdir(exist_ok=True)
@@ -310,6 +321,10 @@ def test_start_builds_the_real_world_with_fakes_only_at_the_model_boundary(paths
         "claude_runtime": frozen.contract["construction"]["claude_runtime"],
         "mlx_runtime": FAKE_MLX,
     }
+    # the development need exclusions the contract names, and only them (D-066)
+    assert world.development_exclusions == tuple(sorted(FAKE_EXCLUSIONS, key=lambda e: e.key))
+    assert world.development == hxe.identity(paths.provenance / hxe.FILE)
+    assert world.development == frozen.contract["construction"]["development_need_exclusions"]
     with hs.Store.open(paths.test, paths.raw, readonly=True) as store:
         store.check_identities(world.identities, world.runtime)  # persisted at START
         assert store.runtime() == world.runtime
@@ -392,6 +407,8 @@ CHANGES = {
     "host_macos": "host.macos_product_version",
     "host_build": "host.macos_build_version",
     "host_model": "host.hardware_model",
+    # the private development need exclusions changed after the freeze: one need more
+    "development_exclusions": "the development need exclusions are not the contract's",
 }
 
 
@@ -408,6 +425,9 @@ def changed(paths: hla.Paths, change: str, monkeypatch: Any) -> hla.Probes:
     if change == "gate_1_audit":  # the audit's module is not the one Gate 1 passed with
         gate1 = json.loads((gate_1(paths) / "gate1.json").read_text())
         ho.write_json(gate_1(paths) / "gate1.json", gate1 | {"audit": {"module_sha256": "0"}})
+    if change == "development_exclusions":  # canonical, valid, and not the contract's
+        added = (*FAKE_EXCLUSIONS, hxe.Exclusion("run-3/G03-a1", "A synthetic need, added."))
+        (paths.provenance / hxe.FILE).write_text(hxe.render(added, fake_sources(added)))
     if change == "claude_model":  # same binary, code and contract files, another model
         pin = json.loads((gate_1(paths) / "runtime.json").read_text())
         ho.write_json(gate_1(paths) / "runtime.json", {**pin, "model": "claude-opus-5-4"})
@@ -508,6 +528,77 @@ def test_the_launcher_reads_the_named_certification_never_tests_own_provenance(p
     other = construction | {"certification": construction["certification"] | {"gate1_run": "x"}}
     with pytest.raises(hla.LaunchRefused, match="not the certification the contract records"):
         hla.certification_provenance(paths, other)
+
+
+def test_the_development_exclusions_are_the_contracts_or_nothing_starts(
+    paths, sha, monkeypatch, no_corpus
+):
+    """D-066: the private exclusions file the contract names, or a refusal before any model: a
+    file that is gone, or a contract that names none, never falls back to an empty set."""
+    construction = hla.contract_problems(paths)[0].contract["construction"]  # type: ignore[union-attr]
+    unnamed = {k: v for k, v in construction.items() if k != "development_need_exclusions"}
+    with pytest.raises(hla.LaunchRefused, match="names no development need exclusions"):
+        hla.development_exclusions(paths, unnamed)
+    (paths.provenance / hxe.FILE).unlink()
+    frozen, problems = hla.contract_problems(paths)
+    assert frozen is None and any("does not exist" in p for p in problems)
+    fakes = Fakes(monkeypatch)
+    for refused in (
+        lambda: hla.record_public_commit(paths, "HEAD"),
+        lambda: hla.start(paths, sha, fakes, PROBES),
+    ):
+        with pytest.raises(hs.StateError, match="development_need_exclusions.json does not exist"):
+            refused()
+    assert fakes.calls == [] and not (paths.test / hs.STATE_DIR).exists()
+
+
+def test_the_launcher_reads_the_exclusions_once_and_uses_what_it_verified(
+    paths, monkeypatch, no_corpus
+):
+    """P1 (D-066): the file replaced A -> B between any two reads. The launcher reads it once:
+    with A first it verifies A against the contract and uses A whole; with B first it verifies B,
+    which the contract does not name, and refuses. Never B's identity with A's entries."""
+    target = paths.provenance / hxe.FILE
+    a = target.read_bytes()  # the file the contract names
+    fewer = (FAKE_EXCLUSIONS[0],)
+    b = hxe.render(fewer, fake_sources(fewer)).encode()
+    real = Path.read_bytes
+
+    def replaced(first: bytes, then: bytes) -> list[int]:
+        reads: list[int] = []
+
+        def read_bytes(self: Path) -> bytes:
+            if self == target:
+                reads.append(1)
+                return first if len(reads) == 1 else then
+            return real(self)
+
+        monkeypatch.setattr(Path, "read_bytes", read_bytes)
+        return reads
+
+    reads = replaced(a, b)
+    frozen, problems = hla.contract_problems(paths)
+    assert problems == [] and frozen is not None and len(reads) == 1
+    assert frozen.exclusions == hxe.parse(a, "A").entries
+    assert frozen.exclusions_identity == hxe.parse(a, "A").identity
+    reads = replaced(b, a)
+    frozen, problems = hla.contract_problems(paths)
+    assert "the development need exclusions are not the contract's" in problems and len(reads) == 1
+
+
+def test_exclusions_not_collected_from_the_contracts_aborted_runs_stop_the_launcher(
+    paths, no_corpus
+):
+    sources = list(fake_sources())
+    sources[-1] = dataclasses.replace(sources[-1], contract_sha256="0" * 64)
+    found = hxe.parse(hxe.render(FAKE_EXCLUSIONS, sources).encode(), "found")
+    contract = hla.contract_problems(paths)[0].contract  # type: ignore[union-attr]
+    named = {**contract, "construction": {**contract["construction"]}}
+    named["construction"]["development_need_exclusions"] = found.identity
+    assert hla.exclusions_problems(found, named) == [
+        "the development need exclusions are not collected from the contract's aborted runs"
+    ]
+    assert hla.exclusions_problems(hxe.read(paths.provenance / hxe.FILE), contract) == []
 
 
 def test_without_its_certification_a_contract_never_falls_back(paths, sha, monkeypatch, no_corpus):

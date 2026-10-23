@@ -79,6 +79,7 @@ CONSTRUCTION_FILES = (
     "ingest/holdout_certification.py",
     "ingest/holdout_checks.py",
     "ingest/holdout_contract.py",
+    "ingest/holdout_exclusions.py",
     "ingest/holdout_controller.py",
     "ingest/holdout_executor.py",
     "ingest/holdout_isolation.py",
@@ -351,20 +352,25 @@ def construction(
     claude_runtime: Mapping[str, Any],
     mlx_runtime: Mapping[str, Any],
     certification: Mapping[str, Any],
+    exclusions: Mapping[str, Any],
 ) -> dict[str, Any]:
     """What fixes how TEST is built, also frozen before authoring: the grid, the order of the
     cells, the omission audit, the role contracts, the templates, the broker's limits, the
     Claude and MLX runtimes (ingest/holdout_runtime.py), and the sealed Gate 1 certification
     Claude's runtime is read from (ingest/holdout_certification.py reference), which the
-    launcher selects by it and nothing else. The lists themselves stay in the private TEST
+    launcher selects by it and nothing else, and the identity of the development need exclusions
+    (ingest/holdout_exclusions.py identity). The lists themselves stay in the private TEST
     directory; the contract publishes their hashes. The account's email and organization never
     enter it."""
+    if set(exclusions) != {"schema", "sha256", "count"}:
+        raise ContractError("the development need exclusions enter by identity alone")
     text = json.dumps([claude_runtime, mlx_runtime, certification]).lower()
     if "email" in text or "organization" in text:
         raise ContractError("a runtime identity carries the account's identity: never public")
     from ingest import holdout_broker as hb
     from ingest import holdout_checks as hk
     from ingest import holdout_controller as hct
+    from ingest import holdout_judging as hj
     from ingest import holdout_packets as hp
     from ingest import holdout_process as hproc
     from ingest import holdout_roles as hr
@@ -400,8 +406,17 @@ def construction(
             },
             "first_judgment": "the label of the first of search_1, search_2, search_3 that listed "
             "the node; the answerability, search_1's",
-            "exposure_pool": "every node a normal search received in full (an article or nodes "
-            "page) or listed, that can be judged; a search snippet is not a full reading",
+            "exposure_policy": hj.EXPOSURE_POLICY,
+            "exposure_paths": list(hj.EXPOSURE_PATHS),
+            "exposure_pool": "exposure v2, rule A (D-066), the deduplicated union of each normal "
+            "search's: every node it listed; every node it received in full (an article or nodes "
+            "page); every node its search pages named, followed up (a judge reads the node's "
+            "whole own text from the frozen corpus, never the snippet); every ancestor, with its "
+            "own text, of a node so reached, a candidate of its own. No article is expanded, "
+            "whatever brought one of its nodes. Every node but a listed one can be judged (own "
+            "non-empty text, outside the excluded PSD2 articles). Built from the searches' "
+            "listings, their broker logs and the corpus alone: never from a grade, a rationale, an "
+            "audit or a qrel",
             "unlisted_nodes": "judge B's pool variant (judge_b_pool.v2), blind, every node shown "
             "graded explicitly 0 to 3 with its ambiguity, exactly once (a node left out or "
             "ungraded is a failure of the role's contract, never a grade 0); an explicit grade 0 "
@@ -414,9 +429,26 @@ def construction(
             },
             "judge_d_and_diagnostic": "every listed node, every pool node with a final grade >= 1, "
             "every pool node any blind judgment graded >= 1 or found ambiguous",
-            "audit_threshold": "a node the audit search listed or received in full, outside the "
-            "normal exposure pool, adjudicated grade >= 1 stops",
+            "audit_threshold": "a node of the audit search's own exposure v2, by the same rules, "
+            "outside the fully closed normal pool, adjudicated grade >= 1 stops the whole "
+            "construction: no replacement, no new attempt of the cell, no next cell",
+            # D-061's review triggers, defined operationally: measured and reported, never a gate
+            "review_metrics": {
+                "third_search_incremental_g2": "needs where search_3 is the first normal search "
+                "to reach a node of final grade >= 2 that neither search_1 nor search_2 reached, "
+                "over the final needs that completed the three searches and their adjudication; "
+                f"a rate above {hj.THIRD_SEARCH_REVIEW_FLAG} is a review flag only",
+                "per_search_recall_g2": "for each normal search and final need with a node of "
+                "final grade >= 2: the share of those nodes the search's exposure v2 reached; "
+                "mean, median, minimum, the count below "
+                f"{hj.PER_SEARCH_RECALL_REFERENCE} and the denominator, never a pass or fail",
+                "omission_audit": "the audit's new nodes by final grade (0, 1, >= 2, unjudged) and "
+                "by the first path of its exposure v2 that reached them",
+            },
         },
+        # the development need exclusions (ingest/holdout_exclusions.py): identity and count
+        # only, never a statement; the overlap gate's hidden references, never an author's
+        "development_need_exclusions": dict(exclusions),
         "process_deadlines_seconds": {
             "headless": hproc.HEADLESS_SECONDS,
             "broker_turn": hproc.BROKER_TURN_SECONDS,
@@ -545,6 +577,32 @@ ABORTED_RUNS = (
             "listed nodes and the pool's contested or relevant ones; no number of candidates in "
             "the searches' template (judge_a.v3); the controller's outer deadline 72 hours. The "
             "rubrics, the omission threshold >= 1, the retries and every other rule unchanged"
+        ),
+    },
+    {
+        "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+        "contract_sha256": "eac1d3eb66f546c68233185f8cf24b3f6347e6b315c311847d97f23302745e9a",
+        "public_commit": "30ffb930007dfec13c52778842caf8032c9e8f2a",
+        "ready_needs": 2,
+        "reason": (
+            "The omission audit's hard stop, a valid application of the frozen rule: the audit "
+            "search reached three nodes outside the exposure pool, each adjudicated grade 1. A "
+            "read-only structural review found no controller or bookkeeping defect, but a gap in "
+            "the exposure policy: one node only a search snippet had named, which no search "
+            "opened, and two article lead-ins shown to the judges as the context of their "
+            "children, never as candidates. The run is development evidence only: none of its "
+            "needs, READY records, qrels or other outputs enters a later TEST"
+        ),
+        "change": (
+            "exposure v2, rule A, designed after this run's stop and declared as such: the pool "
+            "also takes every node a search page named, followed up in full, and every ancestor "
+            "with its own text of a node reached, as a candidate of its own; no article is "
+            "expanded; the audit search is measured by the same rules. A wider rule that also took "
+            "every node of an article a search listed was implemented and evaluated before any "
+            "freeze and not adopted. The development need exclusions in the overlap gate "
+            "(overlap_gate.v2); D-061's review metrics defined operationally; Gate 1 from a sealed "
+            "certification. Three normal searches, the omission threshold >= 1, the rubrics, the "
+            "judges and every other rule unchanged"
         ),
     },
 )

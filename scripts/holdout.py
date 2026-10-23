@@ -25,6 +25,10 @@
         --claude-bin <binary>
     PYTHONPATH=. .venv/bin/python scripts/holdout.py broker-test --certification <id> \
         --claude-bin <binary>
+    PYTHONPATH=. .venv/bin/python scripts/holdout.py development-exclusions \
+        --run run-1 <folder holding its state/> <its raw folder> [--run run-2 ...]
+    PYTHONPATH=. .venv/bin/python scripts/holdout.py pre-authoring-freeze --certification <id> \
+        --certification-manifest <sha256> --development-exclusions-sha256 <sha256>
 
 init creates data/benchmark/test/, which git ignores, with a local git history of its own
 that refuses to push. grid writes the coverage grid and refuses to overwrite a different
@@ -67,6 +71,7 @@ import json
 import subprocess
 import sys
 from collections import Counter
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -74,6 +79,7 @@ from typing import Any
 from ingest import benchmark as bm
 from ingest import holdout as ho
 from ingest import holdout_certification as hcert
+from ingest import holdout_exclusions as hxe
 from ingest import holdout_isolation as hi
 from ingest import holdout_launcher as hla
 from ingest import holdout_process as hproc
@@ -757,13 +763,51 @@ def certified(certification: str, manifest_sha256: str) -> Path:
     return namespace
 
 
-def pre_authoring_freeze(directory: Path, certification: str, manifest_sha256: str) -> int:
+def development_sources(
+    given: Sequence[Sequence[str]], aborted: Sequence[Mapping[str, Any]]
+) -> list[hxe.Source]:
+    """Every aborted run, each named once and explicitly: run-N for the N-th of the aborted
+    runs, with the folder that holds its state and its raw folder; the contract its state must
+    have been built under is that run's. A run unknown, named twice or not named is refused,
+    never one run silently dropped for another."""
+    expected = {f"run-{n}": str(r["contract_sha256"]) for n, r in enumerate(aborted, start=1)}
+    sources: dict[str, hxe.Source] = {}
+    for label, directory, raw in given:
+        if label not in expected:
+            raise ho.HoldoutError(f"--run {label!r} is none of the aborted runs {sorted(expected)}")
+        if label in sources:
+            raise ho.HoldoutError(f"--run names {label!r} twice")
+        sources[label] = hxe.Source(label, Path(directory), Path(raw), expected[label])
+    missing = [label for label in expected if label not in sources]
+    if missing:
+        raise ho.HoldoutError(f"every aborted run is collected: {missing} not named")
+    return [sources[label] for label in expected]
+
+
+def development_exclusions(directory: Path, given: Sequence[Sequence[str]]) -> dict[str, Any]:
+    """The private development need exclusions (D-066) of the TEST directory, from the durable
+    states of every aborted run (ingest/holdout_exclusions.py collect), written once into its
+    provenance, which the public repository ignores. Nothing of a statement is printed: the
+    count and the SHA-256 only."""
+    from ingest import holdout_contract as hc
+
+    if not ignored_by_repo(directory):
+        raise ho.HoldoutError(f"{directory} is not ignored by the public repository")
+    entries, sources = hxe.collect(development_sources(given, hc.ABORTED_RUNS))
+    return hxe.write(directory / "provenance" / hxe.FILE, entries, sources)
+
+
+def pre_authoring_freeze(
+    directory: Path, certification: str, manifest_sha256: str, exclusions_sha256: str
+) -> int:
     """Fix everything decided before authoring (Codex Gate 2, P1.2, P1.4, P1.5): the order of
     the cells, the omission audit, the role contracts, the opaque-id salt, the templates, and
     the evaluation contract of E, E5, BM25 and S4. Written once; the contract's hash is pinned
     in the private provenance, and every later step checks it. Claude's runtime comes from the
     sealed certification the person names, checked before anything is written, and the
-    contract records it; never from TEST's own provenance."""
+    contract records it; never from TEST's own provenance. The development need exclusions
+    (D-066) are the private file of provenance, its SHA-256 typed again: the contract records
+    its identity, never a statement."""
     import secrets
 
     from ingest import holdout_contract as hc
@@ -771,8 +815,17 @@ def pre_authoring_freeze(directory: Path, certification: str, manifest_sha256: s
 
     try:
         gate_1 = certified(certification, manifest_sha256)
-    except hcert.CertificationError as error:
+        found = hxe.read(directory / "provenance" / hxe.FILE)  # one read: identity and sources
+    except ho.HoldoutError as error:
         print(f"STOP: {error}")
+        return 1
+    exclusions = found.identity
+    if exclusions["sha256"] != exclusions_sha256:
+        print("STOP: the development need exclusions are not the ones typed")
+        return 1
+    collected = sorted(s.contract_sha256 for s in found.sources)
+    if collected != sorted(str(r["contract_sha256"]) for r in hc.ABORTED_RUNS):
+        print("STOP: the development need exclusions are not collected from every aborted run")
         return 1
     dev = bm.load_benchmark(bm.DEV_DIR)
     areas = ho.load_areas()
@@ -803,7 +856,9 @@ def pre_authoring_freeze(directory: Path, certification: str, manifest_sha256: s
     claude = hrt.claude_runtime(gate_1 / hcert.PROVENANCE)
     mlx = hrt.mlx_runtime()
     reference = hcert.reference(gate_1)
-    record = hc.construction(directory / ho.GRID_FILE, plan, roles, claude, mlx, reference)
+    record = hc.construction(
+        directory / ho.GRID_FILE, plan, roles, claude, mlx, reference, exclusions
+    )
     contract = hc.build(REPO, record)
     digest = hc.write(contract)
     ho.write_json(
@@ -896,6 +951,24 @@ def main(argv: list[str] | None = None) -> int:
     paf.add_argument(
         "--certification-manifest", required=True, help="its manifest's SHA-256, typed again"
     )
+    paf.add_argument(
+        "--development-exclusions-sha256",
+        required=True,
+        help="the private development need exclusions' SHA-256, typed again",
+    )
+    dex = sub.add_parser(
+        "development-exclusions",
+        help="write the private development need exclusions from the runs named, once",
+    )
+    dex.add_argument(
+        "--run",
+        action="append",
+        nargs=3,
+        required=True,
+        metavar=("LABEL", "DIRECTORY", "RAW_DIR"),
+        help="an aborted run (run-N), the folder holding its state/ and its raw folder; every "
+        "aborted run once",
+    )
     brk = sub.add_parser("broker-test", help="the synthetic stream-json test of judge A")
     brk.add_argument("--certification", required=True, help="the certification's id")
     brk.add_argument("--claude-bin", type=Path, required=True, help="the Claude Code binary")
@@ -986,7 +1059,15 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "figure-density":
         figure_density(directory)
     elif args.command == "pre-authoring-freeze":
-        return pre_authoring_freeze(directory, args.certification, args.certification_manifest)
+        return pre_authoring_freeze(
+            directory,
+            args.certification,
+            args.certification_manifest,
+            args.development_exclusions_sha256,
+        )
+    elif args.command == "development-exclusions":
+        found = development_exclusions(directory, args.run)
+        print(f"wrote {found['count']} development need exclusions: {found['sha256']}")
     elif args.command == "describe":
         print(json.dumps(describe(args.benchmark), indent=1, ensure_ascii=False))
     elif args.command == "overlap-statements":

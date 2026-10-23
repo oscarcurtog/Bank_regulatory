@@ -55,9 +55,15 @@ VERDICT_OUTCOME: dict[str, Outcome] = {
     "uncertain": "overlap_uncertain",
 }
 UNFILLED = "cell_unfilled_after_3_attempts"
-# What the rejected proposal was compared with when the gatekeeper dropped it (D-054)
-Against = Literal["dev", "fixture", "test_existing"]
-SOURCE_AGAINST: dict[str, Against] = {"DEV": "dev", "FIXTURE": "fixture", "TEST": "test_existing"}
+# What the rejected proposal was compared with when the gatekeeper dropped it (D-054); a
+# development need is one an earlier, aborted construction materialized (D-066)
+Against = Literal["dev", "fixture", "test_existing", "development"]
+SOURCE_AGAINST: dict[str, Against] = {
+    "DEV": "dev",
+    "FIXTURE": "fixture",
+    "TEST": "test_existing",
+    "DEVELOPMENT": "development",
+}
 
 
 class LedgerError(Exception):
@@ -95,7 +101,8 @@ def gate_outcome(verdict: str, closest_source: str | None) -> tuple[Outcome, Aga
 
 
 def rejection_code(attempt: Attempt) -> str | None:
-    """overlap_dev, overlap_fixture, overlap_test_existing or overlap_uncertain."""
+    """overlap_dev, overlap_fixture, overlap_test_existing, overlap_development or
+    overlap_uncertain."""
     if attempt.outcome == "overlap_uncertain":
         return "overlap_uncertain"
     if attempt.against is not None:

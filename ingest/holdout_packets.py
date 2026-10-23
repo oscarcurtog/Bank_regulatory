@@ -372,13 +372,13 @@ def writer_packet(
 @dataclass(frozen=True)
 class Existing:
     need_id: str
-    source: str  # "DEV", "FIXTURE" or "TEST"
+    source: str  # "DEV", "FIXTURE", "TEST" or "DEVELOPMENT" (D-066)
     statement: str
 
 
 def gate_packet(proposal_id: str, statement: str, existing: Sequence[Existing]) -> str:
     listed = "\n".join(f"- {e.need_id} ({e.source}): {e.statement}" for e in existing)
-    return template("overlap_gate.v1").substitute(
+    return template("overlap_gate.v2").substitute(
         proposal_id=proposal_id, proposal=statement, existing=listed
     )
 

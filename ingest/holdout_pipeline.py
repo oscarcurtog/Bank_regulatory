@@ -16,17 +16,21 @@ model's output is consumed only after it passes its role's audit (ingest/holdout
     grade-3 evidence) -> validators -> READY
 
 The evidence of every need is discovered the same way (config/holdout/evidence-discovery.md,
-the design of 2026-10-22): three searches, each a fresh isolated context with the same frozen
-packet (judge_a.v3) built from the locked need alone, none seeing another's candidates, path,
-labels or output. Their listed candidates are joined; every node the broker gave any of them
-in full enters the exposure pool mechanically, listed or not, and is judged: a node no search
-listed is graded blind by judge B's pool variant, a grade >= 1 or an ambiguity gets a second
-blind judgment, and judge C decides where the two differ. In the 12 cells of the omission
-audit a fourth blind search looks for what the pool lacks: a node it listed or received in
-full outside the pool is adjudicated by the same rules, and one with a final grade >= 1 stops
-the construction before the freeze. A search that declares a problem: a normal one, the need is
-not judgeable (judge_problem); the audit's, the audit cannot be completed, and the construction
-stops for a person.
+the design of 2026-10-22 and exposure v2, rule A, of D-066): three searches, each a fresh
+isolated context with the same frozen packet (judge_a.v3) built from the locked need alone, none
+seeing another's candidates, path, labels or output. Their listed candidates are joined, and the
+exposure pool v2 is built mechanically from each search's listing, its broker log and the frozen
+corpus alone: every node it listed or received in full, every node its `search` pages named
+(followed up: its judge reads the node's whole own text, never the snippet), and every eligible
+ancestor, with its own text, of a node so reached; no article is expanded. Every pool node is
+judged:
+a node no search listed is graded blind by judge B's pool variant, a grade >= 1 or an ambiguity
+gets a second blind judgment, and judge C decides where the two differ. In the 12 cells of the
+omission audit a fourth blind search looks for what the pool lacks: a node of its own exposure
+v2, by the same rules, outside the fully closed normal pool is adjudicated by the same rules,
+and one with a final grade >= 1 stops the whole construction before the freeze. A search that
+declares a problem: a normal one, the need is not judgeable (judge_problem); the audit's, the
+audit cannot be completed, and the construction stops for a person.
 
 No person reads or approves a statement before the lock (the person's decision of
 2026-10-19): the person knows E, DEV and their failure modes, and any wording of theirs would
@@ -94,6 +98,7 @@ from ingest import holdout as ho
 from ingest import holdout_admission as ha
 from ingest import holdout_broker as hb
 from ingest import holdout_checks as hk
+from ingest import holdout_exclusions as hxe
 from ingest import holdout_isolation as hi
 from ingest import holdout_judging as hj
 from ingest import holdout_ledger as hl
@@ -389,6 +394,10 @@ class World:
     # the frozen model runtimes: {"claude_runtime": ..., "mlx_runtime": ...}
     # (ingest/holdout_runtime.py); an output is admitted only if produced under them
     runtime: Mapping[str, Mapping[str, Any]]
+    # the development need exclusions (ingest/holdout_exclusions.py, D-066): hidden references of
+    # the overlap gate, never an author's; development is their identity, the contract's
+    development_exclusions: Sequence[hxe.Exclusion] = ()
+    development: Mapping[str, Any] = field(default_factory=dict)
 
     @property
     def forbidden(self) -> list[str]:
@@ -1330,7 +1339,8 @@ class Pipeline:
     ) -> Any:
         """One evidence search. Every outcome but a final answer is a technical failure of this
         execution: the ceiling (pending_technical_resource) or the protocol. The admitted value
-        carries the nodes the broker gave it in full (hj.exposure), read from its own log."""
+        carries the nodes the broker gave it in full (hj.exposure) and the nodes its `search`
+        pages named (hj.snippets), both read from its own log."""
 
         def document(result: BrokerSession | None) -> dict[str, Any] | None:
             if result is None:
@@ -1363,6 +1373,7 @@ class Pipeline:
                     "final": run.final,
                     "consumption": run.consumption(),
                     "exposure": hj.exposure(run.log),
+                    "snippets": hj.snippets(run.log),
                 }
             )
 
@@ -1504,6 +1515,9 @@ class Pipeline:
         return self._judge(cell, attempt, need_id, draft, queries)
 
     def _gate(self, pid: str, statement: str) -> None:
+        """The overlap gate: the proposal against DEV, the fixtures, the ready TEST needs and the
+        development need exclusions (D-066), the last two under opaque ids drawn again for every
+        proposal. No author receives any of them."""
         w = self.world
         existing = [hp.Existing(n.need_id, "DEV", n.statement) for n in w.dev.needs]
         existing += [hp.Existing(n.need_id, "FIXTURE", n.statement) for n in w.fixtures.needs]
@@ -1512,8 +1526,14 @@ class Pipeline:
             ref = ho.opaque_id(w.salt, f"gate-existing:{pid}", need_id)
             test_refs[ref] = need_id
             existing.append(hp.Existing(ref, "TEST", r.need.statement))
+        for exclusion in w.development_exclusions:
+            ref = ho.opaque_id(w.salt, f"gate-development:{pid}", exclusion.key)
+            existing.append(hp.Existing(ref, "DEVELOPMENT", exclusion.statement))
         source = {e.need_id: e.source for e in existing}
         ready_test = hs.sha_value([hs.sha_value(r.record()) for r in self.ready.values()])
+        compared = {**self._inputs(pid, "statement"), "ready_test": ready_test}
+        if w.development:
+            compared["development_exclusions"] = str(w.development["sha256"])
 
         def admit(verdict: Any) -> Any:
             return _admitted("answer_fields", lambda v: ha.gate_problems(v, list(source)))(verdict)
@@ -1530,7 +1550,7 @@ class Pipeline:
                 lambda: hp.gate_packet(ref, statement, existing),
             ),
             ref,
-            {**self._inputs(pid, "statement"), "ready_test": ready_test},
+            compared,
             admit,
         )
         closest = verdict.get("closest")
@@ -1598,15 +1618,18 @@ class Pipeline:
         # candidate is read
         files: dict[str, dict[str, Any]] = {}
         exposures: dict[str, list[str]] = {}
+        named: dict[str, list[str]] = {}
         consumption: dict[str, Any] = {}
         for stage in NORMAL_SEARCHES:
             value, found = search(stage)
             if ha.declared_problem(found) is not None:
                 raise Rejected("judge_problem", stage)
             files[stage], exposures[stage] = found, list(value["exposure"])
+            named[stage] = list(value["snippets"])
             consumption[stage] = value["consumption"]
         audit_file: dict[str, Any] | None = None
         audit_exposure: list[str] = []
+        audit_named: list[str] = []
         if cell.cell_id in w.omission:
             value, audit_file = search("audit_search")
             if ha.declared_problem(audit_file) is not None:
@@ -1619,12 +1642,15 @@ class Pipeline:
                     stage="audit_search",
                 )
             audit_exposure = list(value["exposure"])
+            audit_named = list(value["snippets"])
             consumption["audit_search"] = value["consumption"]
+        # the pool v2: each search's listing, full-text exposure, snippets followed up, articles
+        # it listed and the eligible ancestors of every node reached (D-066)
         discovery = self._built(
             "record_assembly",
             "evidence_union",
             pid,
-            lambda: hj.exposure_pool(files, exposures, w.texts, w.excluded_psd2),
+            lambda: hj.exposure_pool(files, exposures, named, w.texts, w.excluded_psd2),
         )
         first, scope = discovery.first, discovery.scope
         listed = self._built(
@@ -1764,7 +1790,15 @@ class Pipeline:
             normal: dict[str, int | None] = {f"{q.act}:{q.path}": q.grade for q in final.qrels}
             normal |= {n: j.get("grade") for n, j in negatives.items()}
             self._omission_audit(
-                cell, pid, need_id, draft, discovery.pool, normal, audit_file, audit_exposure
+                cell,
+                pid,
+                need_id,
+                draft,
+                discovery.pool,
+                normal,
+                audit_file,
+                audit_exposure,
+                audit_named,
             )
         # judge D and the diagnostic: the same candidates, by the frozen rule of the design
         pool_labels = {
@@ -2100,20 +2134,24 @@ class Pipeline:
         normal: Mapping[str, int | None],
         audit_file: Mapping[str, Any],
         audit_exposure: Sequence[str],
+        audit_named: Sequence[str],
     ) -> None:
-        """The omission audit of one attempt (config/holdout/evidence-discovery.md): the nodes the
-        audit search listed or received in full outside the normal exposure pool, adjudicated
-        by the pool's rules (its own label as the first judgment of a node it listed). Any of
-        them with a final grade >= 1 stops the construction before the freeze; a grade 0 is a
-        diagnostic. Its labels on nodes already in the pool change nothing: each difference with
-        the normal final grade (normal: node -> grade) is an audit judgment discrepancy, kept as
-        provenance and counted, never a label, a judge C, a rejection or a stop."""
+        """The omission audit of one attempt (config/holdout/evidence-discovery.md, exposure v2):
+        the nodes of the audit search's own exposure v2, by the same rules as a normal search's,
+        outside the fully closed normal pool, adjudicated by the pool's rules (its own label as
+        the first judgment of a node it listed). Any of them with a final grade >= 1 stops the
+        whole construction before the freeze; a grade 0 is a diagnostic. Its labels on nodes
+        already in the pool change nothing: each difference with the normal final grade (normal:
+        node -> grade) is an audit judgment discrepancy, kept as provenance and counted, never a
+        label, a judge C, a rejection or a stop."""
         w = self.world
         nodes = self._built(
             "record_assembly",
             "omission_audit",
             pid,
-            lambda: hj.audit_nodes(audit_file, audit_exposure, pool, w.texts, w.excluded_psd2),
+            lambda: hj.audit_nodes(
+                audit_file, audit_exposure, audit_named, pool, w.texts, w.excluded_psd2
+            ),
         )
         new = self._built(
             "record_assembly",
@@ -2187,6 +2225,9 @@ class Pipeline:
                     },
                 ),
                 "judgment_discrepancies": discrepancies,
+                # how the audit search reached each new node: its paths in its exposure v2
+                "exposure_policy": hj.EXPOSURE_POLICY,
+                "sources": nodes.sources,
             },
         )
         # bound to this attempt: the audit of the attempt that becomes READY is the one a
@@ -2204,6 +2245,7 @@ class Pipeline:
                     **record["final_grades"],
                 },
                 "judgment_discrepancies": record["judgment_discrepancies"],
+                "sources": record["sources"],
             }
         )
         if any((g or 0) >= 1 for g in record["final_grades"].values()):
@@ -2371,6 +2413,7 @@ class Pipeline:
             problems.append("a gate verdict belongs to no attempt")
         problems += self._consumption_problems()
         problems += self._exposure_problems()
+        problems += self._development_reuse_problems()
         problems += self._diagnostic_coverage_problems()
         problems += self._durable_problems()
         return problems
@@ -2419,8 +2462,9 @@ class Pipeline:
         return problems
 
     def _exposure_problems(self) -> list[str]:
-        """Every admitted search's exposure is the one its own recorded broker log gives
-        (hj.exposure): the pool is rebuilt from the logs, never from what a model wrote."""
+        """Every admitted search's exposure and snippets are the ones its own recorded broker log
+        gives (hj.exposure, hj.snippets): the pool is rebuilt from the logs, never from what a
+        model wrote."""
         problems = []
         runs = {r["run_id"]: r for r in self.store.runs()}
         for row in self.store.stages():
@@ -2437,7 +2481,20 @@ class Pipeline:
                 problems.append(
                     f"{row['proposal_id']} {row['stage']}: its exposure is not its broker log's"
                 )
+            if hj.snippets(log) != admitted["value"].get("snippets"):
+                problems.append(
+                    f"{row['proposal_id']} {row['stage']}: its snippets are not its broker log's"
+                )
         return problems
+
+    def _development_reuse_problems(self) -> list[str]:
+        """No READY need repeats a development need (D-066): its statement or its whole READY
+        record. A backstop to the overlap gate; need ids only, never a statement."""
+        ready = {
+            r.need.need_id: (r.need.statement, hs.sha_value(r.record()))
+            for r in self.ready.values()
+        }
+        return hxe.reuse_problems(ready, self.world.development_exclusions)
 
     def _consumption_problems(self) -> list[str]:
         """Rejected technical outputs have zero downstream consumers: no output of a failed run
@@ -2619,6 +2676,12 @@ class Pipeline:
                 ),
             },
             "evidence_discovery": self._discovery_report(),
+            # D-061's review metrics, defined operationally (D-066): measurements, never a gate
+            "review_metrics": {
+                **hj.review_metrics(self._final_reach()),
+                "omission_audit_ready": hj.audit_review(audited),
+                "omission_audit_all_attempts": hj.audit_review(self.omission_log),
+            },
             "diagnostic": {
                 "needs": len(self.diagnostic_log),
                 "with_discrepancies": sum(bool(d["discrepancies"]) for d in self.diagnostic_log),
@@ -2646,11 +2709,24 @@ class Pipeline:
             },
         }
 
+    def _final_reach(self) -> list[dict[str, Any]]:
+        """Each READY need's reach (which normal searches' exposure v2 held each pool node) and
+        its final grades: the input of D-061's search metrics (hj.review_metrics)."""
+        return [
+            {
+                "reached_by": r.provenance.get("evidence_discovery", {}).get("reached_by", {}),
+                "grades": {f"{q.act}:{q.path}": q.grade for q in r.qrels if not q.ambiguous},
+            }
+            for _, r in sorted(self.ready.items())
+        ]
+
     def _discovery_report(self) -> dict[str, Any]:
         """What the three searches and the exposure pool found across the READY needs, as counts:
         how many candidates each search listed, how many only one search listed, the pool's
-        size and its unlisted nodes, how many of those needed a second judgment, and how many
-        of them the adjudication made grade >= 1 and relevant (grade >= 2, not ambiguous)."""
+        size and its unlisted nodes, its nodes by the paths of exposure v2 that brought them and
+        those only a path new in v2 brought, how many unlisted nodes needed a second judgment,
+        and how many of them the adjudication made grade >= 1 and relevant (grade >= 2, not
+        ambiguous)."""
         out: Counter[str] = Counter()
         for r in self.ready.values():
             found = r.provenance.get("evidence_discovery", {})
@@ -2659,6 +2735,9 @@ class Pipeline:
                 out[f"listed_{search}"] += int(count)
             for key in ("listed_union", "listed_by_one", "pool", "unlisted"):
                 out[key] += int(found.get(key, 0))
+            for path, count in found.get("by_path", {}).items():
+                out[f"pool_by_path_{path}"] += int(count)
+            out["pool_beyond_full_text"] += int(found.get("beyond_full_text", 0))
             second = list(found.get("second_judgment", []))
             out["second_judgment"] += len(second)
             out["explicit_negative"] += len(found.get("explicit_negative", []))

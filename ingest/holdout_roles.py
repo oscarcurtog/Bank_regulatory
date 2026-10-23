@@ -110,12 +110,15 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
             author=True,
         ),
         RoleContract(
+            # overlap_gate.v2 (D-066): the four kinds of reference, the development needs of the
+            # aborted constructions among them, under opaque ids drawn for every proposal
             "gatekeeper",
-            "overlap_gate.v1",
-            ("overlap_gate.v1",),
+            "overlap_gate.v2",
+            ("overlap_gate.v2",),
             "headless",
             (),
-            "by design: the proposal, DEV's and the fixtures' statements, the ready TEST needs",
+            "by design: the proposal, DEV's and the fixtures' statements, the ready TEST needs and "
+            "the development needs' statements",
             ("legal text", *_SYSTEMS, *_PROJECT),
         ),
         RoleContract(
@@ -169,7 +172,8 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
             ("judge_b_pool.v2",),
             "headless",
             (),
-            "nodes the searches received in full, with their legal context, from the corpus",
+            "the exposure pool's nodes no search listed (received in full, named on a search "
+            "page, or an ancestor with its own text), with their legal context, from the corpus",
             ("the searches' labels", "how a node reached the pool", "DEV", *_SYSTEMS, *_PROJECT),
             rules_field="rules",
             banned_in_packet=hp.BANNED_FOR_B_AND_C,

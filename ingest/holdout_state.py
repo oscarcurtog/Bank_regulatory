@@ -72,6 +72,9 @@ CELL_STATES = (
 )
 STATUSES = ("building", "pending_technical", "pending_technical_unresolved", "stopped", "frozen")
 RUN_STATUSES = ("started", "responded", "admitted", "failed")
+# What the overlap gate's runs record they compared with that is no stage's output: the ready
+# TEST needs' records, and the identity of the development need exclusions (D-066)
+UNSTAGED_INPUTS = ("ready_test", "development_exclusions")
 Place = Literal["kept", "raw"]
 GITIGNORE = "\n".join(ho.STATE_UNTRACKED) + "\n"
 
@@ -236,6 +239,22 @@ class Event:
 
 def _chain(prev: str, seq: int, key: str | None, kind: str, at: str, where: Sequence[Any]) -> str:
     return sha_text(canonical([prev, seq, key, kind, at, *where]))
+
+
+def chained(events: Sequence[Event]) -> str:
+    """The head of an event log, its chain recomputed from the genesis: each event's hash from
+    its predecessor's and its own content, as verify() checks it. A break stops."""
+    prev = GENESIS
+    for n, e in enumerate(events, start=1):
+        where = (e.cell_id, e.proposal_id, e.stage, e.run_id, canonical(e.payload))
+        if (
+            e.seq != n
+            or e.prev_sha256 != prev
+            or _chain(prev, e.seq, e.key, e.kind, e.at, where) != e.sha256
+        ):
+            raise IntegrityError(f"the event log's chain breaks at event {e.seq}")
+        prev = e.sha256
+    return prev
 
 
 # ---------------------------------------------------------------------------
@@ -913,7 +932,7 @@ class Store:
                 problems.append(f"{run_id}: a failed run has a consumer")
             for name, digest in json.loads(run["inputs"]).items():
                 source = stages.get((run["proposal_id"], name))
-                if name == "ready_test":
+                if name in UNSTAGED_INPUTS:
                     continue
                 if source is None or source["value_sha256"] != digest:
                     problems.append(f"{run_id}: input {name} is not an admitted output")

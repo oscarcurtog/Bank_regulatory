@@ -15,7 +15,7 @@ import re
 import signal
 import tempfile
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -23,6 +23,7 @@ from typing import Any
 from ingest import benchmark as bm
 from ingest import holdout as ho
 from ingest import holdout_broker as hb
+from ingest import holdout_exclusions as hxe
 from ingest import holdout_isolation as hi
 from ingest import holdout_packets as hp
 from ingest import holdout_pipeline as hpl
@@ -138,6 +139,58 @@ FAKE_CERTIFICATION: dict[str, Any] = {
     "gate1_run": "run-1",
     "broker_test_run": "run-1",
 }
+# Development need exclusions (ingest/holdout_exclusions.py) a contract names in the tests:
+# synthetic statements, no TEST text; one the gate rejected before its lock, one that became
+# READY in its run
+FAKE_EXCLUSIONS = (
+    hxe.Exclusion(
+        "run-1/G01-a1", "A synthetic firm asks whether an old development rule binds it.", False
+    ),
+    hxe.Exclusion(
+        "run-2/G02-a2",
+        "A synthetic lender asks which development report is due first.",
+        True,
+        "a" * 64,
+    ),
+)
+
+
+def fake_sources(
+    entries: tuple[hxe.Exclusion, ...] = FAKE_EXCLUSIONS,
+) -> tuple[hxe.SourceState, ...]:
+    """A synthetic inventory: one state per aborted run the contract names (its contract, the
+    public one), with the counts of these entries."""
+    from ingest import holdout_contract as hc
+
+    states = []
+    for n, run in enumerate(hc.ABORTED_RUNS, start=1):
+        label = f"run-{n}"
+        own = [e for e in entries if e.key.split("/")[0] == label]
+        states.append(
+            hxe.SourceState(
+                label,
+                str(run["contract_sha256"]),
+                10 + n,
+                hashlib.sha256(label.encode()).hexdigest(),
+                "stopped",
+                len(own),
+                sum(e.locked for e in own),
+                sum(e.record_sha256 is not None for e in own),
+            )
+        )
+    return tuple(states)
+
+
+def write_exclusions(
+    provenance: Path,
+    entries: tuple[hxe.Exclusion, ...] = FAKE_EXCLUSIONS,
+    sources: tuple[hxe.SourceState, ...] | None = None,
+) -> dict[str, Any]:
+    """The private exclusions file of a TEST provenance, written once as the CLI writes it, and
+    the identity a contract records of it."""
+    provenance.mkdir(parents=True, exist_ok=True)
+    found = fake_sources(entries) if sources is None else sources
+    return hxe.write(provenance / hxe.FILE, entries, found)
 
 
 class Crash(BaseException):
@@ -248,9 +301,12 @@ def misbind(
 ) -> list[dict[str, Any]]:
     """A judge's entries with their identity broken one way, the way a model could break it:
     another valid id, no id, an id nobody gave, an entry twice, a node of the same act with other
-    numbers written beside the right id, or the right ids in another order."""
+    numbers written beside the right id, or the right ids in another order; or left intact, for
+    an execution before the one that breaks it."""
     entries = [dict(e) for e in entries]
     first = entries[0]
+    if how == "intact":
+        return entries
     if how == "wrong":
         others = [i for i in node_of if i != first["item_id"]]
         first["item_id"] = others[0] if others else "C-" + "f" * 12
@@ -271,6 +327,36 @@ def misbind(
     else:
         raise AssertionError(how)
     return entries
+
+
+def eligible(base: Mapping[str, Any], node: str) -> bool:
+    """A node that can be judged, computed here from the corpus alone: one with its own text,
+    outside the excluded PSD2 articles."""
+    act, _, path = node.partition(":")
+    text = base["texts"].get((act, path))
+    return bool(text and text.strip()) and not (
+        act == "PSD2" and path.split(".")[0] in base["excluded"]
+    )
+
+
+def rule_a(
+    base: Mapping[str, Any],
+    listed: Iterable[str] = (),
+    full: Iterable[str] = (),
+    named: Iterable[str] = (),
+) -> set[str]:
+    """Exposure v2's rule A, computed here from the corpus alone, not by
+    ingest/holdout_judging.py: the nodes listed, the nodes received in full or named by a snippet
+    that can be judged, and every ancestor of any of them that can be judged."""
+    found = set(listed) | {n for n in [*full, *named] if eligible(base, n)}
+    for node in list(found):
+        act, _, path = node.partition(":")
+        parts = path.split(".")
+        for i in range(1, len(parts)):
+            ancestor = f"{act}:{'.'.join(parts[:i])}"
+            if eligible(base, ancestor):
+                found.add(ancestor)
+    return found
 
 
 def _refs_in(packet: str, marker: str) -> list[str]:

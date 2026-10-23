@@ -151,14 +151,17 @@ def test_each_rejection_records_what_it_repeated():
         "test_existing",
     )
     assert hl.gate_outcome("uncertain", None) == ("overlap_uncertain", None)
+    # a development need of an earlier, aborted construction (D-066)
+    assert hl.gate_outcome("paraphrase", "DEVELOPMENT") == ("overlap_paraphrase", "development")
     with pytest.raises(hl.LedgerError, match="names no existing need"):
         hl.gate_outcome("same_legal_question", None)
-    grid = _grid([_cell("G01"), _cell("G02"), _cell("G03")])
+    grid = _grid([_cell("G01"), _cell("G02"), _cell("G03"), _cell("G04")])
     ledger = hl.Ledger()
     for cell, verdict, source in (
         ("G01", "paraphrase", "DEV"),
         ("G02", "same_legal_question", "TEST"),
         ("G03", "uncertain", None),
+        ("G04", "same_rule_superficial_change", "DEVELOPMENT"),
     ):
         ledger.open_attempt(cell)
         outcome, against = hl.gate_outcome(verdict, source)
@@ -167,6 +170,7 @@ def test_each_rejection_records_what_it_repeated():
         "overlap_dev": 1,
         "overlap_test_existing": 1,
         "overlap_uncertain": 1,
+        "overlap_development": 1,
     }
     ledger.open_attempt("G01")
     with pytest.raises(hl.LedgerError, match="must say what it repeats"):

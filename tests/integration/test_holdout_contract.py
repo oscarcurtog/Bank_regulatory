@@ -15,11 +15,12 @@ import pytest
 from ingest import benchmark as bm
 from ingest import holdout as ho
 from ingest import holdout_contract as hc
+from ingest import holdout_exclusions as hxe
 from ingest import holdout_isolation as hi
 from ingest import holdout_pipeline as hpl
 from ingest import holdout_roles as hr
 from ingest import holdout_state as hs
-from tests.holdout_fakes import FAKE_CERTIFICATION, FAKE_RUNTIME
+from tests.holdout_fakes import FAKE_CERTIFICATION, FAKE_RUNTIME, write_exclusions
 
 
 def _history_reaches_e() -> bool:
@@ -46,6 +47,7 @@ def contract(tmp_path_factory):
         runtime["claude_runtime"],
         runtime["mlx_runtime"],
         FAKE_CERTIFICATION,
+        write_exclusions(folder),
     )
     pinned = json.loads(hc.CONTRACT_PATH.read_text(encoding="utf-8"))
     with pytest.MonkeyPatch.context() as patch:
@@ -166,7 +168,17 @@ def test_the_contract_carries_every_new_identity_and_no_account(contract):
     assert (admissible["kind"], admissible["retriable"]) == ("diagnostic_only", False)
     assert "diagnostic_defects" in admissible["rule"] and "not agreement" in admissible["rule"]
     # the constructions this contract replaces, aborted, and why
-    first, second, third, fourth, fifth = contract["aborted_runs"]
+    first, second, third, fourth, fifth, sixth = contract["aborted_runs"]
+    # run 6: development evidence only, and exposure v2 declared as designed after its stop
+    assert sixth["status"] == "ABORTED_PROTOCOL_DEVELOPMENT_RUN"
+    assert sixth["contract_sha256"].startswith("eac1d3eb66f5")
+    assert sixth["public_commit"] == "30ffb930007dfec13c52778842caf8032c9e8f2a"
+    assert sixth["ready_needs"] == 2 and "development evidence only" in sixth["reason"]
+    assert "exposure v2, rule A, designed after this run's stop" in sixth["change"]
+    assert "implemented and evaluated before any freeze and not adopted" in sixth["change"]
+    assert (
+        "omission threshold >= 1" in sixth["change"] and "Three normal searches" in sixth["change"]
+    )
     assert fifth["status"] == "ABORTED_PROTOCOL_DEVELOPMENT_RUN"
     assert fifth["contract_sha256"].startswith("b824db37fb9e")
     assert fifth["public_commit"] == "808762e078f1e96a3f71a02c0b560b447332fca7"
@@ -196,6 +208,7 @@ def test_the_contract_carries_every_new_identity_and_no_account(contract):
             {**claude, "organization_sha256": "x"},
             mlx,
             FAKE_CERTIFICATION,
+            {"schema": hxe.SCHEMA, "sha256": "e" * 64, "count": 0},
         )
 
 
@@ -327,9 +340,34 @@ def test_the_clean_restart_amends_nothing_and_freezes_its_procedure(contract):
     discovery = contract["construction"]["evidence_discovery"]
     assert discovery["searches"] == ["search_1", "search_2", "search_3"]
     assert discovery["audit_search"] == {"stage": "audit_search", "cells": 12}
-    assert (
-        ">= 1" in discovery["audit_threshold"] and "exposure pool" in discovery["audit_threshold"]
-    )
+    # exposure v2, rule A (D-066): the policy, its paths, the audit's symmetry and its stop
+    assert discovery["exposure_policy"] == "exposure.v2"
+    assert discovery["exposure_paths"] == [
+        "listed",
+        "full_text",
+        "snippet_follow_up",
+        "ancestor_closure",
+    ]
+    assert "never the snippet" in discovery["exposure_pool"]
+    assert "never from a grade" in discovery["exposure_pool"]
+    assert "No article is expanded" in discovery["exposure_pool"]
+    # the gatekeeper reads overlap_gate.v2, the four kinds of reference; v1 is history only
+    templates = contract["construction"]["template_files"]
+    assert "overlap_gate.v2" in templates and "overlap_gate.v1" not in templates
+    assert hr.contracts_record()["gatekeeper"]["template"] == "overlap_gate.v2"
+    threshold = discovery["audit_threshold"]
+    assert ">= 1" in threshold and "by the same rules" in threshold
+    assert "fully closed normal pool" in threshold and "no next cell" in threshold
+    assert set(discovery["review_metrics"]) == {
+        "third_search_incremental_g2",
+        "per_search_recall_g2",
+        "omission_audit",
+    }
+    assert all("gate" not in text for text in discovery["review_metrics"].values())
+    # the development need exclusions: identity and count, never a statement
+    identity = contract["construction"]["development_need_exclusions"]
+    assert set(identity) == {"schema", "sha256", "count"} and identity["count"] == 2
+    assert "ingest/holdout_exclusions.py" in contract["construction"]["code_sha256"]
     assert discovery["pool_batches"] == {
         "max_nodes": 34,
         "max_tokens": 9773,

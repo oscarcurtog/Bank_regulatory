@@ -11,6 +11,8 @@ became final, never a text written afterwards by whoever orchestrates.
 from __future__ import annotations
 
 import json
+import statistics
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -98,18 +100,78 @@ def exposure(log: Sequence[Mapping[str, Any]]) -> list[str]:
 
 
 def poolable(node: str, texts: Mapping[bm.NodeKey, str], excluded: frozenset[str]) -> bool:
-    """A node received in full that can be judged: one of the corpus with its own, non-empty
-    text (a structural parent whose text is all in its children has nothing to judge), outside
-    the PSD2 articles excluded from TEST."""
+    """A node that can be judged: one of the corpus with its own, non-empty text (a structural
+    parent whose text is all in its children has nothing to judge), outside the PSD2 articles
+    excluded from TEST."""
     act, _, path = node.partition(":")
     own = texts.get((act, path))
     return bool(own and own.strip()) and not (act == "PSD2" and path.split(".")[0] in excluded)
 
 
+# Exposure v2, rule A (config/holdout/evidence-discovery.md, D-066). The operation whose pages
+# name a node by a snippet of its text: the node is followed up, never judged from the snippet
+SNIPPET_OPS = ("search",)
+EXPOSURE_POLICY = "exposure.v2"
+# How exposure v2 brings a node into one search's reach, in the order its primary path is named:
+# the search listed it; a page of the broker gave it in full; a `search` page named it; it is an
+# ancestor, with its own text, of a node reached. No path expands an article
+EXPOSURE_PATHS = ("listed", "full_text", "snippet_follow_up", "ancestor_closure")
+
+
+def snippets(log: Sequence[Mapping[str, Any]]) -> list[str]:
+    """Every node a `search` page named to one search, sorted: the ids on those pages (each log
+    entry's own record of its page), read from the broker's log like the exposure. A snippet is
+    never evidence: the node it names enters the pool, and its judge reads the node's whole own
+    text from the frozen corpus."""
+    return sorted({n for e in log if e["op"] in SNIPPET_OPS for n in e.get("nodes", [])})
+
+
+def ancestors(node: str) -> list[str]:
+    """A node's ancestors, outermost first: the prefixes of its path by whole segments, in its
+    own act (DORA:10.1's is DORA:10, never DORA:1 nor MiCA:10)."""
+    act, _, path = node.partition(":")
+    parts = path.split(".")
+    return [f"{act}:{'.'.join(parts[:i])}" for i in range(1, len(parts))]
+
+
+def reach(
+    listed: Sequence[str],
+    full: Sequence[str],
+    named: Sequence[str],
+    texts: Mapping[bm.NodeKey, str],
+    excluded: frozenset[str],
+) -> dict[str, list[str]]:
+    """One search's exposure v2 (rule A): every node it reaches, with the paths that bring it
+    (EXPOSURE_PATHS). It depends on that search's listing, its broker log (full: the nodes it
+    received in full; named: the nodes its `search` pages named) and the frozen corpus alone:
+    never on a grade, a rationale, an audit or another search. Every node but a listed one is
+    a node that can be judged (poolable); a listed node is the search's own, admitted already.
+    No article is expanded: an article's own node, listed or reached, is one node like any
+    other."""
+    found: dict[str, set[str]] = {}
+
+    def add(node: str, path: str) -> None:
+        found.setdefault(node, set()).add(path)
+
+    for node in listed:
+        add(node, "listed")
+    for node in full:
+        if poolable(node, texts, excluded):
+            add(node, "full_text")
+    for node in named:
+        if poolable(node, texts, excluded):
+            add(node, "snippet_follow_up")
+    for node in list(found):
+        for ancestor in ancestors(node):
+            if poolable(ancestor, texts, excluded):
+                add(ancestor, "ancestor_closure")
+    return {n: [p for p in EXPOSURE_PATHS if p in found[n]] for n in sorted(found)}
+
+
 @dataclass(frozen=True)
 class Discovery:
     """The evidence of one need after its three blind searches (config/holdout/
-    evidence-discovery.md).
+    evidence-discovery.md, exposure v2).
 
     listed: every node a search listed, once (by its exact ACT:path), in the order first listed;
     the caller puts them in document order.
@@ -121,8 +183,9 @@ class Discovery:
     first.
     listed_by: which searches listed each node.
     exposed_by: which searches received each node in full (an `article` or `nodes` page).
-    pool: the exposure pool: every node a search received in full or listed, that can be
-    judged (poolable). No model decides that a node enters it.
+    reached: each pool node's paths (EXPOSURE_PATHS), by the searches that reached it.
+    pool: the exposure pool: the union of the three searches' exposure v2 (reach). No model
+    decides that a node enters it.
     unlisted: the pool's nodes no search listed: each has no first judgment (an abstention),
     and is judged explicitly by judge B's pool variant.
     answerabilities: each search's answerability, as provenance."""
@@ -135,34 +198,50 @@ class Discovery:
     pool: list[str]
     unlisted: list[str]
     answerabilities: dict[str, str]
+    reached: dict[str, dict[str, list[str]]] = field(default_factory=dict)
 
     def record(self) -> dict[str, Any]:
-        """Counts, and which searches listed and received each node."""
+        """Counts, which searches listed and received each node, and how each pool node was
+        reached: by which searches and by which paths."""
         searches = list(self.answerabilities)
+        paths = {
+            n: [p for p in EXPOSURE_PATHS if any(p in v for v in by.values())]
+            for n, by in self.reached.items()
+        }
         return {
+            "exposure_policy": EXPOSURE_POLICY,
             "searches": searches,
             "listed": {s: sum(s in v for v in self.listed_by.values()) for s in searches},
             "exposed": {s: sum(s in v for v in self.exposed_by.values()) for s in searches},
+            "reached": {s: sum(s in by for by in self.reached.values()) for s in searches},
             "listed_union": len(self.listed),
             "listed_by_one": sum(len(v) == 1 for v in self.listed_by.values()),
             "pool": len(self.pool),
             "unlisted": len(self.unlisted),
             "answerabilities_agree": len(set(self.answerabilities.values())) == 1,
+            # pool nodes by the paths that brought them, and those that only a path new in
+            # exposure v2 brought (neither listed nor received in full)
+            "by_path": {p: sum(p in v for v in paths.values()) for p in EXPOSURE_PATHS},
+            "beyond_full_text": sum(not {"listed", "full_text"} & set(v) for v in paths.values()),
             "listed_by": {n: list(v) for n, v in sorted(self.listed_by.items())},
             "exposed_by": {n: list(v) for n, v in sorted(self.exposed_by.items())},
+            "reached_by": {n: list(by) for n, by in sorted(self.reached.items())},
+            "paths": dict(sorted(paths.items())),
         }
 
 
 def exposure_pool(
     files: Mapping[str, Mapping[str, Any]],
     exposures: Mapping[str, Sequence[str]],
+    named: Mapping[str, Sequence[str]],
     texts: Mapping[bm.NodeKey, str],
     excluded: frozenset[str],
 ) -> Discovery:
     """The three searches' candidates joined, with the first judgment of each, and the exposure
-    pool. files and exposures map each search to its admitted answer and to the nodes it
-    received in full, in the search order. Each file is admitted already, with no declared
-    problem (ingest/holdout_admission.py search_problems)."""
+    pool v2: the union of each search's reach. files, exposures and named map each search, in
+    the search order, to its admitted answer, the nodes it received in full and the nodes its
+    `search` pages named. Each file is admitted already, with no declared problem
+    (ingest/holdout_admission.py search_problems)."""
     order = list(files)
     first: dict[str, dict[str, Any]] = {}
     scope: dict[str, list[str]] = {}
@@ -186,40 +265,55 @@ def exposure_pool(
         for node in exposures.get(stage, []):
             if poolable(node, texts, excluded) and stage not in exposed_by.get(node, []):
                 exposed_by.setdefault(node, []).append(stage)
-    pool = sorted({*listed, *exposed_by})
+    reached: dict[str, dict[str, list[str]]] = {}
+    for stage in order:
+        own = [c["node"] for c in files[stage]["candidates"]]
+        found = reach(own, exposures.get(stage, []), named.get(stage, []), texts, excluded)
+        for node, paths in found.items():
+            reached.setdefault(node, {})[stage] = paths
+    pool = sorted(reached)
     unlisted = [n for n in pool if n not in listed_by]
     answerabilities = {stage: str(files[stage]["answerability"]) for stage in order}
-    return Discovery(listed, first, scope, listed_by, exposed_by, pool, unlisted, answerabilities)
+    return Discovery(
+        listed, first, scope, listed_by, exposed_by, pool, unlisted, answerabilities, reached
+    )
 
 
 @dataclass(frozen=True)
 class AuditNodes:
-    """What the omission audit's search brings outside the normal exposure pool.
+    """What the omission audit's search brings outside the normal exposure pool v2.
 
     listed: the new nodes it listed, with its own label as their first judgment.
     scope: the provisions that fix each of those nodes' scope, from its answer.
-    exposed: the new nodes it received in full and did not list (no first judgment).
+    exposed: the other new nodes of its own exposure v2, which it did not list: received in
+    full, named on a `search` page, or an ancestor with its own text of a node it reached (no
+    first judgment).
     on_pool: its labels on nodes already in the pool: provenance only, never a label of the
-    need, a stop or a rejection (an audit judgment discrepancy, counted)."""
+    need, a stop or a rejection (an audit judgment discrepancy, counted).
+    sources: each new node's paths in the audit search's exposure v2 (EXPOSURE_PATHS)."""
 
     listed: dict[str, dict[str, Any]]
     scope: dict[str, list[str]]
     exposed: list[str]
     on_pool: dict[str, dict[str, Any]]
+    sources: dict[str, list[str]] = field(default_factory=dict)
 
 
 def audit_nodes(
     audit_file: Mapping[str, Any],
     audit_exposure: Sequence[str],
+    audit_named: Sequence[str],
     pool: Sequence[str],
     texts: Mapping[bm.NodeKey, str],
     excluded: frozenset[str],
 ) -> AuditNodes:
-    """The audit search's nodes, split by the normal exposure pool: a node is new for the
-    omission audit when the audit search listed it or received it in full, and it was in no
-    normal search's exposure pool."""
+    """The audit search's nodes, split by the normal exposure pool v2: a node is new for the
+    omission audit when it is in the audit search's own exposure v2 (reach, the same rules as a
+    normal search's) and in no normal search's, the fully closed normal pool."""
     labels = a_judgments(audit_file)
     in_pool = set(pool)
+    own = [c["node"] for c in audit_file["candidates"]]
+    reached = reach(own, audit_exposure, audit_named, texts, excluded)
     listed: dict[str, dict[str, Any]] = {}
     scope: dict[str, list[str]] = {}
     on_pool: dict[str, dict[str, Any]] = {}
@@ -230,14 +324,9 @@ def audit_nodes(
         else:
             listed[node] = labels[node]
             scope[node] = list(c.get("scope", []))
-    exposed = sorted(
-        {
-            n
-            for n in audit_exposure
-            if poolable(n, texts, excluded) and n not in in_pool and n not in listed
-        }
-    )
-    return AuditNodes(listed, scope, exposed, on_pool)
+    exposed = sorted(n for n in reached if n not in in_pool and n not in listed)
+    sources = {n: reached[n] for n in sorted([*listed, *exposed])}
+    return AuditNodes(listed, scope, exposed, on_pool, sources)
 
 
 def pool_judgments(data: Mapping[str, Any], ids: Mapping[str, str]) -> dict[str, dict[str, Any]]:
@@ -288,6 +377,105 @@ def diagnostic_set(
         if (final_grades.get(node) or 0) >= 1 or any(positive_or_ambiguous(j) for j in labels):
             out.add(node)
     return sorted(out)
+
+
+# ---------------------------------------------------------------------------
+# the review metrics of D-061, defined operationally (D-066): measurements reported at every
+# checkpoint and at the freeze, never a gate. The one completeness gate is the omission audit
+# ---------------------------------------------------------------------------
+
+NORMAL_SEARCH_ORDER = ("search_1", "search_2", "search_3")
+# D-061's legacy threshold: a rate above it raises a review flag, never a gate, a replacement
+# of a need or a change of the number of searches during a run
+THIRD_SEARCH_REVIEW_FLAG = 0.07
+# D-061's legacy reference: per-search recall values below it are counted, never a pass or fail
+PER_SEARCH_RECALL_REFERENCE = 0.90
+# the omission audit's new nodes by the first path that brought them into its exposure v2
+AUDIT_SOURCE_CATEGORY = {
+    "listed": "listed",
+    "full_text": "other_full_text_reach",
+    "snippet_follow_up": "snippet_follow_up",
+    "ancestor_closure": "ancestor_closure",
+}
+
+
+def review_metrics(needs: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """D-061's two search metrics over the final needs, each one given as {"reached_by": node ->
+    the normal searches whose exposure v2 holds it, "grades": node -> its final grade} (the
+    non-ambiguous qrels of a need that completed the three searches and its adjudication).
+
+    third_search_incremental_g2: needs where search_3 is the first normal search to reach a
+    node of final grade >= 2 that neither search_1 nor search_2 reached, over every such need;
+    a rate above THIRD_SEARCH_REVIEW_FLAG is a review flag only.
+    per_search_recall_g2: for each normal search of each need with at least one node of final
+    grade >= 2, the share of those nodes that search reached; its mean, median, minimum, how
+    many values are below PER_SEARCH_RECALL_REFERENCE, and its denominator (the pairs)."""
+    numerator = 0
+    values: list[float] = []
+    without_g2 = 0
+    for need in needs:
+        reached = need["reached_by"]
+        g2 = [n for n, g in need["grades"].items() if (g or 0) >= 2]
+        if not g2:
+            without_g2 += 1
+        earlier = set(NORMAL_SEARCH_ORDER[:2])
+        if any(
+            "search_3" in reached.get(n, []) and not earlier & set(reached.get(n, [])) for n in g2
+        ):
+            numerator += 1
+        for search in NORMAL_SEARCH_ORDER:
+            if g2:
+                values.append(sum(search in reached.get(n, []) for n in g2) / len(g2))
+    denominator = len(needs)
+    rate = numerator / denominator if denominator else None
+    return {
+        "third_search_incremental_g2": {
+            "numerator": numerator,
+            "denominator": denominator,
+            "rate": rate,
+            "review_flag": rate is not None and rate > THIRD_SEARCH_REVIEW_FLAG,
+            "review_flag_threshold": THIRD_SEARCH_REVIEW_FLAG,
+        },
+        "per_search_recall_g2": {
+            "denominator": len(values),
+            "needs_without_grade_2": without_g2,
+            "mean": statistics.fmean(values) if values else None,
+            "median": statistics.median(values) if values else None,
+            "min": min(values) if values else None,
+            "below_reference": sum(v < PER_SEARCH_RECALL_REFERENCE for v in values),
+            "reference": PER_SEARCH_RECALL_REFERENCE,
+        },
+    }
+
+
+def audit_review(entries: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """The omission audit's new nodes, counted by their final grade and by the first path that
+    brought them into the audit search's exposure v2 (AUDIT_SOURCE_CATEGORY). entries: the
+    audits' records, each {"additional_final_grades": node -> grade or None (unjudged),
+    "sources": node -> paths}. Counts only: a grade >= 1 has stopped the construction already.
+    A node with no recorded path, or a path no category names, is counted as unknown and never
+    folded into another category: unknown_paths says which (a path's name, or "<none>")."""
+
+    def bucket(grade: int | None) -> str:
+        if grade is None:
+            return "unjudged"
+        return "grade_0" if grade == 0 else ("grade_1" if grade == 1 else "grade_2_or_more")
+
+    keys = ("audit_new", "grade_0", "grade_1", "grade_2_or_more", "unjudged")
+    total = dict.fromkeys(keys, 0)
+    by_category = {c: dict.fromkeys(keys, 0) for c in [*AUDIT_SOURCE_CATEGORY.values(), "unknown"]}
+    unknown: Counter[str] = Counter()
+    for entry in entries:
+        sources = entry.get("sources", {})
+        for node, grade in entry["additional_final_grades"].items():
+            paths = sources.get(node) or []
+            category = AUDIT_SOURCE_CATEGORY.get(paths[0], "unknown") if paths else "unknown"
+            if category == "unknown":
+                unknown[paths[0] if paths else "<none>"] += 1
+            for where in (total, by_category[category]):
+                where["audit_new"] += 1
+                where[bucket(grade)] += 1
+    return {**total, "by_category": by_category, "unknown_paths": dict(sorted(unknown.items()))}
 
 
 def b_judgments(data: Mapping[str, Any], ids: Mapping[str, str]) -> dict[str, dict[str, Any]]:

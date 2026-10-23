@@ -21,11 +21,18 @@ from ingest import holdout_broker as hb
 from ingest import holdout_certification as hcert
 from ingest import holdout_contract as hc
 from ingest import holdout_controller as hct
+from ingest import holdout_exclusions as hxe
 from ingest import holdout_isolation as hi
 from ingest import holdout_runtime as hrt
 from ingest import holdout_state as hs
 from tests import certification_fakes as cf
-from tests.holdout_fakes import FAKE_EFFECTIVE, FAKE_MLX
+from tests.holdout_fakes import (
+    FAKE_EFFECTIVE,
+    FAKE_EXCLUSIONS,
+    FAKE_MLX,
+    fake_sources,
+    write_exclusions,
+)
 
 BINARY, SHA, CERTIFICATION = cf.BINARY, cf.SHA, cf.CERTIFICATION
 
@@ -709,8 +716,9 @@ def test_contract_l_two_certifications_cannot_be_confused(tmp_path, repo, monkey
 
 
 # what pre-authoring-freeze is run with here: a TEST folder of its own, with run 6's kind of
-# provenance (its own runtime pin, Gate 1 and broker records) as a decoy; the contract's code
-# record stood in (it needs the history back to E's DEV result) and its file captured
+# provenance (its own runtime pin, Gate 1 and broker records) as a decoy and the private
+# development need exclusions; the contract's code record stood in (it needs the history back
+# to E's DEV result) and its file captured
 DECOY = {
     "runtime.json": {"path": "/decoy", "version": "2.1.177", "sha256": "d" * 64, "model": "x"},
     "gate1.json": {"gate_1": "PASS", "run": "run-4", "model": "x"},
@@ -718,7 +726,10 @@ DECOY = {
 }
 
 
-def freeze_contract(module, test: Path, certification: str, digest: str, monkeypatch) -> dict:
+def freeze_contract(
+    module, test: Path, certification: str, digest: str, monkeypatch, typed: str | None = None
+) -> dict:
+    """pre-authoring-freeze, with the exclusions' SHA-256 typed again: the file's, or typed."""
     written: list[dict] = []
     pinned = json.loads(hc.CONTRACT_PATH.read_text(encoding="utf-8"))
     monkeypatch.setattr(hc, "code_identity", lambda repo: pinned["code"])
@@ -730,7 +741,9 @@ def freeze_contract(module, test: Path, certification: str, digest: str, monkeyp
     monkeypatch.setattr(hc, "write", write)
     monkeypatch.setattr(hc, "verify", lambda digest: None)
     monkeypatch.setattr(hrt, "mlx_runtime", lambda: FAKE_MLX)
-    code = module.pre_authoring_freeze(test, certification, digest)
+    if typed is None:
+        typed = hxe.identity(test / "provenance" / hxe.FILE)["sha256"]
+    code = module.pre_authoring_freeze(test, certification, digest, typed)
     return {"code": code, "contract": written[0] if written else None}
 
 
@@ -744,6 +757,7 @@ def test_folder(tmp_path):
     ho.write_json(test / "provenance" / "frozen_templates.json", {"files": {}})
     for name, data in DECOY.items():
         ho.write_json(test / "provenance" / name, data)
+    write_exclusions(test / "provenance")
     return test
 
 
@@ -776,6 +790,9 @@ def test_contract_k_reads_the_named_certification_never_tests_own_provenance(
     )
     with pytest.raises(SystemExit):
         module.main(["--dir", str(test_folder), "pre-authoring-freeze"])  # no certification
+    named = ["--certification", CERTIFICATION, "--certification-manifest", digest]
+    with pytest.raises(SystemExit):  # no development need exclusions typed again
+        module.main(["--dir", str(test_folder), "pre-authoring-freeze", *named])
 
 
 def test_contract_m_changing_run_6_provenance_changes_nothing(
@@ -789,6 +806,39 @@ def test_contract_m_changing_run_6_provenance_changes_nothing(
     second = freeze_contract(module, test_folder, CERTIFICATION, digest, monkeypatch)["contract"]
     for key in ("certification", "claude_runtime"):
         assert first["construction"][key] == second["construction"][key]
+
+
+def test_contract_records_the_development_exclusions_by_identity_alone(
+    tmp_path, repo, monkeypatch, test_folder
+):
+    """D-066: the contract records the private exclusions' schema, SHA-256 and count, never a
+    statement or a key; a SHA-256 typed again that is not the file's, or no file, writes
+    nothing."""
+    module, _, digest = certified_for_contract(tmp_path, repo, monkeypatch)
+    identity = hxe.identity(test_folder / "provenance" / hxe.FILE)
+    before = files(test_folder)
+    refused = freeze_contract(module, test_folder, CERTIFICATION, digest, monkeypatch, "0" * 64)
+    assert refused == {"code": 1, "contract": None} and files(test_folder) == before
+    made = freeze_contract(module, test_folder, CERTIFICATION, digest, monkeypatch)
+    assert made["code"] == 0
+    construction = made["contract"]["construction"]
+    assert construction["development_need_exclusions"] == identity
+    assert identity == {"schema": hxe.SCHEMA, "sha256": identity["sha256"], "count": 2}
+    text = json.dumps(made["contract"], ensure_ascii=False)
+    assert not any(e.statement in text or e.key in text for e in FAKE_EXCLUSIONS)
+    (test_folder / "provenance" / hxe.FILE).unlink()
+    gone = freeze_contract(
+        module, test_folder, CERTIFICATION, digest, monkeypatch, identity["sha256"]
+    )
+    assert gone == {"code": 1, "contract": None}
+    # exclusions that were not collected from every aborted run the contract names: no contract
+    one = (FAKE_EXCLUSIONS[0],)
+    write_exclusions(test_folder / "provenance", one, fake_sources(one)[:-1])  # no run 6
+    typed = hxe.identity(test_folder / "provenance" / hxe.FILE)["sha256"]
+    short = freeze_contract(module, test_folder, CERTIFICATION, digest, monkeypatch, typed)
+    assert short == {"code": 1, "contract": None}
+    with pytest.raises(hc.ContractError, match="identity alone"):
+        hc.construction(test_folder / ho.GRID_FILE, {}, {}, {}, {}, {}, {**identity, "entries": []})
 
 
 # ---------------------------------------------------------------------------

@@ -1,9 +1,9 @@
 """Evidence discovery for every TEST need (config/holdout/evidence-discovery.md): three blind,
-independent searches, their listed candidates joined and the exposure pool built from what they
-received in full; the omission audit's search in its 12 cells; each search's declared problem
-with its transition; the audit bound to the attempt that becomes READY; the diagnostic's
-preflight; and the failures nothing else classifies. On the real grid and corpus with synthetic
-replies (tests/holdout_fakes.py); no model runs."""
+independent searches, their listed candidates joined and the exposure pool v2 built from their
+listings, their broker logs and the corpus (D-066); the omission audit's search in its 12
+cells; each search's declared problem with its transition; the audit bound to the attempt that
+becomes READY; the diagnostic's preflight; and the failures nothing else classifies. On the real
+grid and corpus with synthetic replies (tests/holdout_fakes.py); no model runs."""
 
 from __future__ import annotations
 
@@ -27,6 +27,7 @@ from tests.holdout_fakes import (
     load_base,
     make,
     reopen,
+    rule_a,
 )
 
 pytestmark = pytest.mark.corpus
@@ -113,7 +114,7 @@ def test_the_union_keeps_each_node_once_with_its_first_judgment_and_pools_what_w
         "search_2": ["MiCA:149.1", excluded, "MiCA:999.9"],  # excluded, and no such node
         "search_3": [],
     }
-    found = hj.exposure_pool(files, exposures, base["texts"], base["excluded"])
+    found = hj.exposure_pool(files, exposures, {}, base["texts"], base["excluded"])
     assert found.listed == ["MiCA:149.2", "DORA:64", "MiCA:143.2", "MiCA:143.3"]
     # the first search that listed a node gives its first judgment, in the order 1, 2, 3
     assert found.first["MiCA:149.2"]["grade"] == 3
@@ -129,23 +130,22 @@ def test_the_union_keeps_each_node_once_with_its_first_judgment_and_pools_what_w
     }
     # what a search received in full enters the pool, listed or not, if it can be judged
     assert found.exposed_by == {"MiCA:149.2": ["search_1"], "MiCA:149.1": ["search_1", "search_2"]}
+    assert excluded not in found.pool and "MiCA:999.9" not in found.pool
+    # rule A, computed here: what was listed or received in full and can be judged, with the
+    # ancestors that can be judged; no other node of the articles listed
+    expected = rule_a(base, found.listed, [*exposures["search_1"], *exposures["search_2"]])
+    assert set(found.pool) == expected == {*found.listed, "MiCA:149.1"}
     assert found.unlisted == ["MiCA:149.1"]
-    assert found.pool == sorted([*found.listed, "MiCA:149.1"])
     record = found.record()
     assert (
         record["listed_union"],
         record["listed_by_one"],
         record["pool"],
         record["unlisted"],
-    ) == (
-        4,
-        2,
-        5,
-        1,
-    )
+    ) == (4, 2, 5, 1)
     assert record["answerabilities_agree"] is False
     # the same inputs, the same pool: nothing in it depends on anything else
-    assert hj.exposure_pool(files, exposures, base["texts"], base["excluded"]) == found
+    assert hj.exposure_pool(files, exposures, {}, base["texts"], base["excluded"]) == found
 
 
 # ---------------------------------------------------------------------------
@@ -249,7 +249,11 @@ def test_a_node_new_to_the_audit_adjudicated_0_is_a_diagnostic(base, audited, tm
     graded = {f"{q.act}:{q.path}": q.grade for q in ready.qrels}
     assert EXTRA_NODE not in graded  # a diagnostic of the audit, no qrel of the need
     logged = [o for o in pipeline.omission_log if o["cell_id"] == audited]
+    # by exposure v2's rules, the audit's listing closes its article: EXTRA_NODE and the other
+    # nodes of its article, none in the normal pool, all new and all graded 0 here
+    # rule A: the audit's listing expands no article; EXTRA_NODE alone is new
     assert logged[0]["additional_final_grades"] == {EXTRA_NODE: 0}
+    assert logged[0]["sources"] == {EXTRA_NODE: ["listed"]}
     report = pipeline.report()["omission_audit"]
     assert (report["cells"], report["grade_0_additions"], report["attempts_audited"]) == (1, 1, 1)
     assert pipeline.progress_problems([audited]) == []

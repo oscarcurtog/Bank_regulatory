@@ -138,7 +138,7 @@ def statement_problems(value: Any) -> list[str]:
 
 
 def gate_problems(value: Any, shown: Sequence[str]) -> list[str]:
-    """A gatekeeper's verdict (overlap_gate.v1), naming only a need it was shown."""
+    """A gatekeeper's verdict (overlap_gate.v2), naming only a need it was shown."""
     if not isinstance(value, Mapping):
         return ["the answer is not an object"]
     verdict = value.get("verdict")
