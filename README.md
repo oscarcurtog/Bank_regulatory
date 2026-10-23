@@ -38,10 +38,10 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   BM25 come out level there, and E could not complete: its frozen reranker ran out of memory on
   long articles
 - **Internal TEST set (S3):** its construction and S4's analysis plan are frozen by content in a
-  pre-authoring contract, committed before any TEST need is written. Five constructions were
-  aborted and are kept as provenance; TEST restarts under one final evidence procedure for every
-  need (three blind searches, and every node one of them read in full judged), and is not built
-  yet
+  pre-authoring contract, committed before any TEST need is written. Six constructions were
+  aborted and are kept as development evidence; TEST restarts under one final evidence procedure
+  for every need (three blind searches, and every node one of them reached judged), and has not
+  started yet
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -445,21 +445,26 @@ TEST set measures the same task on information needs written independently of th
 will evaluate the frozen systems on it by the plan fixed in `config/holdout/s4-analysis-plan.md`.
 A pipeline of isolated model roles builds it (`ingest/holdout_pipeline.py`): contexts with no
 access to the systems, DEV or their results write each need's concept and statement, a separate
-gatekeeper drops what overlaps DEV, judges grade the evidence, and a local Qwen3-8B gives a
-diagnostic. No person reads or approves a statement.
+gatekeeper drops what overlaps DEV or a statement of an earlier, aborted construction (hidden
+references no author sees), judges grade the evidence, and a local Qwen3-8B gives a diagnostic.
+No person reads or approves a statement.
 
 Every need's evidence is found the same way (`config/holdout/evidence-discovery.md`): three
 blind searches, each a fresh isolated context with the same frozen packet, reading the corpus
 only through an evidence broker and seeing nothing of the others. Their listed candidates are
-joined, and every node the broker gave any of them in full enters an exposure pool, listed or
-not: coverage does not depend on what a search chooses to list. A pool node no search listed is
+joined, and every node one of them reached enters an exposure pool, listed or not (exposure v2,
+rule A): every node the broker gave it in full, every node its search pages named, which a judge
+then reads in full from the corpus (never from the snippet), and every ancestor with its own text
+of a node so reached. No article is expanded. Coverage does not depend on what a search chooses
+to list. A pool node no search listed is
 graded blind by judge B's pool variant, in batches of at most 34 nodes and 9,773 tokens; each
 node it is shown needs an explicit grade, and one left out or ungraded is a failure of its
 contract, never a grade 0. A grade
 1 or more, or an ambiguity, gets a second blind judgment, and judge C decides where the two
 differ. In 12 cells fixed before authoring, a fourth blind search is the omission audit: a node
-it listed or read in full outside the pool, adjudicated grade 1 or more, stops the construction
-before the freeze. Its label on a node the pool held already is counted as a discrepancy, never
+its own exposure reaches by the same rules outside the pool, adjudicated grade 1 or more, stops
+the construction before the freeze. Its label on a node the pool held already is counted as a
+discrepancy, never
 used as a label. Every answer is admitted only after its complete contract holds
 (`ingest/holdout_admission.py`), every execution is bounded and its processes verified gone
 (`ingest/holdout_process.py`), and every reachable failure has a classified, durable outcome
@@ -475,11 +480,13 @@ may run START or RESUME and resume again only under its own policy: a technical 
 the invocation just produced, of a kind the protocol retries. It never freezes.
 
 Before the first need, the construction is frozen. `config/holdout/pre-authoring-contract.json`
-(SHA-256 `eac1d3eb66f546c68233185f8cf24b3f6347e6b315c311847d97f23302745e9a`) fixes by content 77 files (the code and
+(SHA-256 `6762368c07204a849413a50a0bb167a84056e82f5638a33bc83df457c73cbdf3`) fixes by content 79 files (the code and
 configs of E, E5, BM25 and the evaluation, the S4 plan, and the construction's code, inputs and
 templates), the corpus snapshot and chunk layer, and the identity of every model runtime: the
 requested and effective Claude model and its binary, and the MLX packages, model files and host
-(macOS version and build, Mac model) of the diagnostic. It holds no account data. The commit
+(macOS version and build, Mac model) of the diagnostic. It also names the sealed Gate 1
+certification it relies on and the identity (SHA-256 and count) of the private development need
+exclusions. It holds no account data. The commit
 that adds it is the public timestamp of that freeze: the launcher (`ingest/holdout_launcher.py`)
 does not start before that commit is recorded, and stops before any model whenever a frozen
 identity differs. `start` and `resume` are the only commands that run a model on TEST, and each
@@ -489,10 +496,13 @@ TEST lives in `data/benchmark/test/`, which is not versioned: a local git histor
 that refuses every push, verified backups outside the repository, and the durable state of the
 construction (SQLite, an append-only event log). What is published is its commitment,
 `data/benchmark/test-commitment.json` (hashes, counts and distributions, no text), pushed before
-S4 runs any system. No TEST need is ready yet.
+S4 runs any system. No TEST need is ready yet: the construction under this contract has not
+started.
 
-Five earlier constructions were aborted and are kept privately, whole, as provenance; nothing
-of them is reused (the contract's `aborted_runs`). The first, under contract
+Six earlier constructions were aborted and are kept privately, whole, as development evidence;
+none of their needs, READY records, qrels, judgments or other outputs is reused (the contract's
+`aborted_runs`). Their admitted statements serve only as hidden references of the overlap gate,
+so that none of them returns as a TEST need. The first, under contract
 `fe18917551276d676a6f3e0c5c20d14ee34f2f4a66c9de18407f264366a858f9` (commit `3226afa`), stopped
 with no ready need on the diagnostic's recovery policy: Qwen3-8B decodes greedily, so executing it
 again could not repair a malformed answer. Its correction makes such an answer leave the
@@ -518,6 +528,15 @@ The fifth, under contract `b824db37fb9e13202f4d3efdc38a706a03c9c56fe030607a39ae5
 node outside the two searches' union, adjudicated grade 1. A structural review of the
 development runs (counts, ids and grades only) found that most omissions were nodes the search
 that missed them had read in full and not listed. Coverage is now mechanical, as described above.
+The sixth, under contract `eac1d3eb66f546c68233185f8cf24b3f6347e6b315c311847d97f23302745e9a`
+(commit `30ffb93`), stopped with 2 ready needs on its omission audit: the audit search reached
+three nodes outside the exposure pool, each adjudicated grade 1. A read-only structural review
+found no controller or bookkeeping defect but a gap in the exposure policy: one node only a
+search snippet had named, and two article lead-ins shown to the judges as the context of their
+children, never as candidates. The exposure policy was revised after that stop, and is declared
+as such: rule A, described above, chosen before any new TEST for its structure and cost, not from
+any grade. A wider rule that took every node of an article a search listed was evaluated and not
+adopted.
 
 DEV keeps its historical qrels, built from one search per need and its listing; TEST's come from
 three searches and their exposure pool. The paired
@@ -638,7 +657,7 @@ retrieval candidate.
   benchmark, whose judgments come from one expert per area, drawn from candidate pools built by
   keyword search; its intervals are wide. E could not be evaluated there on this machine. The
   internal TEST set, which will measure the selection bias of DEV on the same task, has its
-  construction frozen and no ready need yet; five earlier constructions were aborted.
+  construction frozen and has not started; six earlier constructions were aborted.
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4

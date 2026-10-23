@@ -14,7 +14,7 @@
    "sha256": "f0d3279e86f43f4db3808e3c59793631744cb356d5f6b6b10b878bbcfce3da4e",
    "cells": 12
   },
-  "role_contracts_sha256": "93f379d2ad29bc3f277e94e499321ee8a7067a7269910e1f04cfd7ddd4d1069e",
+  "role_contracts_sha256": "287fa092ce4aa56dd0750cf18d0e2ea22004c7b758a36fbbbb798e4828138247",
   "templates_sha256": {
    "attempt_frames.v2": "9b1bc7fd6eebd393b8ae1d164fca5215dcfa28249d04ab2fb35373fcd8d56411",
    "concept_author.v1": "6a4ca085ed7067153ac7d55504c51a98820df66f4e9f5d16095f8409694c1eca",
@@ -24,7 +24,7 @@
    "judge_c.v2": "920a56f060cfcf862bf0f352308b89d5ae111cd569775959640439f22c99d339",
    "judge_d.v2": "0785fcf85e1c5601382116aaa627b52c4b3b6a677c8138205c0c15101bb6b7d6",
    "metadata_adjudicator.v1": "f713c3333a7a3645dc7f16d40badef3fddf3c1dce12f152fb0768ddf65a28574",
-   "overlap_gate.v1": "d17a342aaa8bfcd22321494daf425eee59d6e81efdd2dd9b789570cec1dd4500",
+   "overlap_gate.v2": "6ff043b9ff609355d63dcec11c718b701bdf054bcb0f3e30a1ac71dd260e404e",
    "overlap_gate_evidence.v1": "c663bd2c7487e890dd45a13b9922869231b9e78bcf0e1236a14027acb1fb4bb8",
    "query_variants.v1": "466bcfe8b10993f59c8ce16f0495cb145324d9196bfd197935e297ee807a4a4f",
    "statement_writer.v1": "0502f1f131a43a9c664d5403d82b0b22b218abe61daab0d94cab68ae2b9455a8"
@@ -58,7 +58,14 @@
     "cells": 12
    },
    "first_judgment": "the label of the first of search_1, search_2, search_3 that listed the node; the answerability, search_1's",
-   "exposure_pool": "every node a normal search received in full (an article or nodes page) or listed, that can be judged; a search snippet is not a full reading",
+   "exposure_policy": "exposure.v2",
+   "exposure_paths": [
+    "listed",
+    "full_text",
+    "snippet_follow_up",
+    "ancestor_closure"
+   ],
+   "exposure_pool": "exposure v2, rule A (D-066), the deduplicated union of each normal search's: every node it listed; every node it received in full (an article or nodes page); every node its search pages named, followed up (a judge reads the node's whole own text from the frozen corpus, never the snippet); every ancestor, with its own text, of a node so reached, a candidate of its own. No article is expanded, whatever brought one of its nodes. Every node but a listed one can be judged (own non-empty text, outside the excluded PSD2 articles). Built from the searches' listings, their broker logs and the corpus alone: never from a grade, a rationale, an audit or a qrel",
    "unlisted_nodes": "judge B's pool variant (judge_b_pool.v2), blind, every node shown graded explicitly 0 to 3 with its ambiguity, exactly once (a node left out or ungraded is a failure of the role's contract, never a grade 0); an explicit grade 0 that is not ambiguous is final, a grade >= 1 or an ambiguity gets a second blind judgment by the same contract, and judge C decides where they differ",
    "pool_batches": {
     "max_nodes": 34,
@@ -66,7 +73,17 @@
     "tokenizer": "cl100k_base (ingest/chunks.py)"
    },
    "judge_d_and_diagnostic": "every listed node, every pool node with a final grade >= 1, every pool node any blind judgment graded >= 1 or found ambiguous",
-   "audit_threshold": "a node the audit search listed or received in full, outside the normal exposure pool, adjudicated grade >= 1 stops"
+   "audit_threshold": "a node of the audit search's own exposure v2, by the same rules, outside the fully closed normal pool, adjudicated grade >= 1 stops the whole construction: no replacement, no new attempt of the cell, no next cell",
+   "review_metrics": {
+    "third_search_incremental_g2": "needs where search_3 is the first normal search to reach a node of final grade >= 2 that neither search_1 nor search_2 reached, over the final needs that completed the three searches and their adjudication; a rate above 0.07 is a review flag only",
+    "per_search_recall_g2": "for each normal search and final need with a node of final grade >= 2: the share of those nodes the search's exposure v2 reached; mean, median, minimum, the count below 0.9 and the denominator, never a pass or fail",
+    "omission_audit": "the audit's new nodes by final grade (0, 1, >= 2, unjudged) and by the first path of its exposure v2 that reached them"
+   }
+  },
+  "development_need_exclusions": {
+   "schema": "development-need-exclusions.v2",
+   "sha256": "f2bd9e4f87d7ea00bbf0684b4d13ee8bf03327b11558daf7e4d97aa050c9203e",
+   "count": 84
   },
   "process_deadlines_seconds": {
    "headless": 900,
@@ -84,31 +101,33 @@
   "code_sha256": {
    "ingest/corpus_tools.py": "1b6c4c89497c244c707bb02c1c662342a1b526d0ce85bd3e7be2a192eb2bf718",
    "ingest/holdout.py": "4f35d5d87bab7535b280f305cdab630bd7cb77be10f8be892071c9ca17d1ef0c",
-   "ingest/holdout_admission.py": "67732163804b2697316042aa669d1ece7a089aabc99cc5881cf5b03bd46551d8",
-   "ingest/holdout_broker.py": "373ecf4ca93180e8bd407b688cddd6b086556a50eadfd13701e66ecb288dd40c",
-   "ingest/holdout_checks.py": "bd3b46c44be8eb21ab8160252d6525f74c1cb421eced1161ec2c87e83ecb72e0",
-   "ingest/holdout_contract.py": "9356a0045ffa7969a32ea45d18589fb04a16a62ff7bcfa1726c52d23d24b742c",
+   "ingest/holdout_admission.py": "100cb9e05102df099cc5f968c2069c01c016a33d04d216d20bbd775550319994",
+   "ingest/holdout_broker.py": "25fce12e140faf307a4a001f19b2be7145d2d75b9639716ba646dac0845b68c6",
+   "ingest/holdout_certification.py": "b8b653eecd08693a59f71ef0bbcb9d1e1aabed76aab2763f6303dd39aa5454c7",
+   "ingest/holdout_checks.py": "daa47147132239cd973c99b342593b7cea3b13a16bdfa5753efa746cfea72228",
+   "ingest/holdout_contract.py": "2cd1ba92905b90703a9c6f67deb22f558694a740dfb3c9f80fa87ba5592a0eda",
+   "ingest/holdout_exclusions.py": "9e010fc4d1b6da43eb398a1161af8f358ae9e7954fc8b684229a90b2c214072d",
    "ingest/holdout_controller.py": "a8f85b4ef661e5e9b8cc2c6cbf3cdab989feddfe994d2de6e7db7b77dbb38b13",
-   "ingest/holdout_executor.py": "4566f95710961c729c2f27e35def949fec52bc315eb2fa523d709ea869b5f6fa",
-   "ingest/holdout_isolation.py": "2e5c69b6566e5d7cd4229dc5ad3b80fa736fded67c6343a6a7593240b58265be",
-   "ingest/holdout_judging.py": "668152d1e15062769374d5e7fc0d03680dcc63fe2775068eb8d55fbf3e15c896",
-   "ingest/holdout_launcher.py": "e611ff224a266c13bf92be32eb6a280426921ed44eded687d1ac8da1b82a56a1",
-   "ingest/holdout_ledger.py": "552e4681a40af6bb3b2ff4072880eaae7c8d4df992d2f8414a926bb9ca3c2904",
-   "ingest/holdout_packets.py": "19091a770821ce2fbf3dfeb5523d4c7bd37db8287886c5955ab0dc4381a546c9",
-   "ingest/holdout_pipeline.py": "b365ed627afd83ab846559284dc9b7f0e2878a1885eec6129cda02fdc6ccfcfe",
+   "ingest/holdout_executor.py": "f7a037ef3121b49d8f215b76e94949fdd75ca9dbf673de079e7782f592ed1750",
+   "ingest/holdout_isolation.py": "130f3e80975612a6d8dd03d7516bc6fc5d6a0d0021f61524dc916ac48c963b5f",
+   "ingest/holdout_judging.py": "c3c9339a409c8fa22cd73572c87688acaddacf3a6c9a6ee144050d1199336cd5",
+   "ingest/holdout_launcher.py": "f07bdcdc0c90c8dc6593cece17e0653f721dba3b0b8da41e5b1ba204653d225c",
+   "ingest/holdout_ledger.py": "2c59baf0179d52dad55d45fd4900cdd9ed93848465156665da5546dc8afec9b6",
+   "ingest/holdout_packets.py": "b9004a3b6b33845effe220cae21dafda3ff22d8bd7f8ac08e07a7ee1b8013892",
+   "ingest/holdout_pipeline.py": "56b06f63f8aee69f51820cee3821fa4810e476246c9ef94ad3cb9e06edfeba64",
    "ingest/holdout_process.py": "dd87a17b3ada9ab5502468b769020b3b52769c38a2774cbc32caa8c2a2dc9244",
-   "ingest/holdout_roles.py": "2d114a88eca2e3ea02757ba299f9ee866fad2cf12c73f24734660aaec7473fa7",
+   "ingest/holdout_roles.py": "9afcb5b1c436cd6799f5940958c646ed7f92de399f9749c4f7af2222c6706ba8",
    "ingest/holdout_runtime.py": "ba0dcc4db48a907c6dd62792c62000151db3a71570aec438c4886238edbdef50",
-   "ingest/holdout_spool.py": "a3b3c311a84b350570ae38ed95bf37f4f734f6e8c377334d8bf3fef7f884f473",
-   "ingest/holdout_state.py": "07390e77c9c7dfeb8adad5f30a402a857b61384e4b64528fce1f72ac7f513d26",
+   "ingest/holdout_spool.py": "f015e96c78628fb0cffc3dd8727af90605e9c273589dcf1132c50ba42862f073",
+   "ingest/holdout_state.py": "7c1f218b9591e20256d405f969c9f5fc9af398290a1411b170b2041776c4d3b3",
    "ingest/psd2_exclusions.py": "9900c494238c4df56f9d1e82d6ca62b920a3d9cf701374c9468b057ed8552065",
    "scripts/evidence_tools.py": "b1ae9a1b1855544324e9d9095be9fb4e19eb4a4c32ee51a428f3d2daa95155ef",
-   "scripts/holdout.py": "14e373e35b08f103f80f2e5ce4625d160a9d6128cdd667e98ab125db8c45ff63",
+   "scripts/holdout.py": "9a143a336624332c9c52815f92da4bc4407fbe672177b6d1e1f3a4f0415ea011",
    "scripts/mlx_prompt_tokens.py": "28e4763bcda5248a527ff170a2289615be3bf96bf6718ffe0341fdf3979b4942"
   },
   "inputs_sha256": {
    "data/benchmark/PROTOCOL.md": "79cafdda538cf9cfec682817ac77bf75692f562545ad5b21f38d8394df0db1d0",
-   "config/holdout/evidence-discovery.md": "f1a2c3eb6b6d2606015ebb875eb18a2a84d7895c8fafe0aaef856211cbc9e013",
+   "config/holdout/evidence-discovery.md": "71bb18c8f8e590a12b2a7ebf6aa08731e62f5a09ac710a2d7d65fb12b0be6650",
    "config/holdout/failure-paths.md": "1670c73ca73cb1a89d8f970736d7175cee4df955e751e9227432fa8ccc3feae5",
    "config/retrieval/qwen3-8b-mlx.json": "92836ad88b8529027775f101b3c1e1bf1c47db46434199de271a582e82ac02a4",
    "data/benchmark/dev/manifest.json": "c845b684035dac91dec399604e6623a60c67a9564afba975f177b5d6482fb917",
@@ -129,7 +148,7 @@
    "judge_c.v2": "data/benchmark/templates/holdout/judge_c.v2.md",
    "judge_d.v2": "data/benchmark/templates/holdout/judge_d.v2.md",
    "metadata_adjudicator.v1": "data/benchmark/templates/holdout/metadata_adjudicator.v1.md",
-   "overlap_gate.v1": "data/benchmark/templates/holdout/overlap_gate.v1.md",
+   "overlap_gate.v2": "data/benchmark/templates/holdout/overlap_gate.v2.md",
    "overlap_gate_evidence.v1": "data/benchmark/templates/holdout/overlap_gate_evidence.v1.md",
    "query_variants.v1": "data/benchmark/templates/query_variants.v1.md",
    "statement_writer.v1": "data/benchmark/templates/holdout/statement_writer.v1.md"
@@ -590,7 +609,7 @@
      "role": "gatekeeper",
      "verdict": "paraphrase, same_legal_question, same_rule_superficial_change or uncertain",
      "outcome": "overlap_*",
-     "rule": "overlap_gate.v1 and D-054 decision 2"
+     "rule": "overlap_gate.v2 and D-054 decision 2 (a DEVELOPMENT need counts alike, D-066)"
     },
     {
      "role": "gatekeeper_evidence",
@@ -764,10 +783,25 @@
     },
     "max_prompt_tokens": 16384
    }
+  },
+  "certification": {
+   "id": "gate1-20261023-cc2.1.301-bc0e0e9",
+   "schema": "gate1-certification.v1",
+   "manifest_sha256": "0b008d7ab6ff4285cdced272d5f5fce658ae576823a48c04eee278db68b8d9fc",
+   "public_commit": "bc0e0e9568b60bddea5a3091efac52f05db1d71c",
+   "private_commit": "579843b41a87d0abaa4ccab19995bf1177d25b59",
+   "certified_code_sha256": {
+    "ingest/holdout_isolation.py": "130f3e80975612a6d8dd03d7516bc6fc5d6a0d0021f61524dc916ac48c963b5f",
+    "ingest/holdout_broker.py": "25fce12e140faf307a4a001f19b2be7145d2d75b9639716ba646dac0845b68c6",
+    "ingest/holdout_spool.py": "f015e96c78628fb0cffc3dd8727af90605e9c273589dcf1132c50ba42862f073",
+    "ingest/holdout_process.py": "dd87a17b3ada9ab5502468b769020b3b52769c38a2774cbc32caa8c2a2dc9244"
+   },
+   "gate1_run": "run-1",
+   "broker_test_run": "run-1"
   }
  },
  "code": {
-  "built_on_commit": "9eade1813864eccfc58bd75e843ad00a5560237a",
+  "built_on_commit": "9e37e049a2a22eb51d8c1d18d400fa444e5e7002",
   "e_result_commit": "7636908bf57c7fbd95cc46b180c9f2e59a41b3f8",
   "files_sha256": {
    "ingest/benchmark.py": "09896f2ff6f2ad8436d7b1e5e5aa05036b15dfed65ab77ba525222da1deb840c",
@@ -1069,6 +1103,14 @@
    "ready_needs": 3,
    "reason": "The omission audit's hard stop: the audit search listed a node outside the union of searches A and B, adjudicated grade >= 1. A structural review, counts only, found that most omissions were nodes the missing search had read in full and not listed: coverage depended on each search's discretionary, softly capped listing",
    "change": "three fixed blind searches for every need; a mechanical exposure pool (every node a search received in full, listed or not, is judged: judge B's pool variant, a second blind judgment for a grade >= 1 or an ambiguity, judge C on a difference); the audit search's coverage is its own exposure; judge D and the diagnostic on the listed nodes and the pool's contested or relevant ones; no number of candidates in the searches' template (judge_a.v3); the controller's outer deadline 72 hours. The rubrics, the omission threshold >= 1, the retries and every other rule unchanged"
+  },
+  {
+   "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+   "contract_sha256": "eac1d3eb66f546c68233185f8cf24b3f6347e6b315c311847d97f23302745e9a",
+   "public_commit": "30ffb930007dfec13c52778842caf8032c9e8f2a",
+   "ready_needs": 2,
+   "reason": "The omission audit's hard stop, a valid application of the frozen rule: the audit search reached three nodes outside the exposure pool, each adjudicated grade 1. A read-only structural review found no controller or bookkeeping defect, but a gap in the exposure policy: one node only a search snippet had named, which no search opened, and two article lead-ins shown to the judges as the context of their children, never as candidates. The run is development evidence only: none of its needs, READY records, qrels or other outputs enters a later TEST",
+   "change": "exposure v2, rule A, designed after this run's stop and declared as such: the pool also takes every node a search page named, followed up in full, and every ancestor with its own text of a node reached, as a candidate of its own; no article is expanded; the audit search is measured by the same rules. A wider rule that also took every node of an article a search listed was implemented and evaluated before any freeze and not adopted. The development need exclusions in the overlap gate (overlap_gate.v2); D-061's review metrics defined operationally; Gate 1 from a sealed certification. Three normal searches, the omission threshold >= 1, the rubrics, the judges and every other rule unchanged"
   }
  ],
  "derived_at_freeze_only": [
