@@ -958,7 +958,7 @@
   "broker_test_run": "run-1"
  },
  "code": {
-  "built_on_commit": "f909cc7c10630bb65ca683fae5132cf4428a7f44",
+  "built_on_commit": "1f01180a28fcfeb732cba63a9a04347e70aa07a2",
   "files_sha256": {
    "ingest/benchmark.py": "09896f2ff6f2ad8436d7b1e5e5aa05036b15dfed65ab77ba525222da1deb840c",
    "ingest/chunks.py": "ee4bdb8d2e780ff12e2024f207b4a28790982b7dabe3acc6a4e4944b3646019c",
@@ -994,12 +994,12 @@
    "ingest/holdout_v2_audit.py": "1616e342bf806ca8af616e27e94740e9bb88c6984d4f817c7844d40b29411660",
    "ingest/holdout_v2_contract.py": "013dd9ba158e9ab2e90cf5ba543b565dcc94edfb6cdc85a42c0000c9423b5a09",
    "ingest/holdout_v2_dedup.py": "5898d66a2e219c1f632d3b52143669ddd472246cd0d56722a8bbd20152cb2035",
-   "ingest/holdout_v2_engine.py": "64f19e7a3ba52de9dbec73d10ddc0c04b04b400ee23f3c32791d10bf9a1f65eb",
+   "ingest/holdout_v2_engine.py": "9032589157c5932fe7a84af2aaa15f52c97e73a172fdc2fb057f737b29837b37",
    "ingest/holdout_v2_evaluation.py": "67dc8a7f04bf00ef8a35ef2292ded3f1fefbe1f2797740f925622b8c8598e0fa",
    "ingest/holdout_v2_judging.py": "763ece94bd1be055053a67f6e50bd8784ac264af656f1ebd95e7e7d75681e6b8",
    "ingest/holdout_v2_packets.py": "2fb003260f5f3493c5da56cf37b707b47fe64e41a366bfd28d13d89489865b54",
    "ingest/holdout_v2_retrieval.py": "04651ff8804bd7316479dfa86bd52ec342ecc05f9fb216a5492df49a032f8efb",
-   "ingest/holdout_v2_runner.py": "ab8b5d4fa9e9f825eee672fc297278b569e7a7122b12c43325dbb5416de541cb",
+   "ingest/holdout_v2_runner.py": "2fae7e9ddaa6c2b4daa49d19346a38232d7506363aea0cd867249b1ae744ad63",
    "ingest/holdout_v2_state.py": "1f60007acda15e041920eb68a3f0bf26d46d309234ab89dbefd4a1f98e0df6e0",
    "ingest/ir_metrics.py": "a1b666387c48ce27e5113600c7a2fa11fe8c8f2e8a7db1376203a2bc59ceb949",
    "ingest/lexical.py": "e82813f8ebbc4794b9e22a3a8a002d56f7fbad181ad532980d5bc3044371f64d",
@@ -1010,7 +1010,7 @@
    "ingest/requirement_rerank.py": "3237458b68c22c57ccb2890029b28715efba73f88d06034445ba7813609562e8",
    "ingest/retrieval.py": "d7b4479b070a5b19073e4825c072a47dd1f2564d4e0e4a402331444b519d1c27",
    "ingest/run_report.py": "0ed87c6800725b3f551e2d5ca407c49f53805c85e662caa173ea6ecd2ff9b158",
-   "scripts/holdout_v2.py": "f09b0dc4bcb899e1d236811f36cf49d72dd2e0f68168d595ff315d96e8c7c9e9",
+   "scripts/holdout_v2.py": "ae70ed89e6a619f6784dc75e04ed3cec63b51ae4ae4262e2bf8d4f49b28870db",
    "scripts/mlx_generate.py": "41a462498ecd1fe57cd1a5306a7bc9e5cc778c362e4383349f92738ae2066dbb"
   },
   "inputs_sha256": {
@@ -1027,7 +1027,7 @@
   },
   "protocol": {
    "file": "config/holdout/test-v2-protocol.md",
-   "sha256": "227d299403f9acff9795ad0e79f4d2baa598bfb6a440573cf545b01c382c8dcf"
+   "sha256": "b59a22e51ad6712fdae07851dd996360a4dfb9a2a0fe643c4d19e8758568d7fa"
   }
  },
  "aborted_runs": [

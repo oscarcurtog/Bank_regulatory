@@ -486,8 +486,9 @@ only, `prepare` for the contract, and `start` and `resume`, the only commands th
 TEST v2, each needing the contract's full SHA-256 typed again.
 
 `config/holdout/test-v2-contract.json` (SHA-256
-`a38b638c2989bd39d946a09b588ce515ed18e9d5de252bdfb7644eeeb5be5288`) was written once, before any
-TEST v2 topic exists. It fixes by content 86 files: the import closure of the code, the
+`bc7d4710ae4ac8431904f8956a157d307ebb52c0e83c4d28139d128b24fd84ba`) was written before any TEST
+v2 topic exists. It re-issues `a38b638c…`, which a third review of the engine superseded before
+any START (capacity refusals now survive pauses and resumes); nothing existed under it. It fixes by content 86 files: the import closure of the code, the
 retrieval configs, the templates, the protocol and the plan. It also fixes the corpus and chunk
 layer, E, E5 and BM25 as recomputed from their DEV runs, the evaluator's versions, and the
 requested and effective Claude model with its pinned binary. It fixes E's MLX runtime and the
