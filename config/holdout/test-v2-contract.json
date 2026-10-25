@@ -1,0 +1,1096 @@
+{
+ "schema": "holdout-v2-contract.v1",
+ "status": "prepared for freeze; TEST v2 not started",
+ "decision": "D-067",
+ "protocol": "config/holdout/test-v2-protocol.md",
+ "design": {
+  "question": "On an independent private sample of information needs drawn from DEV's task taxonomy, does the frozen E improve over the frozen E5 at top-10 retrieval?",
+  "n_target": 200,
+  "candidate_universe": 260,
+  "population": {
+   "slots": [
+    {
+     "slot_id": "P01",
+     "acts": [
+      "DORA"
+     ],
+     "type": "direct",
+     "answerability": "complete",
+     "difficulty": "easy",
+     "number_or_date": true
+    },
+    {
+     "slot_id": "P02",
+     "acts": [
+      "DORA"
+     ],
+     "type": "exception_confusion",
+     "answerability": "complete",
+     "difficulty": "medium",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P03",
+     "acts": [
+      "MiCA"
+     ],
+     "type": "direct",
+     "answerability": "complete",
+     "difficulty": "easy",
+     "number_or_date": true
+    },
+    {
+     "slot_id": "P04",
+     "acts": [
+      "MiCA"
+     ],
+     "type": "exception_confusion",
+     "answerability": "complete",
+     "difficulty": "medium",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P05",
+     "acts": [
+      "MiCA"
+     ],
+     "type": "direct",
+     "answerability": "complete",
+     "difficulty": "medium",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P06",
+     "acts": [
+      "PSD2"
+     ],
+     "type": "direct",
+     "answerability": "complete",
+     "difficulty": "easy",
+     "number_or_date": true
+    },
+    {
+     "slot_id": "P07",
+     "acts": [
+      "PSD2"
+     ],
+     "type": "multi_provision",
+     "answerability": "complete",
+     "difficulty": "medium",
+     "number_or_date": true
+    },
+    {
+     "slot_id": "P08",
+     "acts": [
+      "DORA"
+     ],
+     "type": "direct",
+     "answerability": "complete",
+     "difficulty": "medium",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P09",
+     "acts": [
+      "DORA"
+     ],
+     "type": "partial_out_of_scope",
+     "answerability": "partial",
+     "difficulty": "medium",
+     "number_or_date": true
+    },
+    {
+     "slot_id": "P10",
+     "acts": [
+      "DORA"
+     ],
+     "type": "exception_confusion",
+     "answerability": "complete",
+     "difficulty": "medium",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P11",
+     "acts": [
+      "DORA"
+     ],
+     "type": "multi_provision",
+     "answerability": "complete",
+     "difficulty": "hard",
+     "number_or_date": true
+    },
+    {
+     "slot_id": "P12",
+     "acts": [
+      "DORA"
+     ],
+     "type": "exception_confusion",
+     "answerability": "complete",
+     "difficulty": "medium",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P13",
+     "acts": [
+      "DORA"
+     ],
+     "type": "direct",
+     "answerability": "complete",
+     "difficulty": "easy",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P14",
+     "acts": [
+      "DORA"
+     ],
+     "type": "partial_out_of_scope",
+     "answerability": "partial",
+     "difficulty": "medium",
+     "number_or_date": true
+    },
+    {
+     "slot_id": "P15",
+     "acts": [
+      "MiCA"
+     ],
+     "type": "exception_confusion",
+     "answerability": "complete",
+     "difficulty": "medium",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P16",
+     "acts": [
+      "MiCA"
+     ],
+     "type": "multi_provision",
+     "answerability": "complete",
+     "difficulty": "easy",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P17",
+     "acts": [
+      "MiCA"
+     ],
+     "type": "direct",
+     "answerability": "complete",
+     "difficulty": "easy",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P18",
+     "acts": [
+      "MiCA"
+     ],
+     "type": "multi_provision",
+     "answerability": "complete",
+     "difficulty": "hard",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P19",
+     "acts": [
+      "MiCA"
+     ],
+     "type": "direct",
+     "answerability": "complete",
+     "difficulty": "hard",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P20",
+     "acts": [
+      "MiCA"
+     ],
+     "type": "direct",
+     "answerability": "complete",
+     "difficulty": "easy",
+     "number_or_date": true
+    },
+    {
+     "slot_id": "P21",
+     "acts": [
+      "MiCA"
+     ],
+     "type": "direct",
+     "answerability": "complete",
+     "difficulty": "medium",
+     "number_or_date": true
+    },
+    {
+     "slot_id": "P22",
+     "acts": [
+      "PSD2"
+     ],
+     "type": "partial_out_of_scope",
+     "answerability": "partial",
+     "difficulty": "medium",
+     "number_or_date": true
+    },
+    {
+     "slot_id": "P23",
+     "acts": [
+      "PSD2"
+     ],
+     "type": "direct",
+     "answerability": "complete",
+     "difficulty": "medium",
+     "number_or_date": true
+    },
+    {
+     "slot_id": "P24",
+     "acts": [
+      "PSD2"
+     ],
+     "type": "exception_confusion",
+     "answerability": "complete",
+     "difficulty": "hard",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P25",
+     "acts": [
+      "PSD2"
+     ],
+     "type": "exception_confusion",
+     "answerability": "complete",
+     "difficulty": "medium",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P26",
+     "acts": [
+      "DORA",
+      "PSD2"
+     ],
+     "type": "multi_provision",
+     "answerability": "complete",
+     "difficulty": "hard",
+     "number_or_date": false
+    },
+    {
+     "slot_id": "P27",
+     "acts": [
+      "DORA",
+      "PSD2"
+     ],
+     "type": "multi_provision",
+     "answerability": "complete",
+     "difficulty": "hard",
+     "number_or_date": false
+    }
+   ],
+   "slots_sha256": "a1385517fca871faa8c2e176d22082b04680ac972a9dffd18d2e859c595ce219",
+   "rule": "DEV's answerable profiles (answerability complete or partial), one slot each in DEV's need order; the none profiles never enter TEST v2",
+   "copies": "universe // slots for every slot, one more for the universe % slots slots first in a draw ('extra-copy')"
+  },
+  "priority": {
+   "seed": 20261025,
+   "rule": "candidate <slot>-<copy>, ordered by the hex SHA-256 of '<seed>:<salt hex>:priority:<candidate id>'; the rank fixes the need id (N401 for the first); independent of completion order, of any system's output and of judging"
+  },
+  "anchors": {
+   "seed": 20261026,
+   "unit": "the article (legal unit): in an area of the protocol's section 10, outside the PSD2 articles amended after the snapshot, with at least one provision of its own text owned by a chunk; never a raw chunk or node frequency",
+   "rule": "per act of the profile (a cross-act profile gets one anchor per act), in priority order: the act's eligible articles in an order drawn once ('article'), the i-th demand taking article i, wrapping only when all are drawn (uniform, without replacement while capacity permits, then a deterministic counted reuse); the provision a draw over the article's eligible nodes ('provision'), shifted by its earlier uses",
+   "capacity": {
+    "DORA": 56,
+    "MiCA": 139,
+    "PSD2": 95
+   },
+   "reuse": {
+    "DORA": 49,
+    "MiCA": 0,
+    "PSD2": 0
+   }
+  },
+  "bank_sha256": "6464cbd80abce28b5e05056584255a8230bc83c1957cfd1dc00de32fb25147c4",
+  "bank_file_sha256": "cb9c180e708090eca7d3947f859e530eb8618a807d5d00d3db7dcbd1d4c8e02f",
+  "reserve": "the earliest candidates in priority order that survive deduplication and become evaluable form the primary sample; the unused tail is the single reserve; no regeneration, no second reserve; a bank exhausted before N freezes the N achieved. A candidate leaves only for an outcome-independent reason: a duplicate, an unusable or anchor-copying generation, an exhausted technical retry, mechanical non-evaluability",
+  "params": {
+   "pool_max_nodes": 34,
+   "pool_max_tokens": 9773,
+   "screen_max_passages": 50,
+   "screen_max_tokens": 24000
+  }
+ },
+ "generation": {
+  "hops": {
+   "A_concept": "v2_concept_author (concept_author.v2): the profile and its anchors with their article's title and ancestors; nothing of DEV, the fixtures, the exclusions, other candidates, systems, rankings, qrels or metrics",
+   "B_need": "statement_writer (statement_writer.v1): the concept and its facts only, never an anchor, an identifier or a location",
+   "C_queries": "query_writer (query_variants.v1): the statement only; three formulations (EN formal, EN natural, ES natural)"
+  },
+  "concept_checks": "the concept_author.v1 shape; no legal reference (benchmark._LEGAL_REFERENCE); no legal wording or 8-word run of DEV or the fixtures (holdout_packets.author_leaks); no run of 8 words of its anchor's article",
+  "leakage_filter": "a run of 8 consecutive words of an anchor's article in the statement or a query drops the candidate (near-copying); shorter runs and shared vocabulary are measured and reported, never a filter",
+  "parallel": "every hop in parallel over the bank; completion order decides nothing"
+ },
+ "deduplication": {
+  "method": "one global stage after the whole bank is generated, in priority order",
+  "prefilter": {
+   "mandatory": "every reference or earlier bank candidate with the same normalized statement or a content-word Jaccard >= 0.5; every earlier bank candidate sharing an anchor article",
+   "bounded": "the 6 most similar references and 6 most similar earlier candidates by BGE-M3 cosine, the 3 most similar of either by Jaccard",
+   "packet_size": 20,
+   "vectors": "BGE-M3 (config/embeddings/bge-m3.json), the frozen query encoding"
+  },
+  "decision": "overlap_gate.v2 under opaque ids; a candidate is kept only if every packet finds it independent; only kept earlier candidates are shown; priority wins",
+  "references": {
+   "DEV": 30,
+   "FIXTURE": 3,
+   "historical_exclusions": {
+    "schema": "development-need-exclusions.v2",
+    "sha256": "490c93a7844298b728dbe733bd8e933881ab985e4b28dcbd472d1335e06ba9ca",
+    "count": 99
+   },
+   "historical_sources": [
+    "433edd5d633777c575e81302423c19b8646c566e20ceb0a9698b7250c1634225",
+    "6762368c07204a849413a50a0bb167a84056e82f5638a33bc83df457c73cbdf3",
+    "b824db37fb9e13202f4d3efdc38a706a03c9c56fe030607a39ae5a6a167846d7",
+    "c6b0c6912b67c077c86738e186180c5000d305965e585a74744e5d63b215dbd6",
+    "e45ccb1125f6a648759493876f7ebe0c32364a24c438f2ff4ea0961705ed9e26",
+    "eac1d3eb66f546c68233185f8cf24b3f6347e6b315c311847d97f23302745e9a",
+    "fe18917551276d676a6f3e0c5c20d14ee34f2f4a66c9de18407f264366a858f9"
+   ],
+   "development_topics": {
+    "schema": "holdout-v2-development-references.v1",
+    "sha256": "087dfb7b85fe20077b06943d3c750adc8cdb71e6d1b0fb25ad3e016c27f36b8f",
+    "count": 35
+   },
+   "statement": "the 99 historical statements stay hidden references because they are part of D-066's documented history, keeping them avoids reinterpreting it, and corpus anchoring makes the cost low; their exclusion is NOT claimed to be strictly necessary for statistical validity. Authors never see them. No recursive blacklist: only designated DEVELOPMENT topic-generation material may become a development reference; technical failures never do"
+  }
+ },
+ "pooling": {
+  "contributors": [
+   {
+    "system": "E",
+    "depth": 20
+   },
+   {
+    "system": "E5",
+    "depth": 20
+   },
+   {
+    "system": "BM25",
+    "depth": 20
+   },
+   {
+    "system": "BGE-M3",
+    "depth": 10
+   },
+   {
+    "system": "Qwen3-Embedding-0.6B",
+    "depth": 20
+   }
+  ],
+  "anchor": "the chunk that owns each anchor, whether or not any retriever returns it",
+  "union": "over the need's three formulations, each chunk once",
+  "judged": "every node a pooled chunk owns with its own text, outside the excluded PSD2 articles; its ancestors are shown as context",
+  "provenance": "kept internally (contributor, formulation, rank); never shown to a judge",
+  "decisive_set": "the union over the formulations of E top-10 minus E5 top-10, plus E5 top-10 minus E top-10",
+  "pool_only": "BGE-M3 and Qwen3-Embedding-0.6B contribute to the pool, never to a confirmatory comparison",
+  "excluded": "no one-hop expansion, no sixth retriever"
+ },
+ "judging": {
+  "B1": "v2_pool_judge_1 (judge_b_pool.v3): every judged node of the pool, explicit 0s kept, opaque ids, exact coverage; nodes grouped by chunk in document order, the groups in an order drawn per need and stage (seed 20261028)",
+  "B2": "v2_pool_judge_2, independent and blind: every node B1 graded >= 1 or found ambiguous, and every node of the decisive set, whatever B1 said",
+  "C": "judge_c (judge_c.v2) on exactly the nodes where B1 and B2 differ in grade or ambiguity",
+  "final": "the agreed label or C's; a final ambiguity stays in the qrels and never deletes the need; an ambiguous or unresolved node counts as unjudged (D-019)",
+  "retired": "judge D, the Qwen diagnostic, adjudication_uncertain and final_qrels_unambiguous rejections",
+  "batches": {
+   "pool_max_nodes": 34,
+   "pool_max_tokens": 9773,
+   "screen_max_passages": 50,
+   "screen_max_tokens": 24000,
+   "tokenizer": "cl100k_base (ingest/chunks.py)"
+  },
+  "waves": "in priority order, each as large as the evaluable needs still missing"
+ },
+ "after_qrels": {
+  "evaluability": "mechanical: at least one final non-ambiguous node of grade >= 2",
+  "qrel_freeze": "the first N_TARGET evaluable needs in priority order; fewer if the bank is exhausted",
+  "answerability": "descriptive, after the qrels (answerability.v1): a `none` against grade >= 2 evidence is a contradiction recorded and routed to a second blind judgment (v2_answerability_2), and to judge C where the two differ; exhausted: unknown. It never filters the sample",
+  "metadata": "metadata_adjudicator on the final grades >= 1; exhausted or unknown answerability: unknown. It never removes a need"
+ },
+ "completeness": {
+  "needs": 15,
+  "strata": [
+   "DORA",
+   "MiCA",
+   "PSD2"
+  ],
+  "per_stratum": 5,
+  "seed": 20261027,
+  "chains": "per act, every candidate whose profile's first act it is, in an order drawn with the bank ('completeness'); the stratum's needs are the first of its chain in the primary sample",
+  "screen": "v2_screen (completeness_screen.v1): every chunk of the layer outside the need's pool that owns a node to judge, one blind judge, high recall, about screen_max_passages per batch",
+  "follow_up": "the flagged chunks' nodes through B1, B2 and C; only a final non-ambiguous grade >= 2 counts as a verified residual relevant chunk",
+  "use": "sensitivity SA2 only: it never modifies the primary qrels, restarts or invalidates TEST",
+  "omission_audit_stop": "retired, with no hidden equivalent"
+ },
+ "evaluation": {
+  "plan_file": "config/holdout/s4-analysis-plan.v2.md",
+  "plan_sha256": "b792fca189bf33e6e5d5cb16329a0b1f7b532a310f493ab53bdd1b851b956e87",
+  "co_primary": [
+   "Recall@10",
+   "nDCG@10"
+  ],
+  "relevance": "Recall@10 at grade >= 2; nDCG@10 the grades as linear gains (ingest/ir_metrics.py)",
+  "unit": "the information need: the mean of its three formulations first",
+  "bootstrap": {
+   "function": "ingest/run_report.py paired_bootstrap",
+   "seed": 20261013,
+   "resamples": 10000,
+   "interval": "percentile, sorted means at int(0.025 * reps) and int(0.975 * reps) - 1"
+  },
+  "verdicts": "holds if the lower end > 0, reverses if the upper end < 0, inconclusive otherwise; S4's table of claims",
+  "missing_query": "scored 0, never dropped",
+  "evaluator": {
+   "ir-measures": "0.4.3",
+   "pytrec-eval-terrier": "0.5.10",
+   "projection": "ingest/evaluation.py project: a chunk's grade is the highest final grade it owns; an ambiguous or unresolved label is unjudged (D-019)",
+   "relevant_grade": 2
+  },
+  "incomplete_systems": "a system that fails technically runs again, unchanged, once; then it is not completed; if E or E5 is not completed the primary comparison is not made",
+  "sensitivity": [
+   "SA1 ambiguity: final ambiguous labels at their grade",
+   "SA2 augmented qrels on the 15 completeness needs",
+   "SA3 fixed-scale G@10: DCG@10 linear / DCG@10 of ten grade-3 chunks",
+   "SA4 residual relevance: unjudged top-10 bounds; residual relevance outside the pool in fixed scenarios (1 chunk of grade 2, 3 chunks of grade 3 per need)",
+   "SA5 nDCG gains: grade 1 as 0; exponential 2^g - 1",
+   "SA6 paired t interval and paired sign-flip permutation test",
+   "SA7 optional human audit, never corrective",
+   "SA8 leave-one-contributor-out and unique relevant"
+  ],
+  "pool_diagnostics": [
+   "Judged@10 E",
+   "Judged@10 E5",
+   "Judged@20 E",
+   "Judged@20 E5",
+   "relevant chunks contributed uniquely by each pool system",
+   "cumulative relevant discovery by depth",
+   "pool size distribution",
+   "leave-one-contributor-out / unique relevant (SA8)",
+   "decisive-set coverage",
+   "evaluable needs whose only grade >= 2 evidence one compared system alone brought"
+  ],
+  "human_audit": {
+   "needs": 15,
+   "seed": 20261029,
+   "decoys_per_need": 3,
+   "rule": "optional, blind, non-blocking, non-corrective: reported through SA7; TEST 1.0.0 is never replaced"
+  }
+ },
+ "execution": {
+  "technical_executions_per_job": 3,
+  "retry": "the same packet in a new isolated context; a valid answer is never run again; after the last execution the job is exhausted, recorded once, and its candidate or need moves on by the frozen priority",
+  "provider_capacity": "a call the provider refuses for its capacity (the CLI's final result or stderr naming a usage limit, rate_limit_error or overloaded_error) never counts toward the limit: a wait of 300 s doubling to an hour, once per episode, and a pause after 21600 s without a response; every other failure counts",
+  "isolation": "every response audited by the role's contract (holdout_roles audit_role_run); a single forbidden-content finding that disappears once metadata values are neutralized is retried; any other finding is an integrity stop",
+  "hard_stops": [
+   "contract",
+   "corpus",
+   "retrieval_identity",
+   "model_identity",
+   "runtime",
+   "isolation",
+   "process_cleanup",
+   "state",
+   "topic_mutation",
+   "artifact",
+   "unclassified"
+  ],
+  "not_stops": "new relevance, low pool recall, ambiguity, disagreement, hard needs, N < 200 after the bank, any result of E or E5, a small effect, an interval across 0",
+  "state": {
+   "schema": "holdout-v2-state.v1",
+   "single_writer": true,
+   "events": [
+    "anchors_assigned",
+    "answerability_decided",
+    "bank_frozen",
+    "candidate_dropped",
+    "candidate_generated",
+    "capacity_wait",
+    "completeness_followed",
+    "completeness_frozen",
+    "completeness_screened",
+    "completeness_selected",
+    "dedup_decided",
+    "dedup_neighborhoods",
+    "evaluation_done",
+    "human_audit_selected",
+    "job_admitted",
+    "job_exhausted",
+    "metadata_decided",
+    "need_judged",
+    "need_stage",
+    "paused",
+    "pools_frozen",
+    "qrels_frozen",
+    "retrieval_attempt",
+    "retrieval_failed",
+    "retrieval_interrupted",
+    "run_failed",
+    "run_responded",
+    "run_started",
+    "runs_frozen",
+    "sensitivity_done",
+    "session_started",
+    "stopped",
+    "system_not_completed",
+    "system_ranked",
+    "topics_frozen",
+    "wave_planned"
+   ]
+  },
+  "operational_knobs": [
+   "workers (concurrent model calls; a resume may lower it)",
+   "backoff_seconds (after a provider failure)",
+   "the batch ceilings, frozen here: pool_max_nodes, pool_max_tokens, screen_max_passages, screen_max_tokens",
+   "scheduling of independent jobs",
+   "checkpoint (backup) frequency",
+   "the local resource queue: one local model at a time"
+  ],
+  "local_queue": "the local models (E5, BGE-M3, Qwen3-Embedding, BM25, Qwen3-4B, Qwen3-Reranker) one at a time, never beside another heavy model"
+ },
+ "roles": {
+  "role_contracts_sha256": "f718b48e787509fdfb1df30a5fbc55d68702ab2c02a03eccc09f5ed0e9a40d14",
+  "templates_sha256": {
+   "answerability.v1": "db61f55a0c77b9d43b5058b4a092753ca0c6ab9fa030dd25deb86baefef2c11e",
+   "attempt_frames.v2": "9b1bc7fd6eebd393b8ae1d164fca5215dcfa28249d04ab2fb35373fcd8d56411",
+   "completeness_screen.v1": "c6445cd5d6515215db00b76818b3b257c7c8590bf13a59387be3748bace71f68",
+   "concept_author.v1": "6a4ca085ed7067153ac7d55504c51a98820df66f4e9f5d16095f8409694c1eca",
+   "concept_author.v2": "fd5dbb6bbb14ac8a0fc8b6a7052acf07d9042ab87b45176b2b5911ab2a8cd76e",
+   "judge_a.v3": "94163595733d358ae4f835ade21692e006f7d553f3c51a56fe0518d5872e4afe",
+   "judge_b.v2": "f0dbb47aaf9c86377967740e86cd55b0d2d7708e76387f546baf3ea9e589fa78",
+   "judge_b_pool.v2": "f5cf77ffcdea13d865f36517fe6d272de5d4a3f78462a241884fb788334c301c",
+   "judge_b_pool.v3": "190a4dc6811ad158f3fb1ec019705eacafaa0706b76f4d074f6886ed792a17fd",
+   "judge_c.v2": "920a56f060cfcf862bf0f352308b89d5ae111cd569775959640439f22c99d339",
+   "judge_d.v2": "0785fcf85e1c5601382116aaa627b52c4b3b6a677c8138205c0c15101bb6b7d6",
+   "metadata_adjudicator.v1": "f713c3333a7a3645dc7f16d40badef3fddf3c1dce12f152fb0768ddf65a28574",
+   "overlap_gate.v2": "6ff043b9ff609355d63dcec11c718b701bdf054bcb0f3e30a1ac71dd260e404e",
+   "overlap_gate_evidence.v1": "c663bd2c7487e890dd45a13b9922869231b9e78bcf0e1236a14027acb1fb4bb8",
+   "query_variants.v1": "466bcfe8b10993f59c8ce16f0495cb145324d9196bfd197935e297ee807a4a4f",
+   "statement_writer.v1": "0502f1f131a43a9c664d5403d82b0b22b218abe61daab0d94cab68ae2b9455a8"
+  },
+  "template_files": {
+   "answerability.v1": "data/benchmark/templates/holdout/answerability.v1.md",
+   "attempt_frames.v2": "data/benchmark/templates/holdout/attempt_frames.v2.json",
+   "completeness_screen.v1": "data/benchmark/templates/holdout/completeness_screen.v1.md",
+   "concept_author.v1": "data/benchmark/templates/holdout/concept_author.v1.md",
+   "concept_author.v2": "data/benchmark/templates/holdout/concept_author.v2.md",
+   "judge_a.v3": "data/benchmark/templates/holdout/judge_a.v3.md",
+   "judge_b.v2": "data/benchmark/templates/holdout/judge_b.v2.md",
+   "judge_b_pool.v2": "data/benchmark/templates/holdout/judge_b_pool.v2.md",
+   "judge_b_pool.v3": "data/benchmark/templates/holdout/judge_b_pool.v3.md",
+   "judge_c.v2": "data/benchmark/templates/holdout/judge_c.v2.md",
+   "judge_d.v2": "data/benchmark/templates/holdout/judge_d.v2.md",
+   "metadata_adjudicator.v1": "data/benchmark/templates/holdout/metadata_adjudicator.v1.md",
+   "overlap_gate.v2": "data/benchmark/templates/holdout/overlap_gate.v2.md",
+   "overlap_gate_evidence.v1": "data/benchmark/templates/holdout/overlap_gate_evidence.v1.md",
+   "query_variants.v1": "data/benchmark/templates/query_variants.v1.md",
+   "statement_writer.v1": "data/benchmark/templates/holdout/statement_writer.v1.md"
+  },
+  "rules_sha256": "3858fa52e9f7bb6463de41df3022ccffb232e6fc2c3b69f9c6f6b98fe9b68070",
+  "query_template": "query_variants.v1"
+ },
+ "corpus": {
+  "acts": {
+   "DORA": {
+    "source_celex": "32022R2554",
+    "source_sha256": "cf50d8f023d23b2a56f535aaee0760eba7f1925ef08a9858c5c31d43d414f46b"
+   },
+   "MiCA": {
+    "source_celex": "02023R1114-20240109",
+    "source_sha256": "078da6ed766fe117be60ff63536f25101ec21f2dec175394eef7bf82c02ffe19"
+   },
+   "PSD2": {
+    "source_celex": "02015L2366-20151223",
+    "source_sha256": "e9063e8919bf93bd2b92ae0c6f816ad83bcf6ca42a5b97cdc277214e5080e1c3"
+   }
+  },
+  "parser_version": "1.4.0",
+  "psd2_exclusions_sha256": "2ce53d31d82f285271e34112a76ef053d93a1fe605465468a453555f2635719d",
+  "layer": {
+   "max_tokens": 500,
+   "chunker_version": "0.1.0",
+   "parser_version": "1.4.0",
+   "chunk_tokenizer": "cl100k_base",
+   "sources": {
+    "DORA": "cf50d8f023d23b2a56f535aaee0760eba7f1925ef08a9858c5c31d43d414f46b",
+    "MiCA": "078da6ed766fe117be60ff63536f25101ec21f2dec175394eef7bf82c02ffe19",
+    "PSD2": "e9063e8919bf93bd2b92ae0c6f816ad83bcf6ca42a5b97cdc277214e5080e1c3"
+   },
+   "structure_sha256": "76fce5626d300ac23892169682a21cb5c6805adc428248d8c91adee6fa7de372",
+   "content_sha256": "8748ef18fe7b1aaad831055e8de9d910f6b3088c0a9837b3a975065baf9f9c2d"
+  },
+  "query_template": {
+   "query_variants.v1": "466bcfe8b10993f59c8ce16f0495cb145324d9196bfd197935e297ee807a4a4f"
+  }
+ },
+ "retrieval": {
+  "systems": {
+   "E5": {
+    "config_file": "config/embeddings/multilingual-e5-large.json",
+    "config_sha256": "2368eadd6b41b5874fe1be6c0a89bcd181e25ae07a1a8d155fd787af71d332b8",
+    "config": {
+     "schema_version": "2",
+     "name": "multilingual-e5-large",
+     "model_id": "intfloat/multilingual-e5-large",
+     "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+     "tokenizer_revision": null,
+     "tokenizer_file": "tokenizer.json",
+     "dimension": 1024,
+     "max_input_tokens": 512,
+     "query_prefix": "query: ",
+     "document_prefix": "passage: ",
+     "pooling": "mean",
+     "normalize": true,
+     "similarity": "dot",
+     "document_truncation": "explicit_tail",
+     "query_truncation": "refuse",
+     "batch_size": 16,
+     "device": "cpu",
+     "dtype": "float32"
+    },
+    "config_hash": "2183ee7eedd919664cd579f55d99def7586854615b900dfe31d7713eee152745",
+    "tokenizer_sha256": "62c24cdc13d4c9952d63718d6c9fa4c287974249e16b7ade6d5a85e7bbb75626",
+    "runtime": {
+     "python": "3.12.14",
+     "torch": "2.14.1",
+     "transformers": "5.15.1",
+     "tokenizers": "0.22.2",
+     "numpy": "2.5.4",
+     "sentence_transformers": null,
+     "dtype": "float32",
+     "device": "cpu"
+    },
+    "scoring": "dot product of the normalized mean-pooled vectors (its similarity)",
+    "ranking": "score descending, then chunk id ascending (ingest/retrieval.py rank_by_scores)",
+    "depth": "every chunk of the layer, at least ingest/evaluation.MIN_RUN_DEPTH",
+    "dev_run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921"
+   },
+   "BM25": {
+    "config_file": "config/retrieval/bm25.json",
+    "config_sha256": "65597fe35299a73b4eba0e3f160bd612cfec44ffb67faaddf775f56097f9088b",
+    "config": {
+     "schema_version": "1",
+     "name": "bm25",
+     "library": "bm25s",
+     "library_version": "0.3.11",
+     "method": "lucene",
+     "k1": 1.2,
+     "b": 0.75,
+     "text": "chunk_text",
+     "analyzer": {
+      "lowercase": true,
+      "strip_possessive": true,
+      "token_pattern": "[^\\W_]+",
+      "stopwords": "lucene_english",
+      "stemmer": "porter",
+      "stem_min_length": 3,
+      "stemmer_library": "PyStemmer",
+      "stemmer_library_version": "3.1.0"
+     }
+    },
+    "config_hash": "e086bdb4511feae4796c639cd0450c732840f00e1da81e5c859d6960ee9b293b",
+    "versions": {
+     "bm25s": "0.3.11",
+     "pystemmer": "3.1.0"
+    },
+    "corpus_unit": "the chunk_text of every chunk of the layer",
+    "ranking": "score descending, then chunk id ascending (ingest/retrieval.py rank_by_scores)",
+    "dev_run_sha256": "49b9d78fd41c12205e07a878ffeb2260d1110abd5ad99464b2d5f0e282c7aa76"
+   },
+   "E": {
+    "kind": "decomposition_requirements_reranked_merge",
+    "rule": "D's rule on each requirement's first 50 E5 chunks reordered by the reranker",
+    "d_rule": "E5's first 6; places 7 to 10 to corroborated E5 ranks 7 to 10, then each requirement's best chunk outside E5's top 10 in turns, then the rest of E5's 7 to 10; the 10 in E5's order (K = 5)",
+    "decomposer": {
+     "config_file": "config/retrieval/qwen3-4b-instruct-mlx.json",
+     "config_sha256": "9f8b638720508a169ae5d23edf35db9dc5e4005831ca4162a34c69cb02a747c5",
+     "config": {
+      "schema_version": "1",
+      "name": "qwen3-4b-instruct-2507-mlx-4bit",
+      "model_id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+      "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+      "base_model": "Qwen/Qwen3-4B-Instruct-2507",
+      "base_revision": "cdbee75f17c01a7cc42f958dc650907174af0554",
+      "license": "apache-2.0",
+      "quantization": "4-bit, as published by mlx-community",
+      "runtime": "mlx 0.32.3, mlx-lm 0.32.0, in .cache/mlx-venv",
+      "max_prompt_tokens": 16384,
+      "decoding": "greedy"
+     },
+     "prompt": "ingest/decomposition.py requirements_prompt",
+     "system_sha256": "aefebaa554297ca9273afa89ba3a89d15951c88850fce900739f2d66ff575153",
+     "necessary_sha256": "f5d81791de8de64868e865074cffc2bbc2721707f2384f06439d9508928c0b49",
+     "task_sha256": "f6ee0baf18ffc82a8592f3ab24f7ab5dab4995a6b8309086f2aa00aa44b2f284",
+     "excerpts": 3,
+     "requirements": [
+      2,
+      4
+     ],
+     "max_new_tokens": 256,
+     "decoding": "greedy",
+     "unreadable": "fewer than 2 readable requirements keep E5's ranking"
+    },
+    "requirement_retrieval": {
+     "model": "E5, the same contract",
+     "depth": 50
+    },
+    "reranker": {
+     "config_file": "config/retrieval/qwen3-reranker-0.6b.json",
+     "config_sha256": "8e1b4cd43eb106055166b3320e9550d81adcba4e078dc13bb4a09a7f08c20bc6",
+     "config": {
+      "schema_version": "1",
+      "name": "qwen3-reranker-0.6b",
+      "model_id": "Qwen/Qwen3-Reranker-0.6B",
+      "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+      "tokenizer_file": "tokenizer.json",
+      "prefix": "<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be \"yes\" or \"no\".<|im_end|>\n<|im_start|>user\n",
+      "body": "<Instruct>: {instruction}\n<Query>: {query}\n<Document>: {document}",
+      "suffix": "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+      "yes_token": "yes",
+      "no_token": "no",
+      "pad_token": "<|endoftext|>",
+      "max_input_tokens": 32768,
+      "truncation": "explicit_document_tail",
+      "score": "logit_yes_minus_no",
+      "batch_size": 8,
+      "device": "mps",
+      "dtype": "float32"
+     },
+     "instruction": "Given a question about EU financial regulation, retrieve the passages of the law that answer it",
+     "order": "descending score; equal scores keep E5's order"
+    },
+    "assembler": {
+     "function": "ingest/decomposition.py assemble",
+     "K": 5,
+     "keep": 6,
+     "depth": 10,
+     "after_the_ten": "the rest of E5's ranking, in E5's order"
+    },
+    "dev_identity": {
+     "base_run_sha256": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+     "decomposition_run_sha256": "ccdf3e111731c78c19e2bcd616e6c46896527c0cdf8530547df88d9a3ee15317",
+     "prompts_sha256": "db8276317c6feb85d7c3aa1124e8ce023dedb3b64e56ddc5ac1f40f80a014a4d",
+     "run_sha256": "8ee79746f75e817320228e004344fb6eb09d5fe97fdcb815891834197b7ef521"
+    }
+   }
+  },
+  "pool_only": {
+   "BGE-M3": {
+    "config_file": "config/embeddings/bge-m3.json",
+    "config_sha256": "c4af73986b9554a8b85b13ce715335db4aa73d896d29d8f5bc4fb51f46cc9e7c",
+    "dev_run": "bge-m3"
+   },
+   "Qwen3-Embedding-0.6B": {
+    "config_file": "config/embeddings/qwen3-embedding-0.6b.json",
+    "config_sha256": "5877724ef0714a29978a8dd993009043dad11a83a9ebbecbd85f2c1960d05b1d",
+    "dev_run": "qwen3-embedding-0.6b"
+   }
+  },
+  "code_sha256": {
+   "config/embeddings/bge-m3.json": "c4af73986b9554a8b85b13ce715335db4aa73d896d29d8f5bc4fb51f46cc9e7c",
+   "config/embeddings/multilingual-e5-large.json": "2368eadd6b41b5874fe1be6c0a89bcd181e25ae07a1a8d155fd787af71d332b8",
+   "config/embeddings/qwen3-embedding-0.6b.json": "5877724ef0714a29978a8dd993009043dad11a83a9ebbecbd85f2c1960d05b1d",
+   "config/retrieval/bm25.json": "65597fe35299a73b4eba0e3f160bd612cfec44ffb67faaddf775f56097f9088b",
+   "config/retrieval/qwen3-4b-instruct-mlx.json": "9f8b638720508a169ae5d23edf35db9dc5e4005831ca4162a34c69cb02a747c5",
+   "config/retrieval/qwen3-reranker-0.6b.json": "8e1b4cd43eb106055166b3320e9550d81adcba4e078dc13bb4a09a7f08c20bc6",
+   "ingest/chunks.py": "ee4bdb8d2e780ff12e2024f207b4a28790982b7dabe3acc6a4e4944b3646019c",
+   "ingest/decomposition.py": "5bb0a1069ad7e78f3ad7ee3bc438684b31e658fd3be5934264b1cb8cfad1296a",
+   "ingest/embeddings.py": "749d285b68a5d013ed3c6de58a2df37302a8f9600e8698173b249bfce42849e6",
+   "ingest/encoder.py": "92f6127da8e2ff99d2514bc9852a5407c5dfe22b241533c2a42c7c31a3dec881",
+   "ingest/holdout_v2_retrieval.py": "04651ff8804bd7316479dfa86bd52ec342ecc05f9fb216a5492df49a032f8efb",
+   "ingest/lexical.py": "e82813f8ebbc4794b9e22a3a8a002d56f7fbad181ad532980d5bc3044371f64d",
+   "ingest/necessity.py": "e520713d68ffe23b985fcc5d09a730a462bf39e232b8d839a1237dede5400814",
+   "ingest/requirement_rerank.py": "3237458b68c22c57ccb2890029b28715efba73f88d06034445ba7813609562e8",
+   "ingest/retrieval.py": "d7b4479b070a5b19073e4825c072a47dd1f2564d4e0e4a402331444b519d1c27",
+   "scripts/mlx_generate.py": "41a462498ecd1fe57cd1a5306a7bc9e5cc778c362e4383349f92738ae2066dbb"
+  },
+  "run_depth": 100
+ },
+ "runtime": {
+  "claude_runtime": {
+   "requested_model": "claude-opus-5-5",
+   "binary": {
+    "version": "2.1.301 (Claude Code)",
+    "sha256": "1f04c69e1c24e4d0a716a863af0aad8fc64d49a499334c29701f073700276b99"
+   },
+   "effective": {
+    "init": {
+     "model": "claude-opus-5-5",
+     "fast_mode_state": "off",
+     "per_turn_effort_active": true,
+     "permissionMode": "default",
+     "output_style": "default",
+     "apiKeySource": "none"
+    },
+    "assistant_model": "claude-opus-5-5",
+    "model_usage": {
+     "claude-opus-5-5": {
+      "canonicalModel": "claude-opus-5-5",
+      "provider": "firstParty",
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000
+     }
+    },
+    "model_attachment": {
+     "modelId": "claude-opus-5-5",
+     "marketingName": "Opus 5.5",
+     "knowledgeCutoff": "June 2026"
+    }
+   },
+   "policy": {
+    "command": [
+     "<pinned binary>",
+     "-p",
+     "--safe-mode",
+     "--tools",
+     "",
+     "--model",
+     "<requested model>",
+     "--output-format",
+     "stream-json",
+     "--verbose"
+    ],
+    "broker_flags": [
+     "--input-format",
+     "stream-json"
+    ],
+    "environment": {
+     "inherited": [
+      "HOME",
+      "USER"
+     ],
+     "set": {
+      "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
+      "CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1"
+     },
+     "path": "/usr/bin:/bin:/usr/sbin:/sbin",
+     "refused": [
+      "OLDPWD",
+      "PWD",
+      "PYTHONPATH",
+      "VIRTUAL_ENV"
+     ]
+    },
+    "plugins": [
+     {
+      "name": "cc-plugin-agents-md",
+      "path": "builtin",
+      "source": "cc-plugin-agents-md@builtin"
+     },
+     {
+      "name": "cc-plugin-telemetry",
+      "path": "builtin",
+      "source": "cc-plugin-telemetry@builtin"
+     },
+     {
+      "name": "cc-plugin-plugin-authoring",
+      "path": "builtin",
+      "source": "cc-plugin-plugin-authoring@builtin"
+     }
+    ]
+   }
+  },
+  "mlx_runtime_decomposer": {
+   "python": {
+    "version": "3.12.14",
+    "implementation": "CPython",
+    "build": "3.12.14 (main, Sep  1 2026, 14:09:38) [Clang 22.1.3 ]"
+   },
+   "machine": "arm64",
+   "packages": {
+    "Jinja2": "3.1.6",
+    "MarkupSafe": "3.0.4",
+    "huggingface_hub": "2.2.0",
+    "mlx": "0.32.3",
+    "mlx-lm": "0.32.0",
+    "mlx-metal": "0.32.3",
+    "tokenizers": "0.23.3",
+    "transformers": "5.19.0"
+   },
+   "host": {
+    "macos_product_version": "27.0.1",
+    "macos_build_version": "26A434",
+    "darwin_release": "27.0.0",
+    "hardware_model": "MacBookAir10,1",
+    "architecture": "arm64"
+   },
+   "model": {
+    "config_file": "config/retrieval/qwen3-4b-instruct-mlx.json",
+    "model_id": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+    "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+    "files": {
+     "added_tokens.json": "b54f9135e44c1e81047e8d05cb027af8bc039eed",
+     "chat_template.jinja": "a18870ad4ba26ac6c43758fc506c1bb6ff206bb4",
+     "config.json": "ce8b8eccd1cdf6d8a30767f58e8ff858dd15eab5",
+     "generation_config.json": "432531a002c181a19de338313d2375e9d7494d7e",
+     "merges.txt": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+     "model.safetensors": "2a73c6c248601ab904e035548abd8e6abb65ea27dcb5f342fb0a8910eb44173f",
+     "model.safetensors.index.json": "4741a210f9920c2949ca73bbb2a7ce9583e7fd83",
+     "special_tokens_map.json": "ac23c0aaa2434523c494330aeb79c58395378103",
+     "tokenizer.json": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+     "tokenizer_config.json": "474bbcd82077828bdec32b8dbc1826cdff2a792a",
+     "vocab.json": "4783fe10ac3adce15ac8f358ef5462739852c569"
+    }
+   },
+   "generation": {
+    "max_new_tokens": 256,
+    "decoding": "greedy",
+    "chat_template_kwargs": {},
+    "max_prompt_tokens": 16384
+   }
+  }
+ },
+ "certification": {
+  "id": "gate1-20261023-cc2.1.301-bc0e0e9",
+  "schema": "gate1-certification.v1",
+  "manifest_sha256": "0b008d7ab6ff4285cdced272d5f5fce658ae576823a48c04eee278db68b8d9fc",
+  "public_commit": "bc0e0e9568b60bddea5a3091efac52f05db1d71c",
+  "private_commit": "579843b41a87d0abaa4ccab19995bf1177d25b59",
+  "certified_code_sha256": {
+   "ingest/holdout_isolation.py": "130f3e80975612a6d8dd03d7516bc6fc5d6a0d0021f61524dc916ac48c963b5f",
+   "ingest/holdout_broker.py": "25fce12e140faf307a4a001f19b2be7145d2d75b9639716ba646dac0845b68c6",
+   "ingest/holdout_spool.py": "f015e96c78628fb0cffc3dd8727af90605e9c273589dcf1132c50ba42862f073",
+   "ingest/holdout_process.py": "dd87a17b3ada9ab5502468b769020b3b52769c38a2774cbc32caa8c2a2dc9244"
+  },
+  "gate1_run": "run-1",
+  "broker_test_run": "run-1"
+ },
+ "code": {
+  "built_on_commit": "f909cc7c10630bb65ca683fae5132cf4428a7f44",
+  "files_sha256": {
+   "ingest/benchmark.py": "09896f2ff6f2ad8436d7b1e5e5aa05036b15dfed65ab77ba525222da1deb840c",
+   "ingest/chunks.py": "ee4bdb8d2e780ff12e2024f207b4a28790982b7dabe3acc6a4e4944b3646019c",
+   "ingest/corpus_tools.py": "1b6c4c89497c244c707bb02c1c662342a1b526d0ce85bd3e7be2a192eb2bf718",
+   "ingest/decomposition.py": "5bb0a1069ad7e78f3ad7ee3bc438684b31e658fd3be5934264b1cb8cfad1296a",
+   "ingest/dependencies.py": "38911976d2cf879e6127d777965789908a30c797f8af6f2696400fc9ec24dfc5",
+   "ingest/download.py": "e0dd207f277290c8da61976cdc1727f3c64fc60cb95ee03456cc50189faa674c",
+   "ingest/embeddings.py": "749d285b68a5d013ed3c6de58a2df37302a8f9600e8698173b249bfce42849e6",
+   "ingest/encoder.py": "92f6127da8e2ff99d2514bc9852a5407c5dfe22b241533c2a42c7c31a3dec881",
+   "ingest/evaluation.py": "bc951a3623e80f81b9589dd5d82cca5169e6794ee93e66bbbf244e1edc43b6bf",
+   "ingest/hierarchy.py": "933241b4daf0f8ac55e2538ad6b4b8e6d3ce896a28ad735260d22eeba9ab45f1",
+   "ingest/holdout.py": "4f35d5d87bab7535b280f305cdab630bd7cb77be10f8be892071c9ca17d1ef0c",
+   "ingest/holdout_admission.py": "100cb9e05102df099cc5f968c2069c01c016a33d04d216d20bbd775550319994",
+   "ingest/holdout_broker.py": "25fce12e140faf307a4a001f19b2be7145d2d75b9639716ba646dac0845b68c6",
+   "ingest/holdout_certification.py": "b8b653eecd08693a59f71ef0bbcb9d1e1aabed76aab2763f6303dd39aa5454c7",
+   "ingest/holdout_checks.py": "daa47147132239cd973c99b342593b7cea3b13a16bdfa5753efa746cfea72228",
+   "ingest/holdout_contract.py": "2cd1ba92905b90703a9c6f67deb22f558694a740dfb3c9f80fa87ba5592a0eda",
+   "ingest/holdout_controller.py": "a8f85b4ef661e5e9b8cc2c6cbf3cdab989feddfe994d2de6e7db7b77dbb38b13",
+   "ingest/holdout_exclusions.py": "9e010fc4d1b6da43eb398a1161af8f358ae9e7954fc8b684229a90b2c214072d",
+   "ingest/holdout_executor.py": "f7a037ef3121b49d8f215b76e94949fdd75ca9dbf673de079e7782f592ed1750",
+   "ingest/holdout_isolation.py": "130f3e80975612a6d8dd03d7516bc6fc5d6a0d0021f61524dc916ac48c963b5f",
+   "ingest/holdout_judging.py": "c3c9339a409c8fa22cd73572c87688acaddacf3a6c9a6ee144050d1199336cd5",
+   "ingest/holdout_launcher.py": "f07bdcdc0c90c8dc6593cece17e0653f721dba3b0b8da41e5b1ba204653d225c",
+   "ingest/holdout_ledger.py": "2c59baf0179d52dad55d45fd4900cdd9ed93848465156665da5546dc8afec9b6",
+   "ingest/holdout_packets.py": "b9004a3b6b33845effe220cae21dafda3ff22d8bd7f8ac08e07a7ee1b8013892",
+   "ingest/holdout_pipeline.py": "56b06f63f8aee69f51820cee3821fa4810e476246c9ef94ad3cb9e06edfeba64",
+   "ingest/holdout_process.py": "dd87a17b3ada9ab5502468b769020b3b52769c38a2774cbc32caa8c2a2dc9244",
+   "ingest/holdout_roles.py": "1deafa2efee96ecde80b4fb2a7175834bdf38128a2291308ca907812b8b0ad9b",
+   "ingest/holdout_runtime.py": "ba0dcc4db48a907c6dd62792c62000151db3a71570aec438c4886238edbdef50",
+   "ingest/holdout_spool.py": "f015e96c78628fb0cffc3dd8727af90605e9c273589dcf1132c50ba42862f073",
+   "ingest/holdout_state.py": "7c1f218b9591e20256d405f969c9f5fc9af398290a1411b170b2041776c4d3b3",
+   "ingest/holdout_v2.py": "d76cc40ad3e297612a05fdde2a1234ab5277fc7704dd387f3c17d05c600791af",
+   "ingest/holdout_v2_audit.py": "1616e342bf806ca8af616e27e94740e9bb88c6984d4f817c7844d40b29411660",
+   "ingest/holdout_v2_contract.py": "013dd9ba158e9ab2e90cf5ba543b565dcc94edfb6cdc85a42c0000c9423b5a09",
+   "ingest/holdout_v2_dedup.py": "5898d66a2e219c1f632d3b52143669ddd472246cd0d56722a8bbd20152cb2035",
+   "ingest/holdout_v2_engine.py": "64f19e7a3ba52de9dbec73d10ddc0c04b04b400ee23f3c32791d10bf9a1f65eb",
+   "ingest/holdout_v2_evaluation.py": "67dc8a7f04bf00ef8a35ef2292ded3f1fefbe1f2797740f925622b8c8598e0fa",
+   "ingest/holdout_v2_judging.py": "763ece94bd1be055053a67f6e50bd8784ac264af656f1ebd95e7e7d75681e6b8",
+   "ingest/holdout_v2_packets.py": "2fb003260f5f3493c5da56cf37b707b47fe64e41a366bfd28d13d89489865b54",
+   "ingest/holdout_v2_retrieval.py": "04651ff8804bd7316479dfa86bd52ec342ecc05f9fb216a5492df49a032f8efb",
+   "ingest/holdout_v2_runner.py": "ab8b5d4fa9e9f825eee672fc297278b569e7a7122b12c43325dbb5416de541cb",
+   "ingest/holdout_v2_state.py": "1f60007acda15e041920eb68a3f0bf26d46d309234ab89dbefd4a1f98e0df6e0",
+   "ingest/ir_metrics.py": "a1b666387c48ce27e5113600c7a2fa11fe8c8f2e8a7db1376203a2bc59ceb949",
+   "ingest/lexical.py": "e82813f8ebbc4794b9e22a3a8a002d56f7fbad181ad532980d5bc3044371f64d",
+   "ingest/necessity.py": "e520713d68ffe23b985fcc5d09a730a462bf39e232b8d839a1237dede5400814",
+   "ingest/processed.py": "d9b4af950250187be9ff8f45ea32af6e31c5c482c08ad3046e60b3e7c79192bd",
+   "ingest/psd2_exclusions.py": "9900c494238c4df56f9d1e82d6ca62b920a3d9cf701374c9468b057ed8552065",
+   "ingest/references.py": "b34a55de43d7d0d73d20fcee057f7aa4d6538ff864061ebaacb62ee013927f88",
+   "ingest/requirement_rerank.py": "3237458b68c22c57ccb2890029b28715efba73f88d06034445ba7813609562e8",
+   "ingest/retrieval.py": "d7b4479b070a5b19073e4825c072a47dd1f2564d4e0e4a402331444b519d1c27",
+   "ingest/run_report.py": "0ed87c6800725b3f551e2d5ca407c49f53805c85e662caa173ea6ecd2ff9b158",
+   "scripts/holdout_v2.py": "f09b0dc4bcb899e1d236811f36cf49d72dd2e0f68168d595ff315d96e8c7c9e9",
+   "scripts/mlx_generate.py": "41a462498ecd1fe57cd1a5306a7bc9e5cc778c362e4383349f92738ae2066dbb"
+  },
+  "inputs_sha256": {
+   "data/benchmark/PROTOCOL.md": "79cafdda538cf9cfec682817ac77bf75692f562545ad5b21f38d8394df0db1d0",
+   "data/benchmark/psd2_excluded_articles.json": "2ce53d31d82f285271e34112a76ef053d93a1fe605465468a453555f2635719d",
+   "data/benchmark/dev/manifest.json": "c845b684035dac91dec399604e6623a60c67a9564afba975f177b5d6482fb917",
+   "data/benchmark/dev/needs.jsonl": "1c22c80dfb1b1d3092634b795bee5e01e0fca2bc07582d4ea1854d91c07cb791",
+   "data/benchmark/dev/queries.jsonl": "8c1d859430139f3d40354fe0866c9e11d9c05e6458aba27969f1a9077d55f2c7",
+   "data/benchmark/dev/qrels.jsonl": "3322ff2abe714eee11cfd4209ebe7d059a1605be49bbbc24124e205e443c9b90",
+   "data/benchmark/fixtures/manifest.json": "f855583f61a20e591eaa8e1d3fc0c68c87abc3322eef263566b2e3133f51b0de",
+   "data/benchmark/fixtures/needs.jsonl": "ad04a1a70d7f5be43daf325cb8e79031ead02a978ca37f14d133fb3fdb6cfeeb",
+   "data/benchmark/fixtures/queries.jsonl": "27d7509a792f83ae6586c43b9ecb6541d15990075fe5c4c845319aa7f8d8196b",
+   "data/benchmark/fixtures/qrels.jsonl": "f2e485adbf8ca2f76c33de4b7ceec5dea7a237a5a72302a9434bcbd516728941"
+  },
+  "protocol": {
+   "file": "config/holdout/test-v2-protocol.md",
+   "sha256": "227d299403f9acff9795ad0e79f4d2baa598bfb6a440573cf545b01c382c8dcf"
+  }
+ },
+ "aborted_runs": [
+  {
+   "status": "ABORTED_PROTOCOL_DEFECT_QWEN_DIAGNOSTIC",
+   "contract_sha256": "fe18917551276d676a6f3e0c5c20d14ee34f2f4a66c9de18407f264366a858f9",
+   "public_commit": "3226afad8fdb8f424b6486f540312e31cb16278a",
+   "ready_needs": 0,
+   "reason": "The frozen Qwen diagnostic recovery policy assumed that a repeated technical execution could produce a different semantic output. In the real S3 run Qwen3-8B was running greedy deterministic decoding, so a structurally malformed but successfully generated response was likely reproducible. Retrying the identical semantic execution was therefore not a meaningful recovery strategy.",
+   "change": "the diagnostic's failure semantics only (holdout_checks.py diagnostic_admissible); sampling, grid, order, prompts, judges and systems unchanged"
+  },
+  {
+   "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+   "contract_sha256": "e45ccb1125f6a648759493876f7ebe0c32364a24c438f2ff4ea0961705ed9e26",
+   "base_contract_sha256": "d4f3a1f2826d5a18ff8a1e43ac8ae62347b99a20b07a24121591e5e63956b381",
+   "public_commit": "73bfb18f2ca90a8b7d5c32d0e57ed6896f078f48",
+   "base_public_commit": "57ec4c9f3370a76f1125304112e58a04a0c2566b",
+   "amendments": [
+    "config/holdout/construction-amendment-1.json"
+   ],
+   "ready_needs": 8,
+   "reason": "The omission audit's hard stop: a second blind search found evidence judge A had missed, adjudicated grade >= 1, so that the frozen rule called for the evidence search to be corrected for every need alike. The review that followed also found control-flow defects (outputs admitted without their full contract, a second searcher's declared problem with no transition, audits bound to the wrong attempt, unbounded processes, a controller that could act on a stale failure). The run is kept whole as a protocol-development run, and TEST restarts prospectively under one final procedure for every need, rather than being repaired.",
+   "change": "evidence discovery: two blind searches for every need, their union adjudicated once, and the omission audit as a third blind search (config/holdout/evidence-discovery.md); complete admission of every output; bounded processes with verified cleanup; the diagnostic's token preflight; every reachable failure classified (config/holdout/failure-paths.md); the unattended controller in the repository. Sampling, grid, order, omission cells, templates, judges, thresholds, systems and the S4 metrics unchanged"
+  },
+  {
+   "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+   "contract_sha256": "c6b0c6912b67c077c86738e186180c5000d305965e585a74744e5d63b215dbd6",
+   "public_commit": "1765ae38f5a5381f5346f095ec55ff710cfcf363",
+   "ready_needs": 6,
+   "reason": "Three independent executions of the metadata adjudicator gave a well-formed answer violating the same frozen semantic rule of its stage, so that technical retries could not repair it and the stage was left pending_technical_unresolved. The transition for that class was defined prospectively, and TEST restarts under it.",
+   "change": "a semantic admissibility failure, the same frozen invariant violated in the three executions of search A, search B or the metadata adjudicator, rejects the attempt (semantic_inadmissible); contract failures and search C keep their technical exhaustion. Everything else unchanged"
+  },
+  {
+   "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+   "contract_sha256": "433edd5d633777c575e81302423c19b8646c566e20ceb0a9698b7250c1634225",
+   "public_commit": "3740fc7911f1f2bcc24d109e6045aef5eda471b9",
+   "ready_needs": 5,
+   "reason": "Three executions of judge C answered the item they were given for another legal node, a failure of the role's contract, so that the stage was left pending_technical_unresolved. A candidate's identity was carried by its act and path, which the model wrote back itself, rather than by an id the orchestrator owns.",
+   "change": "the identity of what a judge grades: every candidate of judges B, C and D and of the diagnostic is given under an opaque item id, answered by that exact id and mapped to its node by the orchestrator alone (judge_b.v2, judge_c.v2, judge_d.v2); a missing, unknown, repeated or other id stays a technical contract failure. Rubrics, thresholds, retries and every methodological rule unchanged"
+  },
+  {
+   "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+   "contract_sha256": "b824db37fb9e13202f4d3efdc38a706a03c9c56fe030607a39ae5a6a167846d7",
+   "public_commit": "808762e078f1e96a3f71a02c0b560b447332fca7",
+   "ready_needs": 3,
+   "reason": "The omission audit's hard stop: the audit search listed a node outside the union of searches A and B, adjudicated grade >= 1. A structural review, counts only, found that most omissions were nodes the missing search had read in full and not listed: coverage depended on each search's discretionary, softly capped listing",
+   "change": "three fixed blind searches for every need; a mechanical exposure pool (every node a search received in full, listed or not, is judged: judge B's pool variant, a second blind judgment for a grade >= 1 or an ambiguity, judge C on a difference); the audit search's coverage is its own exposure; judge D and the diagnostic on the listed nodes and the pool's contested or relevant ones; no number of candidates in the searches' template (judge_a.v3); the controller's outer deadline 72 hours. The rubrics, the omission threshold >= 1, the retries and every other rule unchanged"
+  },
+  {
+   "status": "ABORTED_PROTOCOL_DEVELOPMENT_RUN",
+   "contract_sha256": "eac1d3eb66f546c68233185f8cf24b3f6347e6b315c311847d97f23302745e9a",
+   "public_commit": "30ffb930007dfec13c52778842caf8032c9e8f2a",
+   "ready_needs": 2,
+   "reason": "The omission audit's hard stop, a valid application of the frozen rule: the audit search reached three nodes outside the exposure pool, each adjudicated grade 1. A read-only structural review found no controller or bookkeeping defect, but a gap in the exposure policy: one node only a search snippet had named, which no search opened, and two article lead-ins shown to the judges as the context of their children, never as candidates. The run is development evidence only: none of its needs, READY records, qrels or other outputs enters a later TEST",
+   "change": "exposure v2, rule A, designed after this run's stop and declared as such: the pool also takes every node a search page named, followed up in full, and every ancestor with its own text of a node reached, as a candidate of its own; no article is expanded; the audit search is measured by the same rules. A wider rule that also took every node of an article a search listed was implemented and evaluated before any freeze and not adopted. The development need exclusions in the overlap gate (overlap_gate.v2); D-061's review metrics defined operationally; Gate 1 from a sealed certification. Three normal searches, the omission threshold >= 1, the rubrics, the judges and every other rule unchanged"
+  },
+  {
+   "status": "ABORTED_CONFIRMATORY_MINIMUM_STOP",
+   "contract_sha256": "6762368c07204a849413a50a0bb167a84056e82f5638a33bc83df457c73cbdf3",
+   "public_commit": "a216b14eaa3c13cc05a925f42a16d3b115b73f85",
+   "ready_needs": 0,
+   "reason": "The frozen minimum feasibility rule: the first five evaluable cells exhausted their attempts, so at most 49 of the required 50 evaluable needs stayed reachable. 240 events, 0 READY, no retrieval and no E-vs-E5 result. An external methodological review followed, before any TEST retrieval existed",
+   "change": "TEST v2 (D-067): a new prospective protocol, not a repair of run 7"
+  }
+ ]
+}

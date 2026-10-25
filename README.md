@@ -151,7 +151,7 @@ uv pip install --require-hashes --no-deps -r requirements-embed.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest skips the 253 tests marked `corpus`: they need `data/raw/`, which is
+Without the corpus, pytest skips the 307 tests marked `corpus`: they need `data/raw/`, which is
 not in the repository (see [Data and reproducibility](#data-and-reproducibility)). The 31 tests
 marked `embedding_model` need the `embed` extra and the weights of the three embedding models and
 the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`); two of them also
@@ -166,7 +166,7 @@ against a service container of the same pinned image. The one test marked
 does not exist; every other test of the internal TEST set makes a synthetic one. One contract
 test needs the history back to E's DEV result and is skipped in a shallow clone such as CI's,
 and the host identity test runs on macOS only. In CI (no corpus, no model, PostgreSQL up)
-pytest reports `1183 passed, 288 skipped`.
+pytest reports `1401 passed, 342 skipped`.
 
 ## Docker
 
@@ -234,7 +234,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 | `data/external/` | no | the external benchmark of T4 (third-party data, CC BY-NC-SA 4.0) and everything derived from it |
 
-Without the corpus you can run the test suite (in CI, 1183 tests pass and 288 are skipped with
+Without the corpus you can run the test suite (in CI, 1401 tests pass and 342 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported` and PostgreSQL up), the linters and
 type checks, and both Docker images. The vector index is derived data too: it lives in a Docker
 volume and is rebuilt from `data/chunks/` and `data/embeddings/`.
@@ -483,7 +483,19 @@ taxonomy, does the frozen E improve over the frozen E5 at top-10 retrieval? The 
 It runs through `scripts/holdout_v2.py`: development pilots (`pilot-generation`,
 `pilot-judging`, `faithfulness`, `pool-validation`, `forecast`) on DEV and development material
 only, `prepare` for the contract, and `start` and `resume`, the only commands that run a model on
-TEST v2, each needing the contract's full SHA-256 typed again. It has not started.
+TEST v2, each needing the contract's full SHA-256 typed again.
+
+`config/holdout/test-v2-contract.json` (SHA-256
+`a38b638c2989bd39d946a09b588ce515ed18e9d5de252bdfb7644eeeb5be5288`) was written once, before any
+TEST v2 topic exists. It fixes by content 86 files: the import closure of the code, the
+retrieval configs, the templates, the protocol and the plan. It also fixes the corpus and chunk
+layer, E, E5 and BM25 as recomputed from their DEV runs, the evaluator's versions, and the
+requested and effective Claude model with its pinned binary. It fixes E's MLX runtime and the
+sealed Gate 1 certification it relies on. It fixes the bank by its hash: the bank is drawn from
+a private salt, so nobody can compute it from the contract. The private inputs enter by identity
+alone: the 99 historical statements and the 35 development references. The commit that adds the
+contract is its public timestamp. Before that freeze, every frozen system reproduced its DEV run
+exactly on DEV's 90 queries, E end to end included. TEST v2 has not started.
 
 #### TEST v1 (historical, runs 1 to 7)
 
