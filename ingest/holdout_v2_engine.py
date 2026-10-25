@@ -79,8 +79,10 @@ CAPACITY_MARKERS = re.compile(r"usage limit|rate_limit_error|rate limit|overload
 
 def capacity_refusal(stream: str, stderr: str) -> bool:
     """Whether a failed call was refused for the provider's capacity: read from the final error
-    result the CLI wrote (stream-json) and from its stderr, never from the packet or a reply."""
-    told = stderr
+    result the CLI wrote (stream-json) and from the last line of its stderr (an earlier notice,
+    such as the CLI's own retry message, decides nothing), never from the packet or a reply."""
+    last = [line for line in stderr.splitlines() if line.strip()]
+    told = last[-1] if last else ""
     for line in stream.splitlines():
         if not line.startswith("{"):
             continue
@@ -421,7 +423,19 @@ class Engine:
             )
             return None
         if session is None:
-            self._failed(run_id, "interrupted", "the process stopped before a complete response")
+            # a spool whose final result is a capacity refusal is that refusal, never counted;
+            # otherwise the process stopped before a complete response
+            probe = getattr(self.executor, "recover_failure", None)
+            try:
+                reason = probe(job.role, run_id) if probe is not None else None
+            except Exception:
+                reason = None
+            if reason == CAPACITY:
+                self._failed(run_id, CAPACITY, "a capacity refusal, recovered from the spool")
+            else:
+                self._failed(
+                    run_id, "interrupted", "the process stopped before a complete response"
+                )
             return None
         document = self._responded(run_id, session, recovered=True)
         if not document:
@@ -480,17 +494,30 @@ class Engine:
                                 self.sleep(self.backoff_seconds * min(2 ** (backoff - 1), 8))
                             pending.append(job)
             except (V2Stop, Paused):
-                # nothing more starts; what is running ends and its response is recorded, never
-                # decided: a person reads the stop first, and a resume decides it
+                # nothing more starts; what is running ends and its outcome is recorded with its
+                # classified reason, never decided: a person reads the stop first, and a resume
+                # decides it exactly as this run would have (a capacity refusal stays one)
                 for future in list(running):
                     job, run_id, _ = running.pop(future)
-                    try:
-                        session = future.result()
-                    except BaseException:
-                        continue
-                    self._responded(run_id, session, recovered=False)
+                    self._settle(run_id, future)
                 raise
         return out
+
+    def _settle(self, run_id: str, future: Future[hpl.Session]) -> None:
+        """A call that ends after a stop or a pause: its response or its failure, with the
+        reason _finish would give it, recorded; nothing decided."""
+        try:
+            session = future.result()
+        except hproc.CleanupFailed as error:
+            self._failed(run_id, "process_cleanup", str(error))
+            return
+        except hpl.TechnicalFailure as error:
+            self._failed(run_id, error.reason, error.detail)
+            return
+        except Exception as error:
+            self._failed(run_id, "model_api", f"{type(error).__name__}: {error}")
+            return
+        self._responded(run_id, session, recovered=False)
 
     def _finish(self, job: Job, run_id: str, future: Future[hpl.Session]) -> Any:
         try:

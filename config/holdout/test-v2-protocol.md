@@ -148,7 +148,8 @@ the whole layer as in DEV; each frozen file keeps a query's first 100 chunks. Ea
 when it completes and checked (every query ranked or refused by its contract, no chunk twice, no
 chunk outside the layer); a system that fails technically runs again, unchanged, once, and is then
 not completed (S4): the pool goes on without it, and if E or E5 is not completed the primary
-comparison is reported as not made. The runs are hashed with their configs, model identities,
+comparison is reported as not made. A process interruption (a kill, a sleep, the orchestrator's
+crash) is no failure of the system twice; from the third on, each counts as a failed attempt. The runs are hashed with their configs, model identities,
 corpus identity and code. No metric is computed.
 
 **The pool of a need**, the union over its three formulations of:
@@ -259,9 +260,10 @@ last execution the job is exhausted (recorded once, never decided again by a res
 candidate or need is a technical failure, and the next one in priority order comes in. **A call the provider
 refuses for its capacity** (the CLI's final error result or its stderr naming a usage limit,
 `rate_limit_error` or `overloaded_error`, the pinned binary's own words) is not a failure of its
-job: it never counts toward the limit. The engine waits (five minutes, doubling up to an hour, once
-per episode) and runs the job again; after six hours without a response the construction
-pauses, with nothing decided, for a resume. Every other failure counts, whatever its kind, so a
+job: it never counts toward the limit, not even when it is read back after a pause or a crash.
+The engine waits (five minutes, doubling up to an hour, once per episode) and runs the job again;
+after six hours without a response the construction pauses, with nothing decided, for a resume,
+and every call still running then is recorded with its own outcome. Every other failure counts, whatever its kind, so a
 job that fails the same way every time is exhausted after three executions. What counts is a
 function of the recorded reasons alone, so a resume decides exactly as the run it continues.
 

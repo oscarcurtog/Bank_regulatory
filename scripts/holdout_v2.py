@@ -87,6 +87,15 @@ class V2RealExecutor(hx.RealExecutor):
             raise hpl.TechnicalFailure(en.CAPACITY, detail)  # type: ignore[arg-type]
         return super()._answer(role, run)
 
+    def recover_failure(self, role: str, run_id: str) -> str | None:
+        """The classified reason of a call whose spool holds no complete answer: a capacity
+        refusal if its final result says so, otherwise none (an interruption)."""
+        spool = self._spool(run_id)
+        if not spool.exists():
+            return None
+        stdout, stderr = hsp.text(spool, "stdout"), hsp.text(spool, "stderr")
+        return en.CAPACITY if en.capacity_refusal(stdout, stderr) else None
+
 
 def _print(value: Any) -> None:
     print(json.dumps(value, indent=1, sort_keys=True, ensure_ascii=False, default=str))

@@ -69,6 +69,10 @@ SENSITIVITY_FILE = Path("evaluation") / "sensitivity.json"
 STATUS_FILE = "status.json"
 # S4: a system that fails technically runs again, unchanged, once; then it is not completed
 RETRIEVAL_ATTEMPTS = 2
+# a process interruption (a kill, a sleep, the orchestrator's crash) is no failure of the system
+# twice; from the third on, each counts as a failed attempt, so that a system that ends its own
+# process every time is not completed instead of running forever
+FREE_INTERRUPTIONS = 2
 
 
 class NotReady(Exception):
@@ -731,8 +735,8 @@ class Runner:
             if f"{key}/ranked" in self.keyed:
                 done[system] = self._ranked(system)
                 continue
-            # only an attempt that failed counts: one a process interruption ended (a kill, a
-            # sleep, a crash of the orchestrator) is recorded as interrupted and runs again
+            # an attempt that failed counts; one a process interruption ended (a kill, a sleep,
+            # a crash of the orchestrator) is recorded as interrupted and runs again, free twice
             started = sum(k.startswith(f"{key}/attempt/") for k in self.keyed)
             for n in range(1, started + 1):
                 if f"{key}/failed/{n}" not in self.keyed:
@@ -741,7 +745,9 @@ class Runner:
                         f"{key}/interrupted/{n}",
                         {"system": system, "attempt": n},
                     )
+            interrupted = sum(k.startswith(f"{key}/interrupted/") for k in self.keyed)
             failed = sum(k.startswith(f"{key}/failed/") for k in self.keyed)
+            failed += max(0, interrupted - FREE_INTERRUPTIONS)
             while failed < RETRIEVAL_ATTEMPTS and f"{key}/not_completed" not in self.keyed:
                 started += 1
                 self.record(

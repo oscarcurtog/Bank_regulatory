@@ -559,3 +559,56 @@ def test_review_p1_3_the_contract_freezes_the_metric_code() -> None:
     ):
         assert path in files, path
     assert set(hc2.CODE_FILES) <= files
+
+
+# ---------------------------------------------------------------------------
+# the third review's findings (N7 to N9), pure parts
+# ---------------------------------------------------------------------------
+
+
+def test_review_n7_a_pause_records_in_flight_capacity_refusals_as_such(tmp_path: Path) -> None:
+    """Every call refused for capacity until the pause: no run is left open, every failure is a
+    capacity refusal, and a resume, with the provider back, exhausts nothing."""
+    fake = f.V2Fake(tmp_path / "spool", capacity={"j/": 10_000})
+    engine = _engine(tmp_path, fake)
+    engine.workers = 6
+    jobs = [_gate_job(n) for n in range(1, 7)]
+    with pytest.raises(en.Paused):
+        engine.run(jobs)
+    runs = engine.ledger.runs.values()
+    assert not [r for r in runs if r["status"] == "started"]
+    assert {r.get("reason") for r in runs if r["status"] == "failed"} == {en.CAPACITY}
+    assert all(engine.ledger.failures(j.job_id) == 0 for j in jobs)
+    again = en.Engine(
+        engine.store, f.V2Fake(tmp_path / "spool2"), f.audit_context(), 6, 0.0, lambda s: None
+    )
+    out = again.run(jobs)
+    assert all(not o.exhausted for o in out.values())
+
+
+def test_review_n7_a_recovered_capacity_refusal_is_not_counted(tmp_path: Path) -> None:
+    """A call that was running when the orchestrator died, whose spool holds a capacity
+    refusal: recorded as that refusal, never as an interruption."""
+
+    class Refused(f.V2Fake):
+        def recover_headless(self, role: str, run_id: str, packet: str) -> Any:
+            return None
+
+        def recover_failure(self, role: str, run_id: str) -> str | None:
+            return en.CAPACITY if run_id == "j/1#1" else None
+
+    store = vs.Store.create(tmp_path / "e", tmp_path / "e-raw", {"kind": "test"})
+    _logged(store, "j/1", 1, None)  # started, then the process died
+    engine = en.Engine(
+        store, Refused(tmp_path / "spool"), f.audit_context(), 1, 0.0, lambda s: None
+    )
+    out = engine.run([_gate_job(1)])
+    assert not out["j/1"].exhausted
+    assert engine.ledger.runs["j/1#1"]["reason"] == en.CAPACITY
+    assert engine.ledger.failures("j/1") == 0
+
+
+def test_review_n8_only_the_last_stderr_line_can_name_a_capacity_refusal() -> None:
+    earlier = "API Error (overloaded_error): retrying in 5 s\nError: 400 invalid request"
+    assert not en.capacity_refusal("", earlier)
+    assert en.capacity_refusal("", "a notice\nAPI Error: 429 rate_limit_error")

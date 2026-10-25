@@ -811,3 +811,31 @@ def test_review_n5_an_integrity_stop_in_retrieval_stays_a_stop(tmp_path: Path) -
         assert stop.value.reason == "retrieval_identity"
         assert "retrieval/BM25/not_completed" not in runner.keyed
         runner.store.close()
+
+
+def test_review_n9_a_system_that_ends_its_process_every_time_is_not_completed(
+    tmp_path: Path,
+) -> None:
+    """E kills its process on every attempt: two interruptions are free, then each counts, and
+    on the fifth process E is not completed and the construction goes on without it."""
+    d = tmp_path / "killer"
+    w, fake, _ = f.world(d, n_target=1)
+    rank = w.rank
+    seen: Counter[str] = Counter()
+
+    def killed(system: str, queries: Any, work: Path) -> rv.Run:
+        seen[system] += 1
+        if system == "E":
+            raise hf.Crash("the system ends its process")
+        return rank(system, queries, work)
+
+    w.rank = killed
+    for _ in range(4):
+        runner = f.runner(w, fake)
+        with pytest.raises(hf.Crash):
+            runner.build()
+        runner.store.close()
+    runner = f.runner(w, fake, create=False)
+    runner.build()
+    assert seen["E"] == 4
+    assert runner.keyed["runs"]["not_completed"] == ["E"]
