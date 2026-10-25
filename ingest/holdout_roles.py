@@ -57,6 +57,9 @@ class RoleContract:
     # rules must not hold; the corpus text elsewhere in the packet may cite any provision
     rules_field: str | None = None
     banned_in_packet: tuple[str, ...] = ()
+    # an author whose packet legitimately holds legal text (TEST v2's concept author, D-067:
+    # its anchor provisions): the packet scan keeps the runs of DEV and drops the legal wording
+    legal_input: bool = False
 
     @property
     def authentication(self) -> str:
@@ -239,6 +242,80 @@ ROLE_CONTRACTS: dict[str, RoleContract] = {
             rules_field="rules",
             banned_in_packet=hp.BANNED_FOR_B_AND_C,
         ),
+        # TEST v2 (D-067). The statement writer, the query writer, the gatekeeper, judge C and
+        # the metadata adjudicator keep their roles above; these are the roles TEST v2 adds.
+        RoleContract(
+            "v2_concept_author",
+            "concept_author.v2",
+            ("concept_author.v2",),
+            "headless",
+            (),
+            "the specification and its anchor provisions, each with its article's title and the "
+            "own text of its ancestors, from the corpus",
+            (
+                "DEV",
+                "the fixtures",
+                "the historical exclusions",
+                "other TEST v2 candidates",
+                "rankings",
+                "qrels",
+                "metrics",
+                *_SYSTEMS,
+                *_PROJECT,
+            ),
+            author=True,
+            legal_input=True,
+        ),
+        *(
+            # the two blind judgments of a pool's nodes: B1 every node, B2 every B1 grade >= 1
+            # or ambiguity and every node of the decisive set, each in packets of its own
+            RoleContract(
+                role,
+                "judge_b_pool.v3",
+                ("judge_b_pool.v3",),
+                "headless",
+                (),
+                "nodes of the chunks of the need's pool, with their legal context, from the corpus",
+                (
+                    "which system ranked a node, and where",
+                    "the other judgment",
+                    "DEV",
+                    *_SYSTEMS,
+                    *_PROJECT,
+                ),
+                rules_field="rules",
+                banned_in_packet=hp.BANNED_FOR_B_AND_C,
+            )
+            for role in ("v2_pool_judge_1", "v2_pool_judge_2")
+        ),
+        *(
+            # the answerability of a need with frozen qrels, and the second opinion a `none`
+            # against grade >= 2 evidence receives
+            RoleContract(
+                role,
+                "answerability.v1",
+                ("answerability.v1",),
+                "headless",
+                (),
+                "the need and its final judged evidence (grade >= 1), from the corpus",
+                ("which system ranked a node", "every judge's labels", "DEV", *_SYSTEMS, *_PROJECT),
+                rules_field="rules",
+                banned_in_packet=hp.BANNED_FOR_B_AND_C,
+            )
+            for role in ("v2_answerability", "v2_answerability_2")
+        ),
+        RoleContract(
+            # the completeness diagnostic's chunk screen: one blind judge, high recall
+            "v2_screen",
+            "completeness_screen.v1",
+            ("completeness_screen.v1",),
+            "headless",
+            (),
+            "chunks of the corpus outside the need's pool",
+            ("the pool", "which system ranked a chunk", "DEV", *_SYSTEMS, *_PROJECT),
+            rules_field="rules",
+            banned_in_packet=hp.BANNED_FOR_B_AND_C,
+        ),
     )
 }
 MESSAGE_SCHEMAS = {
@@ -285,6 +362,7 @@ def contracts_record() -> dict[str, Any]:
             "evidence": c.evidence,
             "forbidden": list(c.forbidden),
             "author_scan": c.author,
+            "legal_input": c.legal_input,
             "banned_in_packet": list(c.banned_in_packet),
         }
         for role, c in sorted(ROLE_CONTRACTS.items())
@@ -403,6 +481,8 @@ def audit_role_run(
         problems.append(f"the packet is not an instance of {contract.template}")
     if contract.author:
         leaks = hp.author_leaks(run.packet, forbidden_statements)
+        if contract.legal_input:  # its legal text is authorized input; DEV's runs never are
+            leaks = [leak for leak in leaks if leak.startswith("a run of")]
         if leaks:
             problems.append(f"the author's packet leaks: {leaks[:3]}")
     if contract.rules_field is not None:

@@ -252,6 +252,7 @@ def real_runs(world) -> dict[str, hr.RoleRun]:
             for role in hr.SEARCHERS
         },
     }
+    runs |= v2_runs(world, ref, statement, candidates)
     messages = hp.diagnostic_messages(corpus, need, candidates, {}, ids, ref=ref)
     local = hr.RoleRun(
         "qwen_diagnostic",
@@ -269,6 +270,61 @@ def real_runs(world) -> dict[str, hr.RoleRun]:
     )
     runs["qwen_diagnostic"] = local
     return runs
+
+
+def v2_runs(world, ref: str, statement: str, candidates: list[str]) -> dict[str, hr.RoleRun]:
+    """TEST v2's own roles (D-067), each with the packet its code builds: the concept author
+    with a real anchor, the two blind pool judgments, the two answerability judgments and the
+    completeness screen."""
+    from ingest import holdout_v2 as v2
+    from ingest import holdout_v2_judging as jv
+    from ingest import holdout_v2_packets as v2p
+
+    corpus = world["corpus"]
+    slot = v2.slots(world["dev"])[0]
+    act, path = candidates[0].split(":")
+    anchor = v2.Anchor(act, path.split(".")[0], candidates[0], "area", 0)
+    candidate = v2.Candidate("P01-01", slot, "0" * 64, 1, "N401", (anchor,))
+    text = v2p.NeedText(ref, statement)
+    ids = {n: ho.item_id(b"test-salt", "v2-pool:N401", n) for n in candidates}
+    finals = {c: {"grade": 2, "ambiguous": False} for c in candidates}
+    passages = [
+        (jv.passage_id(b"test-salt", "N401", c), v2p.passage(corpus, corpus.text(c), corpus.key(c)))
+        for c in candidates
+    ]
+    pool = v2p.pool_packet(corpus, text, candidates, ids)
+    answerability = v2p.answerability_packet(corpus, text, finals)
+    return {
+        "v2_concept_author": run_of(
+            "v2_concept_author", v2p.concept_packet(corpus, candidate, ref)
+        ),
+        "v2_pool_judge_1": run_of("v2_pool_judge_1", pool),
+        "v2_pool_judge_2": run_of("v2_pool_judge_2", pool),
+        "v2_answerability": run_of("v2_answerability", answerability),
+        "v2_answerability_2": run_of("v2_answerability_2", answerability),
+        "v2_screen": run_of("v2_screen", v2p.screen_packet(text, passages)),
+    }
+
+
+def test_test_v2_judge_c_packets_pass_as_judge_c(world):
+    """TEST v2's two uses of judge_c.v2: the disputed nodes, and the answerability item."""
+    from ingest import holdout_v2_packets as v2p
+
+    corpus, ref = world["corpus"], "R-0123456789ab"
+    candidates = _candidates(world)
+    text = v2p.NeedText(ref, "A firm asks a question?")
+    ids = {c: ho.item_id(b"test-salt", "v2-c:N401", c) for c in candidates}
+    a = {c: {"grade": 1, "ambiguous": False, "rationale": "A"} for c in candidates}
+    b = {c: {"grade": 2, "ambiguous": False, "rationale": "B"} for c in candidates}
+    nodes, _ = v2p.c_packet(corpus, text, candidates[:2], a, b, ids)
+    finals = {c: {"grade": 2, "ambiguous": False} for c in candidates}
+    first = {"answerability": "none", "reason": "A"}
+    second = {"answerability": "partial", "reason": "B"}
+    item = ho.item_id(b"test-salt", "v2-answerability-c:N401", "answerability")
+    answer, _ = v2p.answerability_c_packet(corpus, text, finals, first, second, item, True)
+    for packet in (nodes, answer):
+        result = audit(world, run_of("judge_c", packet))
+        assert result.ok, result.problems
 
 
 def test_every_real_authorized_run_passes(world):

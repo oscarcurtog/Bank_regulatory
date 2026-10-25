@@ -37,11 +37,14 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   JuriFindIT's anti-money-laundering questions over Italian statute articles). E5 and an Italian
   BM25 come out level there, and E could not complete: its frozen reranker ran out of memory on
   long articles
-- **Internal TEST set (S3):** its construction and S4's analysis plan are frozen by content in a
-  pre-authoring contract, committed before any TEST need is written. Six constructions were
-  aborted and are kept as development evidence; TEST restarts under one final evidence procedure
-  for every need (three blind searches, and every node one of them reached judged), and has not
-  started yet
+- **Internal TEST set (S3), TEST v2:** a new prospective protocol (D-067,
+  `config/holdout/test-v2-protocol.md`): 200 evaluable needs from DEV's task profiles, each
+  anchored in a legal unit sampled by article, generated in parallel and deduplicated once,
+  globally; qrels from a judged pool of five frozen retrievers, E and E5 among them, with the
+  decisive set judged twice blind; incompleteness measured on 15 needs, never fatal. Implemented
+  and validated on development material only; it has not started. The earlier protocol (TEST
+  v1, seven constructions) is kept as history: the seventh, its first confirmatory attempt,
+  stopped under the frozen minimum feasibility rule before any retrieval
 - **Generation, evaluation, API and deployment:** later
 
 ## What is implemented
@@ -87,10 +90,11 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   relevance judgments in separate files, and a protocol fixed before any download: one run per
   system, and the rankings frozen by hash before any judgment is read. See
   [External validation](#external-validation-t4).
-- **Internal TEST set** (`ingest/holdout*.py`, `scripts/holdout.py`, `config/holdout/`): the
-  frozen machinery that will build a private TEST set of information needs written independently
-  of the development loop, and the contract that fixes it before the first need. See
-  [Internal TEST set](#internal-test-set-s3).
+- **Internal TEST set** (`ingest/holdout_v2*.py`, `scripts/holdout_v2.py`, `config/holdout/`):
+  the machinery that will build TEST v2, a private set of information needs written
+  independently of the development loop, its evaluation, and the contract that fixes both
+  before the first topic. TEST v1's machinery (`ingest/holdout*.py`, `scripts/holdout.py`) is
+  kept to reproduce runs 1 to 7. See [Internal TEST set](#internal-test-set-s3).
 - **Data contracts** (Pydantic): the manifest, the processed layer (`data/processed/{act}.json`),
   the chunk layer (`data/chunks/{act}.json`) and the benchmark files are validated when they are
   written and when they are read. Loading aborts instead of returning partly checked data.
@@ -111,7 +115,7 @@ ingest/              library: download, parser, processed and chunk layers, benc
 config/embeddings/   the contract of each embedding model, and the model comparison policy
 config/retrieval/    the retrieval iterations' protocols and the contracts of BM25, fusion, rerankers
 config/external/     the protocol of the external validation (T4)
-config/holdout/      the pre-authoring contract of the internal TEST set and S4's analysis plan (S3)
+config/holdout/      TEST v2's protocol, contract and S4 plan; TEST v1's, historical (S3)
 scripts/             pipeline and measurement entry points
 tests/unit/          isolated tests, no files involved
 tests/integration/   tests on real EUR-Lex excerpts (tests/fixtures/, see PROVENANCE.md)
@@ -437,13 +441,60 @@ unit): the comparison lives inside the benchmark.
 ### Internal TEST set (S3)
 
 ```bash
-PYTHONPATH=. .venv/bin/python scripts/holdout.py validate   # every check, building nothing
+PYTHONPATH=. .venv/bin/python scripts/holdout_v2.py validate --contract <sha256>  # builds nothing
+PYTHONPATH=. .venv/bin/python scripts/holdout_v2.py status                        # counts only
 ```
 
 DEV's numbers are development numbers: the retrieval iterations were selected on it. The internal
-TEST set measures the same task on information needs written independently of that loop, and S4
-will evaluate the frozen systems on it by the plan fixed in `config/holdout/s4-analysis-plan.md`.
-A pipeline of isolated model roles builds it (`ingest/holdout_pipeline.py`): contexts with no
+TEST set measures the same task on information needs written independently of that loop.
+
+#### TEST v2 (D-067)
+
+**The question:** on an independent private sample of information needs drawn from DEV's task
+taxonomy, does the frozen E improve over the frozen E5 at top-10 retrieval? The protocol is
+`config/holdout/test-v2-protocol.md` and the analysis `config/holdout/s4-analysis-plan.v2.md`;
+`config/holdout/test-v2-contract.json` freezes both, the code (`ingest/holdout_v2*.py`,
+`scripts/holdout_v2.py`) and every identity they rely on before any topic exists.
+
+- **Sample:** N = 200 evaluable needs, fixed (roughly adequate power for +0.03 Recall@10). A bank
+  of 260 candidates, DEV's answerable profiles replicated, each with a legal anchor drawn by
+  article (never by chunk or node frequency) and a priority drawn from a private salt; the
+  earliest candidates that survive and are evaluable form the sample, the tail is the only
+  reserve, and nothing is regenerated.
+- **Topics:** three isolated hops (a concept from the profile and its anchor, a statement from the
+  concept alone, three queries from the statement alone), an anchor-copy filter, and one global
+  deduplication in priority order (a bounded BGE-M3 and Jaccard prefilter, the frozen
+  `overlap_gate.v2` deciding) against DEV, the fixtures, 99 historical statements and the
+  development topics. The topics are frozen before any retrieval.
+- **Qrels:** per need, the pool of E@20, E5@20, BM25@20, BGE-M3@10, Qwen3-Embedding-0.6B@20 and
+  the anchor's chunk over the three formulations; every node a pooled chunk owns judged blind
+  (B1, explicit 0s kept), a second blind judgment (B2) of every node B1 graded 1 or more or found
+  ambiguous and of the whole E-vs-E5 decisive set, and judge C only where the two differ. A need
+  is evaluable when it holds a final non-ambiguous grade 2 or more; answerability and metadata
+  are descriptive.
+- **S4:** Recall@10 and nDCG@10, co-primary, as before; eight sensitivity analyses and ten pool
+  diagnostics fixed in advance, none of which can replace the primary result. A completeness
+  diagnostic screens the whole layer outside the pool for 15 needs and only feeds a sensitivity
+  analysis. An optional blind human audit never corrects a label.
+- **Stops:** integrity only (contract, corpus, retrievers, model or runtime identity, isolation,
+  state, a topic changed after its freeze). New relevance, ambiguity, disagreement, a small N or
+  any result are reported, never a stop.
+
+It runs through `scripts/holdout_v2.py`: development pilots (`pilot-generation`,
+`pilot-judging`, `faithfulness`, `pool-validation`, `forecast`) on DEV and development material
+only, `prepare` for the contract, and `start` and `resume`, the only commands that run a model on
+TEST v2, each needing the contract's full SHA-256 typed again. It has not started.
+
+#### TEST v1 (historical, runs 1 to 7)
+
+The rest of this section describes the earlier protocol, kept to reproduce its seven
+constructions; none of its machinery is used by TEST v2. Its seventh run, the first confirmatory
+attempt (contract `6762368c…`, commit `a216b14`), stopped under the frozen `minimum` feasibility
+rule (240 events, 0 READY) before any retrieval: no E-vs-E5 TEST result was ever observed.
+
+S4 would have evaluated the frozen systems on it by the plan fixed in
+`config/holdout/s4-analysis-plan.md`. The internal
+TEST v1 set was built by a pipeline of isolated model roles (`ingest/holdout_pipeline.py`): contexts with no
 access to the systems, DEV or their results write each need's concept and statement, a separate
 gatekeeper drops what overlaps DEV or a statement of an earlier, aborted construction (hidden
 references no author sees), judges grade the evidence, and a local Qwen3-8B gives a diagnostic.
@@ -493,13 +544,12 @@ identity differs. `start` and `resume` are the only commands that run a model on
 needs the contract's full SHA-256 typed again.
 
 TEST lives in `data/benchmark/test/`, which is not versioned: a local git history of its own
-that refuses every push, verified backups outside the repository, and the durable state of the
-construction (SQLite, an append-only event log). What is published is its commitment,
-`data/benchmark/test-commitment.json` (hashes, counts and distributions, no text), pushed before
-S4 runs any system. No TEST need is ready yet: the construction under this contract has not
-started.
+that refuses every push, verified backups outside the repository, and the durable state of each
+construction (SQLite, an append-only event log). TEST v2 has a namespace of its own there
+(`v2/`), never an earlier run's. No TEST v1 need was ever frozen: its seventh construction
+stopped with none ready.
 
-Six earlier constructions were aborted and are kept privately, whole, as development evidence;
+The six constructions before it were aborted and are kept privately, whole, as development evidence;
 none of their needs, READY records, qrels, judgments or other outputs is reused (the contract's
 `aborted_runs`). Their admitted statements serve only as hidden references of the overlap gate,
 so that none of them returns as a TEST need. The first, under contract

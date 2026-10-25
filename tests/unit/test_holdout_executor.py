@@ -394,16 +394,19 @@ class _Scripted:
 
 def test_only_the_launcher_builds_the_real_executor_or_an_orchestrator():
     """No other module, script or command can assemble a construction with real models, and
-    so none can skip the launcher's checks."""
-    builders: dict[str, set[str]] = {"RealExecutor(": set(), "Pipeline(": set()}
+    so none can skip the launcher's checks: the earlier construction's launcher, and TEST v2's
+    (scripts/holdout_v2.py, D-067), which builds its runner only after its contract's
+    preflight (tests/unit/test_holdout_v2.py)."""
+    builders: dict[str, set[str]] = {"RealExecutor(": set(), "Pipeline(": set(), "Runner(": set()}
     for path in [*Path("ingest").glob("*.py"), *Path("scripts").glob("*.py")]:
         text = path.read_text(encoding="utf-8")
         for name in builders:
             if re.search(rf"(?<![A-Za-z_]){re.escape(name)}", text.replace("class " + name, "")):
                 builders[name].add(path.as_posix())
     assert builders == {
-        "RealExecutor(": {"ingest/holdout_launcher.py"},
+        "RealExecutor(": {"ingest/holdout_launcher.py", "scripts/holdout_v2.py"},
         "Pipeline(": {"ingest/holdout_launcher.py"},
+        "Runner(": {"scripts/holdout_v2.py"},
     }
 
 
