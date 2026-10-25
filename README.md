@@ -151,7 +151,7 @@ uv pip install --require-hashes --no-deps -r requirements-embed.lock.txt
 .venv/bin/python -m mypy ingest scripts tests
 ```
 
-Without the corpus, pytest skips the 307 tests marked `corpus`: they need `data/raw/`, which is
+Without the corpus, pytest skips the 308 tests marked `corpus`: they need `data/raw/`, which is
 not in the repository (see [Data and reproducibility](#data-and-reproducibility)). The 31 tests
 marked `embedding_model` need the `embed` extra and the weights of the three embedding models and
 the two rerankers (1.2 to 2.3 GB each, downloaded once into `.cache/huggingface`); two of them also
@@ -166,7 +166,7 @@ against a service container of the same pinned image. The one test marked
 does not exist; every other test of the internal TEST set makes a synthetic one. One contract
 test needs the history back to E's DEV result and is skipped in a shallow clone such as CI's,
 and the host identity test runs on macOS only. In CI (no corpus, no model, PostgreSQL up)
-pytest reports `1401 passed, 342 skipped`.
+pytest reports `1404 passed, 343 skipped`.
 
 ## Docker
 
@@ -234,7 +234,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 | `data/external/` | no | the external benchmark of T4 (third-party data, CC BY-NC-SA 4.0) and everything derived from it |
 
-Without the corpus you can run the test suite (in CI, 1401 tests pass and 342 are skipped with
+Without the corpus you can run the test suite (in CI, 1404 tests pass and 343 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported` and PostgreSQL up), the linters and
 type checks, and both Docker images. The vector index is derived data too: it lives in a Docker
 volume and is rebuilt from `data/chunks/` and `data/embeddings/`.
