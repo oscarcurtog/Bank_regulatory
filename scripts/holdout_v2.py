@@ -48,7 +48,7 @@ import statistics
 import sys
 import tempfile
 from collections import Counter, defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -68,6 +68,8 @@ from ingest import holdout_v2_audit as hau
 from ingest import holdout_v2_contract as hc2
 from ingest import holdout_v2_dedup as dd
 from ingest import holdout_v2_engine as en
+from ingest import holdout_v2_operational_amendment as oa
+from ingest import holdout_v2_operations as ops
 from ingest import holdout_v2_retrieval as rv
 from ingest import holdout_v2_runner as hrun
 from ingest import holdout_v2_state as vs
@@ -217,9 +219,13 @@ def _store(namespace: Path, raw: Path, meta: Mapping[str, str]) -> vs.Store:
 
 
 def _session(runner: hrun.Runner, workers: int, label: str) -> None:
-    runner.engine.record(
-        "session_started", None, {"workers": workers, "label": label, "at": _now()}
-    )
+    record: dict[str, Any] = {"workers": workers, "label": label, "at": _now()}
+    supplement = oa.get_current()
+    if supplement is not None:
+        record["operational_amendment_sha256"] = supplement.sha256
+        if runner.engine.operations is not None:
+            record["operational_policy"] = runner.engine.operations.policy.record()
+    runner.engine.record("session_started", None, record)
 
 
 # ---------------------------------------------------------------------------
@@ -721,7 +727,47 @@ def _test_world(
     return world, executor
 
 
-def construct(action: str, confirm: str, workers: int) -> int:
+def construct(
+    action: str,
+    confirm: str,
+    workers: int,
+    *,
+    operations_manifest: Path | None = None,
+    operations_sha256: str | None = None,
+    min_start_interval_seconds: float | None = None,
+    max_executions_per_window: int | None = None,
+    execution_window_seconds: float = 86400.0,
+) -> int:
+    """An operational supplement is opt-in and separately pinned; the base identity stays."""
+    if workers < 1:
+        print("STOP: workers must be positive")
+        return 1
+    requested = operations_manifest is not None or operations_sha256 is not None
+    if not requested:
+        if (
+            min_start_interval_seconds is not None
+            or max_executions_per_window is not None
+            or execution_window_seconds != 86400.0
+        ):
+            print("STOP: pacing requires the explicitly approved operational supplement")
+            return 1
+        return _construct(action, confirm, workers, None)
+    if action != "resume" or operations_manifest is None or operations_sha256 is None:
+        print("STOP: operational mode needs RESUME, a manifest and its approved SHA-256")
+        return 1
+    pinned = _pinned(confirm)
+    supplement = oa.load_authorized(operations_manifest, operations_sha256, pinned, REPO)
+    # Validate the policy before opening the real state. No model can be constructed yet.
+    policy = ops.Policy(
+        300.0 if min_start_interval_seconds is None else min_start_interval_seconds,
+        max_executions_per_window,
+        execution_window_seconds,
+    )
+    with oa.authorized(supplement):
+        return _construct(action, confirm, workers, policy)
+
+
+def _construct(action: str, confirm: str, workers: int, policy: ops.Policy | None) -> int:
     """START or RESUME of TEST v2: the only commands that run a model on TEST v2."""
     pinned = _pinned(confirm)
     contract, private, problems = hc2.problems(pinned, REPO)
@@ -744,6 +790,29 @@ def construct(action: str, confirm: str, workers: int) -> int:
     meta = {"kind": "test-v2", "contract_sha256": pinned, "bank_sha256": world.bank.sha256()}
     with _store(hc2.NAMESPACE, hc2.RAW_DIR, meta) as store:
         store.verify()
+        history = en.Ledger.fold(store.events())
+        if history.stops or any(
+            r.get("reason") in ("process_cleanup", "runtime_identity")
+            for r in history.runs.values()
+        ):
+            print("STOPPED (integrity): recorded integrity incidents require separate review")
+            return 3
+        if policy is not None:
+            world.operations = ops.Operations(
+                pinned,
+                hc2.NAMESPACE / "operations",
+                policy.min_interval_seconds,
+                policy.max_starts,
+                policy.window_seconds,
+            )
+
+            def checkpoint() -> Mapping[str, Any]:
+                store.verify()
+                return vs.backup(
+                    store, ho.HOLDOUT_DIR, REPO, ho.BACKUP_DIR, "operational checkpoint"
+                )
+
+            world.checkpoint = checkpoint
         runner = hrun.Runner(world, store, executor)
         _session(runner, workers, action)
         try:
@@ -754,6 +823,9 @@ def construct(action: str, confirm: str, workers: int) -> int:
         except en.Paused as pause:
             print(f"PAUSED (provider): {pause}; resume later")
             return 4
+        except en.OperationalPause:
+            print("PAUSED (operator): work preserved; RESUME requires the operator")
+            return 5
     _print(summary)
     return 0
 
@@ -889,6 +961,17 @@ def backup() -> int:
     return 0
 
 
+def _with_supplement(args: argparse.Namespace, action: Callable[[], int]) -> int:
+    manifest, digest = args.operations_manifest, args.operations_sha256
+    if manifest is None and digest is None:
+        return action()
+    if manifest is None or digest is None:
+        raise oa.AmendmentError("both operational manifest and approval SHA-256 are required")
+    amendment = oa.load_authorized(manifest, digest, _pinned(args.contract), REPO)
+    with oa.authorized(amendment):
+        return action()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -921,11 +1004,20 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--contract", required=True)
         if name in ("start", "resume"):
             p.add_argument("--workers", type=int, required=True)
+        if name in ("validate", "resume", "evaluate"):
+            p.add_argument("--operations-manifest", type=Path)
+            p.add_argument("--operations-sha256")
+        if name == "resume":
+            p.add_argument("--min-start-interval-seconds", type=float)
+            p.add_argument("--max-executions-per-window", type=int)
+            p.add_argument("--execution-window-seconds", type=float, default=86400.0)
     p = sub.add_parser("audit-export")
     p.add_argument("--contract", required=True)
     p = sub.add_parser("audit-sa7")
     p.add_argument("labels", type=Path)
     p.add_argument("--contract", required=True)
+    p.add_argument("--operations-manifest", type=Path)
+    p.add_argument("--operations-sha256")
     sub.add_parser("status")
     sub.add_parser("backup")
     args = parser.parse_args(argv)
@@ -963,20 +1055,38 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "record-public-commit":
             return record_public_commit(args.commit)
         if args.command == "validate":
-            return validate(args.contract)
-        if args.command in ("start", "resume"):
+            return _with_supplement(args, lambda: validate(args.contract))
+        if args.command == "start":
             return construct(args.command, args.contract, args.workers)
+        if args.command == "resume":
+            return construct(
+                args.command,
+                args.contract,
+                args.workers,
+                operations_manifest=args.operations_manifest,
+                operations_sha256=args.operations_sha256,
+                min_start_interval_seconds=args.min_start_interval_seconds,
+                max_executions_per_window=args.max_executions_per_window,
+                execution_window_seconds=args.execution_window_seconds,
+            )
         if args.command == "status":
             return status()
         if args.command == "evaluate":
-            return evaluate(args.contract)
+            return _with_supplement(args, lambda: evaluate(args.contract))
         if args.command == "audit-export":
             return audit_export(args.contract)
         if args.command == "audit-sa7":
-            return audit_sa7(args.labels, args.contract)
+            return _with_supplement(args, lambda: audit_sa7(args.labels, args.contract))
         if args.command == "backup":
             return backup()
-    except (ho.HoldoutError, hcert.CertificationError, hc2.ContractV2Error, vs.StateError) as error:
+    except (
+        ho.HoldoutError,
+        hcert.CertificationError,
+        hc2.ContractV2Error,
+        vs.StateError,
+        oa.AmendmentError,
+        ops.OperationsError,
+    ) as error:
         print(f"STOP: {error}")
         return 1
     return 2

@@ -40,6 +40,7 @@ from ingest import holdout_v2_audit as hau
 from ingest import holdout_v2_dedup as dd
 from ingest import holdout_v2_engine as en
 from ingest import holdout_v2_evaluation as hev
+from ingest import holdout_v2_operational_amendment as oa
 from ingest import holdout_v2_packets as v2p
 from ingest import holdout_v2_retrieval as rv
 from ingest import holdout_v2_runner as hrun
@@ -727,10 +728,22 @@ def verify(
     contract: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     if contract.get("schema") != SCHEMA:
         raise ContractV2Error(f"{path} is not a TEST v2 contract")
+    supplement = oa.get_current()
+    if supplement is not None:
+        try:
+            if supplement.base_contract_sha256 != pinned_sha256:
+                raise oa.AmendmentError("the supplement belongs to another base contract")
+            supplement.validate(repo, contract)
+        except oa.AmendmentError as error:
+            raise ContractV2Error(str(error)) from error
     changed = [
         f
         for f, h in frozen_files(contract).items()
-        if not (repo / f).exists() or _sha(repo / f) != h
+        if not (repo / f).exists()
+        or (
+            _sha(repo / f) != h
+            and not (supplement is not None and supplement.permitted_change(f, h, _sha(repo / f)))
+        )
     ]
     if changed:
         raise ContractV2Error(f"files differ from the contract: {changed}")

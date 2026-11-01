@@ -1,0 +1,33 @@
+{
+ "base_contract_file": "config/holdout/test-v2-contract.json",
+ "base_contract_sha256": "bc7d4710ae4ac8431904f8956a157d307ebb52c0e83c4d28139d128b24fd84ba",
+ "new_files": {
+  "ingest/holdout_v2_operational_amendment.py": "446bc0e549b125939e0ad47fccfed3da5c5e290b620ec1728ef3519a4440a4f8",
+  "ingest/holdout_v2_operations.py": "22d189bdb5aad93fed59766ea004ff0828f5add00e72473ccea5245767b04598"
+ },
+ "predecessor": {
+  "file": "config/holdout/operations-amendment.v1.json",
+  "sha256": "a68dc83b8cedc9a6dca59f9faed87acc7067225551f93ca6e3b8eb918e55d1a3"
+ },
+ "purpose": "Provider capacity refusal classification",
+ "replacements": {
+  "ingest/holdout_v2_contract.py": {
+   "after_sha256": "59e9b57bcce5efc9e7b21157ce485507057e84717d304df743c1a527e25a75a3",
+   "before_sha256": "013dd9ba158e9ab2e90cf5ba543b565dcc94edfb6cdc85a42c0000c9423b5a09"
+  },
+  "ingest/holdout_v2_engine.py": {
+   "after_sha256": "836d21c1924c2e77e5a69313206ea861732c1ae46e25f36b9dc9a2b4bb435335",
+   "before_sha256": "9032589157c5932fe7a84af2aaa15f52c97e73a172fdc2fb057f737b29837b37"
+  },
+  "ingest/holdout_v2_runner.py": {
+   "after_sha256": "90b7f4d90a17408df1912d3a54accf7e90df8c72e3239c8394efc97655b67d3f",
+   "before_sha256": "2fae7e9ddaa6c2b4daa49d19346a38232d7506363aea0cd867249b1ae744ad63"
+  },
+  "scripts/holdout_v2.py": {
+   "after_sha256": "ac4b4d88569d312919ecad8e5805d689b87037c290d7e39c15b01962940b4136",
+   "before_sha256": "ae70ed89e6a619f6784dc75e04ed3cec63b51ae4ae4262e2bf8d4f49b28870db"
+  }
+ },
+ "schema": "holdout-v2-operational-amendment.v2",
+ "scope": "Prospective classification only; recorded reasons, MAX_RUNS and scientific design unchanged"
+}

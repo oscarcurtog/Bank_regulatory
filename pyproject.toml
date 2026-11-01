@@ -162,6 +162,13 @@ module = ["tests.*"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 
+# The capacity test arrived pinned by its hash in the TEST v2 capacity supplement (D-067), so its
+# bytes stay as reviewed; its two type findings (an inferred subTest loop value, a synthetic AST
+# body) are test scaffolding, not code that runs in the construction.
+[[tool.mypy.overrides]]
+module = ["tests.test_holdout_v2_capacity_stdlib"]
+ignore_errors = true
+
 # tokenizers does not publish a py.typed marker. An override for THAT module, not
 # a global ignore_missing_imports: tiktoken and pydantic do publish types.
 [[tool.mypy.overrides]]

@@ -49,6 +49,7 @@ from ingest import holdout_v2_audit as hau
 from ingest import holdout_v2_dedup as dd
 from ingest import holdout_v2_engine as en
 from ingest import holdout_v2_judging as jv
+from ingest import holdout_v2_operations as ops
 from ingest import holdout_v2_packets as v2p
 from ingest import holdout_v2_retrieval as rv
 from ingest import holdout_v2_state as vs
@@ -134,6 +135,8 @@ class World:
     # a development pilot's topics, instead of generation (DEV needs for pilot C): never TEST's
     topics_source: Callable[[], list[dict[str, Any]]] | None = None
     systems: Sequence[str] = rv.SYSTEMS
+    operations: ops.Operations | None = None
+    checkpoint: Callable[[], Mapping[str, Any]] | None = None
 
     @property
     def texts(self) -> Mapping[bm.NodeKey, str]:
@@ -154,8 +157,15 @@ class Runner:
         self.w = world
         self.store = store
         self.engine = en.Engine(
-            store, executor, world.audit, world.params.workers, world.params.backoff_seconds
+            store,
+            executor,
+            world.audit,
+            world.params.workers,
+            world.params.backoff_seconds,
+            operations=world.operations,
+            checkpoint=world.checkpoint,
         )
+        self.engine.target_needs = world.n_target
         self._by_id = {c.candidate_id: c for c in world.bank.candidates}
 
     # -----------------------------------------------------------------------
@@ -219,7 +229,7 @@ class Runner:
         """Counts only: never a statement, a query, a label or a metric."""
         path = self.w.namespace / STATUS_FILE
         body = {"phase": phase, "at": _now(), **counts}
-        path.write_text(json.dumps(body, sort_keys=True, indent=1) + "\n", encoding="utf-8")
+        ops.atomic_json(path, body)
 
     # -----------------------------------------------------------------------
     # the construction
@@ -252,6 +262,9 @@ class Runner:
                 self.evaluation()
         except vs.IntegrityError as error:
             raise self.stop("state", str(error)) from error
+        self.engine.set_context("complete")
+        self.engine._mode = "complete"
+        self.engine.publish(force=True)
         return self.summary()
 
     # 1 -----------------------------------------------------------------------
@@ -345,6 +358,7 @@ class Runner:
     def generate(self) -> None:
         """The three hops of every candidate, each hop in parallel over the bank: no candidate
         waits for another, and the order calls finish in decides nothing."""
+        self.engine.set_context("generation")
         todo = [
             c
             for c in self.w.bank.candidates
@@ -493,6 +507,7 @@ class Runner:
         are nominated once and recorded before the first gate call; the gate runs in waves of
         candidates whose earlier neighbors are decided; resolve() must then give, with the
         recorded answers, exactly the decisions recorded."""
+        self.engine.set_context("deduplication")
         items = self._items()
         refs = {r.key: r for r in self.w.references}
         if len(refs) != len(self.w.references):
@@ -723,6 +738,7 @@ class Runner:
         it completes; a system that fails technically runs again, unchanged, once, and is then
         not completed (S4). The run set is written once and moved into place whole. Nothing is
         evaluated."""
+        self.engine.set_context("retrieval")
         if "runs" in self.keyed:
             return
         topics = self.topics()
@@ -1039,6 +1055,7 @@ class Runner:
         """Waves in priority order, each as large as the evaluable needs still missing: the
         first N_TARGET evaluable needs end the judging; an exhausted judgment makes its need a
         technical failure and the next one in priority order comes in."""
+        self.engine.set_context("judging")
         topics = self.topics()
         pools = self.need_pools()
         statement = {t["need_id"]: t["statement"] for t in topics}
@@ -1056,6 +1073,7 @@ class Runner:
                     break
                 wave = remaining[: self.w.n_target - len(evaluable)]
                 self.record("wave_planned", f"wave/{len(waves) + 1:04d}", {"needs": wave})
+            self.engine.set_context("judging", len(waves) if last == wave else len(waves) + 1)
             results = self.adjudicate([(n, pools[n], statement[n]) for n in wave], "judge/", True)
             for n in wave:
                 finals, exhausted = results[n]
@@ -1174,6 +1192,7 @@ class Runner:
         grade >= 2 evidence (every primary need has some) is a contradiction, and a second
         blind judgment follows; where the two differ, judge C decides. An exhausted judgment
         leaves the answerability `unknown`. Nothing here filters the sample."""
+        self.engine.set_context("answerability")
         topics = {t["need_id"]: t for t in self.topics()}
         qrels = self.qrels()["qrels"]
         needs = [n for n in self.primary() if f"answerability/{n}" not in self.keyed]
@@ -1257,6 +1276,7 @@ class Runner:
         """The blind metadata adjudicator on every primary need whose answerability is known;
         an exhausted adjudication, or an unknown answerability, leaves the metadata `unknown`.
         It never removes a need."""
+        self.engine.set_context("metadata")
         topics = {t["need_id"]: t for t in self.topics()}
         qrels = self.qrels()["qrels"]
         needs = [n for n in self.primary() if f"metadata/{n}" not in self.keyed]
@@ -1342,6 +1362,7 @@ class Runner:
         needs of its chain frozen with the bank; for each, the chunk screen of the whole layer
         outside its pool, and the flagged chunks' nodes through B1, B2 and C. Only sensitivity
         SA2 reads what it finds: it never touches the primary qrels, the sample or the run."""
+        self.engine.set_context("completeness")
         if "completeness" in self.keyed:
             return
         topics = {t["need_id"]: t for t in self.topics()}
@@ -1435,6 +1456,7 @@ class Runner:
     def audit_selection(self) -> None:
         """The optional human audit's needs: the first AUDIT_SIZE primary needs of the chain
         frozen with the bank. Recorded only: the audit itself is a person's, and never blocks."""
+        self.engine.set_context("human_audit")
         if "human_audit/selection" in self.keyed:
             return
         topics = self.topics()
@@ -1488,6 +1510,7 @@ class Runner:
         }
 
     def evaluation(self) -> None:
+        self.engine.set_context("evaluation")
         if "evaluation" in self.keyed or self.w.evaluate is None:
             return
         result = self.w.evaluate(self.evaluation_inputs())

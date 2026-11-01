@@ -39,6 +39,7 @@ from __future__ import annotations
 import json
 import re
 import time
+from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass, field
@@ -51,6 +52,7 @@ from ingest import holdout_pipeline as hpl
 from ingest import holdout_process as hproc
 from ingest import holdout_roles as hr
 from ingest import holdout_runtime as hrt
+from ingest import holdout_v2_operations as ops
 from ingest import holdout_v2_state as vs
 
 MAX_RUNS = 3
@@ -72,9 +74,16 @@ INTEGRITY = (
 )
 
 
-# the pinned CLI's own words for a call the provider refused for its capacity (read from the
-# 2.1.301 binary: "Claude AI usage limit reached", rate_limit_error, overloaded_error)
-CAPACITY_MARKERS = re.compile(r"usage limit|rate_limit_error|rate limit|overloaded", re.I)
+# Provider error vocabulary in the pinned 2.1.301 binary, including its rendered
+# subscription windows. Only the final error result and final stderr line are read.
+CAPACITY_MARKERS = re.compile(
+    r"usage (?:credit )?limit|session limit|weekly limit|(?:Opus|Sonnet|Fable) limit"
+    r"|spend limit|you've hit your (?:limit\b|team's shared budget)"
+    r"|you're out of (?:usage credits|extra usage)|your org is out of usage\b"
+    r"|rate_limit_error|rate limit|overloaded|(?:Opus|Fable) is experiencing high load"
+    r"|server is temporarily limiting requests|request rejected \(429\)|API is at capacity",
+    re.I,
+)
 
 
 def capacity_refusal(stream: str, stderr: str) -> bool:
@@ -83,6 +92,7 @@ def capacity_refusal(stream: str, stderr: str) -> bool:
     such as the CLI's own retry message, decides nothing), never from the packet or a reply."""
     last = [line for line in stderr.splitlines() if line.strip()]
     told = last[-1] if last else ""
+    result = None
     for line in stream.splitlines():
         if not line.startswith("{"):
             continue
@@ -90,9 +100,16 @@ def capacity_refusal(stream: str, stderr: str) -> bool:
             event = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if isinstance(event, dict) and event.get("type") == "result" and event.get("is_error"):
-            fields = ("subtype", "result", "error", "api_error_status")
-            told += " " + json.dumps({k: event.get(k) for k in fields}, default=str)
+        if isinstance(event, dict) and event.get("type") == "result":
+            result = event
+    if result is not None and result.get("is_error") is True:
+        # Structured status is evidence only in an error result, never a reply,
+        # request, earlier stream event or an arbitrary occurrence of the digits.
+        status = result.get("api_error_status")
+        if type(status) in (int, str) and status in (429, 529, "429", "529"):
+            return True
+        fields = ("subtype", "result", "error")
+        told += " " + json.dumps({k: result.get(k) for k in fields}, default=str)
     return bool(CAPACITY_MARKERS.search(told))
 
 
@@ -110,6 +127,10 @@ class V2Stop(Exception):
 class Paused(Exception):
     """The provider has refused every call for longer than OUTAGE_MAX_SECONDS: the construction
     pauses with nothing decided, and a resume goes on from the same state."""
+
+
+class OperationalPause(Exception):
+    """A cooperative operator pause; no job is rejected and no attempt is charged."""
 
 
 class Inadmissible(Exception):
@@ -212,6 +233,8 @@ class Engine:
         workers: int = 1,
         backoff_seconds: float = 30.0,
         sleep: Callable[[float], None] = time.sleep,
+        operations: ops.Operations | None = None,
+        checkpoint: Callable[[], Mapping[str, Any]] | None = None,
     ) -> None:
         self.store = store
         self.executor = executor
@@ -219,7 +242,33 @@ class Engine:
         self.workers = max(1, workers)
         self.backoff_seconds = backoff_seconds
         self.sleep = sleep
-        self.ledger = Ledger.fold(store.events())
+        events = store.events()
+        self.ledger = Ledger.fold(events)
+        self.operations = operations
+        self.checkpoint = checkpoint
+        self.phase = "initializing"
+        self.stage = "none"
+        self.wave: int | None = None
+        self._stage_jobs: tuple[str, ...] = ()
+        self._in_flight: set[str] = set()
+        self._mode = "initializing"
+        self.target_needs: int | None = None
+        self._stage_started = operations.clock() if operations is not None else 0.0
+        self._stage_initial_resolved = 0
+        self._last_publish = float("-inf")
+        self._last_checkpoint: Mapping[str, Any] | None = None
+        self._last_admission: str | None = None
+        self._last_progress: str | None = None
+        self._wait_collect: Callable[[], None] | None = None
+        if operations is not None:
+            operations.seed([e.at for e in events if e.kind == "run_started"])
+            admissions = [e.at for e in events if e.kind == "job_admitted"]
+            if admissions:
+                self._last_admission = admissions[-1]
+            useful = [e.at for e in events if e.kind in ("job_admitted", "job_exhausted")]
+            if useful:
+                self._last_progress = useful[-1]
+            self.publish(force=True)
 
     # -----------------------------------------------------------------------
     # recording
@@ -228,11 +277,237 @@ class Engine:
     def record(self, kind: str, key: str | None, payload: Mapping[str, Any]) -> vs.Event:
         event = self.store.record(kind, key, payload)
         self.ledger.apply(event)
+        if kind == "job_admitted":
+            self._last_admission = event.at
+        if kind in ("job_admitted", "job_exhausted"):
+            self._last_progress = event.at
         return event
 
     def stop(self, stop: V2Stop) -> V2Stop:
         self.record("stopped", None, {"reason": stop.reason, "detail": stop.detail[:500]})
         return stop
+
+    def set_context(self, phase: str, wave: int | None = None) -> None:
+        self.phase, self.wave = phase, wave
+        self.publish(force=True)
+
+    def publish(self, force: bool = False) -> None:
+        """Only aggregates; the event log, never this sidecar, remains authoritative."""
+        op = self.operations
+        if op is None:
+            return
+        now = op.clock()
+        if not force and now - self._last_publish < 30:
+            return
+        ids = set(self._stage_jobs)
+        admitted = len(ids & self.ledger.admitted.keys())
+        exhausted = len(ids & self.ledger.exhausted)
+        flight = len(ids & self._in_flight)
+        responded = sum(
+            self.ledger.runs[runs[-1]]["status"] == "responded"
+            for job, runs in self.ledger.jobs.items()
+            if job in ids and runs
+        )
+        # A completed response can still be held by a future during a capacity wait.
+        responded_waiting = sum(
+            self.ledger.runs[runs[-1]]["status"] == "responded" and job not in self._in_flight
+            for job, runs in self.ledger.jobs.items()
+            if job in ids and runs
+        )
+        failed = Counter(
+            str(r.get("reason", "unknown"))
+            for r in self.ledger.runs.values()
+            if r["status"] == "failed"
+        )
+        stage_terminal = admitted + exhausted
+        delay = op.seconds_until_start()
+        total = len(ids)
+        grouped: dict[str, list[str]] = {}
+        for job_id in ids:
+            parts = job_id.split("/")
+            if (
+                len(parts) >= 4
+                and parts[0] in ("judge", "completeness")
+                and parts[1] in ("b1", "b2", "c")
+            ):
+                grouped.setdefault("/".join(parts[:-1]), []).append(job_id)
+        groups_admitted = sum(
+            all(j in self.ledger.admitted for j in group) for group in grouped.values()
+        )
+        groups_exhausted = sum(
+            any(j in self.ledger.exhausted for j in group) for group in grouped.values()
+        )
+        elapsed = max(0.0, now - self._stage_started)
+        newly_resolved = max(0, stage_terminal - self._stage_initial_resolved)
+        observed_rate = newly_resolved / elapsed if elapsed >= 60 and newly_resolved >= 5 else None
+        remaining = max(0, total - stage_terminal)
+        stage_estimate = remaining / observed_rate if observed_rate else None
+        judged = [v for k, v in self.ledger.keyed.items() if k.startswith("judged/")]
+        need_stages = Counter(
+            str(v.get("stage"))
+            for k, v in self.ledger.keyed.items()
+            if k.startswith("judge/") and "/" in k and v.get("stage") in ("b1", "b2", "c")
+        )
+        event_head = self.store.head()
+        op.publish(
+            {
+                "phase": self.phase,
+                "stage": self.stage,
+                "wave": self.wave,
+                "mode": self._mode,
+                "workers": self.workers,
+                "stage_counts": {
+                    "planned_jobs": total,
+                    "admitted_jobs": admitted,
+                    "exhausted_jobs": exhausted,
+                    "in_flight_jobs": flight,
+                    "responses_waiting_decision": responded,
+                    "pending_jobs": max(0, total - stage_terminal - flight - responded_waiting),
+                    "resolved_jobs": stage_terminal,
+                    "resolved_fraction": stage_terminal / total if total else None,
+                },
+                "stage_need_groups": {
+                    "planned": len(grouped) if grouped else None,
+                    "fully_admitted": groups_admitted if grouped else None,
+                    "with_exhaustion": groups_exhausted if grouped else None,
+                    "pending": len(grouped) - groups_admitted - groups_exhausted
+                    if grouped
+                    else None,
+                },
+                "total_counts": {
+                    "execution_starts": len(self.ledger.runs),
+                    "admitted_jobs": len(self.ledger.admitted),
+                    "exhausted_jobs": len(self.ledger.exhausted),
+                    "capacity_refusals": failed.get(CAPACITY, 0),
+                    "counted_failures": sum(v for k, v in failed.items() if k != CAPACITY),
+                    "failures_by_reason": dict(sorted(failed.items())),
+                    "responded_not_admitted": sum(
+                        r["status"] == "responded" for r in self.ledger.runs.values()
+                    ),
+                },
+                "construction_counts": {
+                    "target_needs": self.target_needs,
+                    "topics_frozen": self.ledger.keyed.get("topics", {}).get("topics"),
+                    "needs_judged": len(judged),
+                    "evaluable_needs": sum(bool(v.get("evaluable")) for v in judged),
+                    "need_stages_completed": dict(sorted(need_stages.items())),
+                    "answerability_completed": sum(
+                        k.startswith("answerability/") and "need_id" in v and "answerability" in v
+                        for k, v in self.ledger.keyed.items()
+                    ),
+                    "metadata_completed": sum(
+                        k.startswith("metadata/") and "need_id" in v
+                        for k, v in self.ledger.keyed.items()
+                    ),
+                    "completeness_screens_completed": sum(
+                        k.startswith("completeness/screen/") and "screened" in v
+                        for k, v in self.ledger.keyed.items()
+                    ),
+                    "completeness_followups_completed": sum(
+                        k.startswith("completeness/")
+                        and k not in ("completeness/selection",)
+                        and not k.startswith(
+                            (
+                                "completeness/screen/",
+                                "completeness/b1/",
+                                "completeness/b2/",
+                                "completeness/c/",
+                            )
+                        )
+                        and "followed_nodes" in v
+                        for k, v in self.ledger.keyed.items()
+                    ),
+                },
+                "last_admission_at": self._last_admission,
+                "last_useful_progress_at": self._last_progress,
+                "next_dispatch_in_seconds": delay,
+                "event_sequence": event_head[0],
+                "event_head_sha256": event_head[1],
+                "last_verified_checkpoint": self._last_checkpoint,
+                "eta": {
+                    "stage_minimum_dispatch_seconds": max(
+                        0, total - stage_terminal - flight - responded_waiting - 1
+                    )
+                    * op.policy.min_interval_seconds
+                    + (delay if total > stage_terminal + flight + responded_waiting else 0),
+                    "stage_minimum_note": (
+                        "Dispatch-only lower bound; excludes calls, retries, "
+                        "future window limits and provider waits"
+                    ),
+                    "stage_estimated_seconds": stage_estimate,
+                    "stage_estimate_observations": newly_resolved,
+                    "stage_estimate_elapsed_seconds": elapsed,
+                    "stage_estimate_note": (
+                        "Observed resolutions per wall time; assumes the current stage rate "
+                        "continues, not a confidence interval"
+                    ),
+                    "future_stage_jobs": None,
+                    "overall_seconds": None,
+                    "note": (
+                        "Later stages are conditional; no global percentage or completion "
+                        "time is inferred"
+                    ),
+                },
+            }
+        )
+        self._last_publish = now
+
+    def _publish_during_drain(self) -> None:
+        # A broken informational sidecar must never prevent draining model calls.
+        try:
+            self.publish(force=True)
+        except (ops.OperationsError, OSError):
+            pass
+
+    def _controls(self) -> None:
+        if self.operations is None:
+            return
+        self.operations.poll()
+        if self.operations.pause_requested:
+            raise OperationalPause("operator request")
+
+    def _checkpoint(self) -> None:
+        op = self.operations
+        if op is None or not op.checkpoint_requested:
+            return
+        if self.checkpoint is None:
+            raise OperationalPause("checkpoint callback unavailable")
+        previous_mode = self._mode
+        self._mode = "checkpoint"
+        self.publish(force=True)
+        try:
+            result = self.checkpoint()
+        except Exception as error:
+            raise self.stop(
+                V2Stop("state", "operational checkpoint verification failed")
+            ) from error
+        # Do not publish private paths or arbitrary callback fields.
+        self._last_checkpoint = {
+            "verified": True,
+            "events": result.get("events"),
+            "head_sha256": result.get("head_sha256"),
+        }
+        for request in op.poll():
+            if request["action"] == "checkpoint":
+                op.acknowledge(request["request_id"])
+        self._mode = previous_mode
+        self.publish(force=True)
+
+    def _idle(self, seconds: float) -> None:
+        """An operational wait outside any executor deadline; fakes can replace sleep."""
+        if self.operations is None:
+            self.sleep(seconds)
+            return
+        remaining = seconds
+        while remaining > 0:
+            self._controls()
+            if self._wait_collect is not None:
+                self._wait_collect()
+            self.publish()
+            step = min(1.0, remaining)
+            self.sleep(step)
+            remaining -= step
+        self._controls()
 
     # -----------------------------------------------------------------------
     # one execution
@@ -368,6 +643,16 @@ class Engine:
 
     def run(self, jobs: Sequence[Job]) -> dict[str, Outcome]:
         """Every job to its outcome: admitted, or exhausted after MAX_RUNS failed executions."""
+        self._stage_jobs = tuple(j.job_id for j in jobs)
+        self._stage_started = self.operations.clock() if self.operations is not None else 0.0
+        stage_ids = set(self._stage_jobs)
+        self._stage_initial_resolved = len(stage_ids & self.ledger.admitted.keys()) + len(
+            stage_ids & self.ledger.exhausted
+        )
+        roles = {j.role for j in jobs}
+        self.stage = next(iter(roles)) if len(roles) == 1 else "mixed" if roles else "empty"
+        self._mode = "replaying"
+        self.publish(force=True)
         out: dict[str, Outcome] = {}
         queue: list[Job] = []
         for job in jobs:
@@ -402,6 +687,8 @@ class Engine:
             queue.append(job)
         if queue:
             out |= self._execute(queue)
+        self._mode = "stage_complete"
+        self.publish(force=True)
         return out
 
     def _exhaust(self, job: Job) -> Outcome:
@@ -453,54 +740,129 @@ class Engine:
             self.record("paused", None, {"waited_seconds": waited, "episode": episode})
             raise Paused(f"the provider refused every call for its capacity for {waited:.0f} s")
         self.record("capacity_wait", None, {"cooldown_seconds": cooldown, "episode": episode})
-        self.sleep(cooldown)
+        self._mode = "provider_wait"
+        self.publish(force=True)
+        self._idle(cooldown)
         return waited + cooldown
 
     def _execute(self, queue: list[Job]) -> dict[str, Outcome]:
         out: dict[str, Outcome] = {}
         pending = list(queue)
         running: dict[Future[hpl.Session], tuple[Job, str, int]] = {}
+        staged: set[Future[hpl.Session]] = set()
         backoff = 0
-        episode, waited, waits = 0, 0.0, 0  # the capacity episode since the last response
-        with ThreadPoolExecutor(max_workers=self.workers) as pool:
-            try:
-                while pending or running:
-                    while pending and len(running) < self.workers:
-                        job = pending.pop(0)
-                        run_id = self._start(job)
-                        running[pool.submit(self._call, job, run_id)] = (job, run_id, waits)
-                    done, _ = wait(list(running), return_when=FIRST_COMPLETED)
-                    for future in done:
-                        job, run_id, started_after = running.pop(future)
-                        value = self._finish(job, run_id, future)
-                        run = self.ledger.runs[run_id]
-                        if value is _RETRY and run.get("reason") == CAPACITY:
-                            if started_after == waits:  # it started after the last wait
-                                episode += 1
-                                waited = self._capacity_wait(episode, waited)
-                                waits += 1
-                            pending.append(job)
-                            continue
-                        if "raw" in run:  # a response: the provider answers again
-                            episode, waited = 0, 0.0
-                        if value is not _RETRY:
-                            backoff = 0
-                            out[job.job_id] = Outcome(job.job_id, value)
-                        elif self.ledger.failures(job.job_id) >= MAX_RUNS:
-                            out[job.job_id] = self._exhaust(job)
-                        else:
-                            if "raw" not in run:  # no response: a short wait before the retry
-                                backoff += 1
-                                self.sleep(self.backoff_seconds * min(2 ** (backoff - 1), 8))
-                            pending.append(job)
-            except (V2Stop, Paused):
-                # nothing more starts; what is running ends and its outcome is recorded with its
-                # classified reason, never decided: a person reads the stop first, and a resume
-                # decides it exactly as this run would have (a capacity refusal stays one)
-                for future in list(running):
-                    job, run_id, _ = running.pop(future)
+        episode, waited, waits = 0, 0.0, 0
+        op = self.operations
+
+        def collect() -> None:
+            # Preserve completed calls promptly during a provider or pacing wait.
+            # Their scientific decisions are made in the normal order below.
+            for future, (job, run_id, _) in list(running.items()):
+                if future.done() and future not in staged:
                     self._settle(run_id, future)
-                raise
+                    self._in_flight.discard(job.job_id)
+                    staged.add(future)
+
+        self._wait_collect = collect
+        try:
+            with ThreadPoolExecutor(max_workers=self.workers) as pool:
+                try:
+                    while pending or running:
+                        self._controls()
+                        checkpoint_due = op is not None and op.checkpoint_requested
+                        if checkpoint_due and not running:
+                            self._checkpoint()
+                            checkpoint_due = False
+                        while pending and len(running) < self.workers and not checkpoint_due:
+                            if op is not None and op.seconds_until_start() > 0:
+                                break
+                            self._controls()
+                            if op is not None and op.checkpoint_requested:
+                                break
+                            job = pending.pop(0)
+                            run_id = self._start(job)
+                            if op is not None:
+                                op.started()
+                            self._in_flight.add(job.job_id)
+                            running[pool.submit(self._call, job, run_id)] = (job, run_id, waits)
+                            self._mode = "running"
+                            self.publish(force=True)
+                        if not running:
+                            self._mode = "pacing_wait"
+                            self.publish()
+                            self._idle(
+                                min(1.0, op.seconds_until_start()) if op is not None else 0.0
+                            )
+                            continue
+                        done, _ = wait(
+                            list(running),
+                            return_when=FIRST_COMPLETED,
+                            timeout=1.0 if op is not None else None,
+                        )
+                        for future in done:
+                            job, run_id, started_after = running.pop(future)
+                            staged.discard(future)
+                            self._in_flight.discard(job.job_id)
+                            value = self._finish(job, run_id, future)
+                            run = self.ledger.runs[run_id]
+                            self.publish(force=True)
+                            if value is _RETRY and run.get("reason") == CAPACITY:
+                                if started_after == waits:
+                                    episode += 1
+                                    waited = self._capacity_wait(episode, waited)
+                                    waits += 1
+                                pending.append(job)
+                                continue
+                            if "raw" in run:
+                                episode, waited = 0, 0.0
+                            if value is not _RETRY:
+                                backoff = 0
+                                out[job.job_id] = Outcome(job.job_id, value)
+                            elif self.ledger.failures(job.job_id) >= MAX_RUNS:
+                                out[job.job_id] = self._exhaust(job)
+                            else:
+                                if "raw" not in run:
+                                    backoff += 1
+                                    self._idle(self.backoff_seconds * min(2 ** (backoff - 1), 8))
+                                pending.append(job)
+                        self.publish()
+                    self._checkpoint()
+                except (V2Stop, Paused, OperationalPause, ops.OperationsError) as stopped:
+                    self._mode = "draining"
+                    self._publish_during_drain()
+                    severe: V2Stop | None = stopped if isinstance(stopped, V2Stop) else None
+                    for future in list(running):
+                        job, run_id, _ = running.pop(future)
+                        self._in_flight.discard(job.job_id)
+                        try:
+                            self._settle(run_id, future)
+                        except V2Stop as error:
+                            severe = error
+                    if severe is not None:
+                        self._mode = "integrity_stop"
+                        self._publish_during_drain()
+                        raise severe from stopped
+                    if isinstance(stopped, (OperationalPause, ops.OperationsError)):
+                        self.record(
+                            "paused", None, {"reason": "operational", "pending_jobs": len(pending)}
+                        )
+                        self._mode = "operational_paused"
+                        if op is not None and not isinstance(stopped, ops.OperationsError):
+                            self._checkpoint()
+                            for request in op.poll():
+                                if request["action"] == "pause":
+                                    op.acknowledge(request["request_id"])
+                        self._publish_during_drain()
+                        raise OperationalPause(
+                            "operational pause; resume requires the operator"
+                        ) from stopped
+                    self._mode = (
+                        "provider_paused" if isinstance(stopped, Paused) else "integrity_stop"
+                    )
+                    self._publish_during_drain()
+                    raise
+        finally:
+            self._wait_collect = None
         return out
 
     def _settle(self, run_id: str, future: Future[hpl.Session]) -> None:
@@ -510,9 +872,13 @@ class Engine:
             session = future.result()
         except hproc.CleanupFailed as error:
             self._failed(run_id, "process_cleanup", str(error))
-            return
+            raise self.stop(
+                V2Stop("process_cleanup", "a draining process group could not be verified gone")
+            ) from error
         except hpl.TechnicalFailure as error:
             self._failed(run_id, error.reason, error.detail)
+            if error.reason == "runtime_identity":
+                raise self.stop(V2Stop("runtime", "runtime changed during drain")) from error
             return
         except Exception as error:
             self._failed(run_id, "model_api", f"{type(error).__name__}: {error}")
