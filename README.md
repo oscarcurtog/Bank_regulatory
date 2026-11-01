@@ -37,12 +37,14 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   JuriFindIT's anti-money-laundering questions over Italian statute articles). E5 and an Italian
   BM25 come out level there, and E could not complete: its frozen reranker ran out of memory on
   long articles
-- **Internal TEST set (S3), TEST v2:** a new prospective protocol (D-067,
+- **Internal TEST set (S3-S4), TEST v2, closed on 2026-11-01:** a prospective protocol (D-067,
   `config/holdout/test-v2-protocol.md`): 200 evaluable needs from DEV's task profiles, each
   anchored in a legal unit sampled by article, generated in parallel and deduplicated once,
   globally; qrels from a judged pool of five frozen retrievers, E and E5 among them, with the
-  decisive set judged twice blind; incompleteness measured on 15 needs, never fatal. Implemented
-  and validated on development material only; it has not started. The earlier protocol (TEST
+  decisive set judged twice blind; incompleteness measured on 15 needs, never fatal. It was built
+  and evaluated once: E improves over E5 on both co-primary metrics (see [TEST v2 result and
+  closure](#test-v2-result-and-closure)). That is a retrieval result on one private,
+  model-judged sample, not a measure of answer quality. The earlier protocol (TEST
   v1, seven constructions) is kept as history: the seventh, its first confirmatory attempt,
   stopped under the frozen minimum feasibility rule before any retrieval
 - **Generation, evaluation, API and deployment:** later
@@ -91,7 +93,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   system, and the rankings frozen by hash before any judgment is read. See
   [External validation](#external-validation-t4).
 - **Internal TEST set** (`ingest/holdout_v2*.py`, `scripts/holdout_v2.py`, `config/holdout/`):
-  the machinery that will build TEST v2, a private set of information needs written
+  the machinery that built and evaluated TEST v2, a private set of information needs written
   independently of the development loop, its evaluation, and the contract that fixes both
   before the first topic. TEST v1's machinery (`ingest/holdout*.py`, `scripts/holdout.py`) is
   kept to reproduce runs 1 to 7. See [Internal TEST set](#internal-test-set-s3).
@@ -166,7 +168,7 @@ against a service container of the same pinned image. The one test marked
 does not exist; every other test of the internal TEST set makes a synthetic one. One contract
 test needs the history back to E's DEV result and is skipped in a shallow clone such as CI's,
 and the host identity test runs on macOS only. In CI (no corpus, no model, PostgreSQL up)
-pytest reports `1404 passed, 343 skipped`.
+pytest reports `1505 passed, 343 skipped`.
 
 ## Docker
 
@@ -234,7 +236,7 @@ as annotations on the check run, which the public API serves to anyone.
 | `data/reference/` | no | later versions of an act, downloaded only to derive the PSD2 exclusions |
 | `data/external/` | no | the external benchmark of T4 (third-party data, CC BY-NC-SA 4.0) and everything derived from it |
 
-Without the corpus you can run the test suite (in CI, 1404 tests pass and 343 are skipped with
+Without the corpus you can run the test suite (in CI, 1505 tests pass and 343 are skipped with
 `FUNDAMENTO_EMBEDDING_MODEL=unsupported` and PostgreSQL up), the linters and
 type checks, and both Docker images. The vector index is derived data too: it lives in a Docker
 volume and is rebuilt from `data/chunks/` and `data/embeddings/`.
@@ -487,7 +489,7 @@ TEST v2, each needing the contract's full SHA-256 typed again.
 
 `config/holdout/test-v2-contract.json` (SHA-256
 `bc7d4710ae4ac8431904f8956a157d307ebb52c0e83c4d28139d128b24fd84ba`) was written before any TEST
-v2 topic exists. It re-issues `a38b638c…`, which a third review of the engine superseded before
+v2 topic existed. It re-issues `a38b638c…`, which a third review of the engine superseded before
 any START (capacity refusals now survive pauses and resumes); nothing existed under it. It fixes by content 86 files: the import closure of the code, the
 retrieval configs, the templates, the protocol and the plan. It also fixes the corpus and chunk
 layer, E, E5 and BM25 as recomputed from their DEV runs, the evaluator's versions, and the
@@ -496,7 +498,51 @@ sealed Gate 1 certification it relies on. It fixes the bank by its hash: the ban
 a private salt, so nobody can compute it from the contract. The private inputs enter by identity
 alone: the 99 historical statements and the 35 development references. The commit that adds the
 contract is its public timestamp. Before that freeze, every frozen system reproduced its DEV run
-exactly on DEV's 90 queries, E end to end included. TEST v2 has not started.
+exactly on DEV's 90 queries, E end to end included. TEST v2 ran after that commit.
+
+#### TEST v2 result and closure
+
+TEST v2 ran from 2026-10-26 to 2026-11-01 under the contract above and was evaluated once, on
+2026-11-01. The S3-S4 phase is closed: TEST 1.0.0, its labels and its evaluation will not be
+changed or run again.
+
+**Result** (N = 200 evaluable needs; paired bootstrap over needs, 10,000 resamples, seed
+20261013):
+
+| Metric | E | E5 | Difference (E - E5) | 95 % interval | Verdict |
+|---|---|---|---|---|---|
+| Recall@10 | 0.696 | 0.604 | +0.092 | [0.071, 0.114] | holds |
+| nDCG@10 | 0.514 | 0.473 | +0.041 | [0.034, 0.048] | holds |
+
+Both co-primary metrics hold, which under the claim table fixed in advance licenses "E improves
+retrieval over E5". Seven of the eight pre-registered sensitivity analyses (SA1 to SA6 and SA8)
+keep that verdict; SA7, the optional human audit, was not run. Judged@10, the share of each
+system's top 10 that has a judgment, is 0.971 for E and 0.970 for E5.
+
+**Known deviation.** The frozen capacity classifier did not recognise the CLI's real "session
+limit" message (HTTP 429), so 307 provider refusals were counted as failures, against the
+protocol. It was corrected only prospectively, by operational supplement v2
+(`config/holdout/operations-amendment.v2.json`, SHA-256 `f6cf1052…`); the ledger was not
+rewritten. By job, the defect exhausted 2 jobs, so it replaced at most 2 of the 200 needs, which
+bounds the shift of the mean difference by 0.02. That bound is arithmetic, not a re-analysis.
+
+**What this does not show.**
+
+- *That the labels are correct.* One model family writes the needs and judges them, and no legal
+  expert took part. A blind audit by a model of another family (15 needs, 259 passages) agreed
+  exactly on 71.8 % of the passages and on the side of grade 2 on 91.5 %, and kept the verdict.
+  It is not the human audit, it computes no chance-corrected agreement, and it does not validate
+  the labels. Its 15 needs were shown to an external model, so they are no longer private in the
+  strict sense.
+- *That E is worth its cost.* E takes about 77 s per query on the measured machine (Apple
+  silicon). Cost and latency were not part of the primary hypothesis: quality and cost are
+  separate questions.
+- *That E generalizes.* T4 does not show generalization to long documents: E could not complete
+  there.
+- *That a complete RAG answers and cites correctly.* This phase measures retrieval only.
+
+At closure the append-only ledger holds 18,415 events with head `e71a751b…`, seven freezes and
+no integrity stop. The private set, its qrels and its history stay private.
 
 #### TEST v1 (historical, runs 1 to 7)
 
@@ -719,8 +765,10 @@ retrieval candidate.
 - The external validation (T4) rests on 27 validation questions (108 with train) of one
   benchmark, whose judgments come from one expert per area, drawn from candidate pools built by
   keyword search; its intervals are wide. E could not be evaluated there on this machine. The
-  internal TEST set, which will measure the selection bias of DEV on the same task, has its
-  construction frozen and has not started; six earlier constructions were aborted.
+  internal TEST set (TEST v2) measured E against E5 on 200 new needs, but its labels come from
+  one model family and no legal expert reviewed them, its optional human audit was not run, and it
+  measures retrieval, not answers; the seven constructions of TEST v1 were aborted before any
+  result.
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4
