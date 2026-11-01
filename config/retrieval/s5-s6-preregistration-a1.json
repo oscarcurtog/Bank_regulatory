@@ -1,0 +1,15 @@
+{
+  "schema_version": "1",
+  "name": "s5-s6-preregistration-a1",
+  "stage": "A.1",
+  "title": "Power amendment to the S5.3 operational-cost measurement protocol, pinned by the hash of a private document",
+  "amends_document_sha256": "d16f5522b098a2b680d80aaac9a81137dbb7bbf6ac7f02df55095def7821c523",
+  "document_sha256": "5d8cb12fbe3a4c8532995c5a97fe17f81bf91a8a010df02809b80f3b411a1eb9",
+  "document_bytes": 3805,
+  "hash_algorithm": "sha256",
+  "document_status": "private; kept outside the public repository",
+  "scope": "replaces only the AC-power rule of stage A: AC power is no longer required, a pass needs low power mode off and a starting battery level of at least 40 %, and it is invalidated for power only by low power mode, suspension or a battery level under 15 %; power source and level are recorded for every pass; nothing else of stage A changes",
+  "amendments": "append-only: a later version is a new document with a new hash, published before it is used",
+  "sealed_on": "2026-11-01",
+  "note": "The commit that adds this file is the public timestamp: the amendment was fixed before any measurement ran."
+}
