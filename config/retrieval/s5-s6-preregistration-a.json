@@ -1,0 +1,14 @@
+{
+  "schema_version": "1",
+  "name": "s5-s6-preregistration-a",
+  "stage": "A",
+  "title": "Operational-cost measurement protocol for step S5.3, pinned by the hash of a private document",
+  "document_sha256": "d16f5522b098a2b680d80aaac9a81137dbb7bbf6ac7f02df55095def7821c523",
+  "document_bytes": 21733,
+  "hash_algorithm": "sha256",
+  "document_status": "private; kept outside the public repository",
+  "scope": "latency, memory, per-stage timings, cold start, reproducibility and operational cost of retrieval pipelines on the DEV queries, measured on one Apple M1 machine; no labels, no quality metrics, no TEST v2",
+  "amendments": "append-only: a later version is a new document with a new hash, published before it is used",
+  "sealed_on": "2026-11-01",
+  "note": "The commit that adds this file is the public timestamp: the protocol was fixed before any measurement ran."
+}
