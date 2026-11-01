@@ -23,6 +23,8 @@ REPEAT_OFFSET = 100  # a permitted repetition reuses the seed of its pass plus t
 DRIFT_LIMIT = 0.10
 FLOAT_SLACK = 1e-9  # so that exactly 10 % is not lost to the rounding of a division
 LOAD_LIMIT = 2.5
+B_START = 40  # amendment A.1: lowest battery level, in percent, at which a pass may start
+B_CRITICAL = 15  # amendment A.1: a pass whose battery goes under this level is invalid
 SCORE_TOLERANCE = 1e-6
 RRF_K = 60
 RRF_DEPTH = 50
@@ -230,6 +232,33 @@ def compare_scores[K: Hashable](
 
 def on_ac_power(pmset_batt: str) -> bool:
     return "'AC Power'" in pmset_batt.splitlines()[0] if pmset_batt.strip() else False
+
+
+def power_source(pmset_batt: str) -> str:
+    """`AC`, `Battery` or `unknown`, from the first line of `pmset -g batt`."""
+    first = pmset_batt.splitlines()[0] if pmset_batt.strip() else ""
+    if "'AC Power'" in first:
+        return "AC"
+    if "'Battery Power'" in first:
+        return "Battery"
+    return "unknown"
+
+
+def battery_percent(pmset_batt: str) -> int | None:
+    """The charge level in percent from `pmset -g batt`, or None when it is not there."""
+    match = re.search(r"(\d+)%", pmset_batt)
+    return int(match.group(1)) if match else None
+
+
+def power_profile(sources: Sequence[str]) -> str:
+    """The profile of a pass from the power sources seen at its start, during it and at its
+    end: `ac_throughout`, `battery_throughout` or `mixed` (any change, or an unknown reading)."""
+    seen = set(sources)
+    if seen == {"AC"}:
+        return "ac_throughout"
+    if seen == {"Battery"}:
+        return "battery_throughout"
+    return "mixed"
 
 
 def low_power_mode_off(pmset_all: str) -> bool:

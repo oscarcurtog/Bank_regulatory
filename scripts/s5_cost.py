@@ -2,15 +2,17 @@
 reproducibility of retrieval pipelines, measured on one Apple M1, on the DEV queries.
 
 The protocol is a private document whose SHA-256 is pinned in
-config/retrieval/s5-s6-preregistration-a.json (stage A of the S5-S6 preregistration); this script
-checks that pin before it measures anything, and every record it writes carries the hash.
+config/retrieval/s5-s6-preregistration-a.json (stage A of the S5-S6 preregistration), and its
+power rule is amended by a second private document pinned in
+config/retrieval/s5-s6-preregistration-a1.json (stage A.1); this script checks both pins before it
+measures anything, and every record it writes carries both hashes.
 
 No label is read here. It does not call load_benchmark, load_frozen_inputs or load_system_run,
 which read qrels or metric summaries. It reads the queries' id, text and language, the chunk layer,
 the stored vectors, and the stored rankings, whose SHA-256 it checks. Quality is never computed.
 
 Subcommands:
-    preflight   print the state of the machine against the protocol's preconditions
+    preflight   every precondition of S5.3 in one place (exit 1 if anything blocks)
     smoke       run one system on the three warm-up queries only; nothing is recorded
     run         one system: pre-verification, its passes, validity, reproducibility
     cold        one cold start of one system (a fresh process, run by `drive`)
@@ -39,7 +41,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import numpy as np
 
@@ -55,6 +57,9 @@ from ingest import requirement_rerank as rq
 from ingest import retrieval as rt
 
 PIN = Path("config/retrieval/s5-s6-preregistration-a.json")
+PIN_A1 = Path("config/retrieval/s5-s6-preregistration-a1.json")
+PROTOCOL = Path("docs/research/s5-2b-a-protocolo-medicion-v1.md")
+AMENDMENT = Path("docs/research/s5-2b-a1-enmienda-energia-v1.md")
 # Plumbing tests only, never a measurement: S5_DRY_RUN_DIR (under .cache/) moves the results,
 # skips the preconditions and the commit checks, and shortens the cooldown; S5_DRY_RUN_QUERIES
 # keeps the first n queries of each pass. Every record made this way says `dry_run`.
@@ -127,10 +132,18 @@ def snapshot() -> dict[str, Any]:
     }
 
 
-def failures(snap: dict[str, Any], docker_allowed: bool) -> list[str]:
+def failures(snap: dict[str, Any], docker_allowed: bool, starting: bool = True) -> list[str]:
+    """What stands against a pass, under stage A as amended by A.1. AC power is not required.
+    At the start the battery must be at least B_START; at the end it must not be under
+    B_CRITICAL."""
     found = []
-    if not cp.on_ac_power(snap["batt"]):
-        found.append("not on AC power")
+    level = cp.battery_percent(snap["batt"])
+    if level is None:
+        found.append("battery level unreadable")
+    elif starting and level < cp.B_START:
+        found.append(f"battery {level} % under {cp.B_START} %")
+    elif not starting and level < cp.B_CRITICAL:
+        found.append(f"battery {level} % under {cp.B_CRITICAL} %")
     if not cp.low_power_mode_off(snap["pmset"]):
         found.append("low power mode is on")
     if not cp.thermal_ok(snap["therm"]):
@@ -145,8 +158,9 @@ def failures(snap: dict[str, Any], docker_allowed: bool) -> list[str]:
 def preconditions(
     docker_allowed: bool, grace: int = GRACE_SECONDS
 ) -> tuple[dict[str, Any], list[str]]:
-    """The protocol's preconditions of a pass. Only the load average may wait (up to `grace`
-    seconds, one reading every 30); power, low power mode, heat and Docker do not."""
+    """The preconditions of a pass (stage A as amended by A.1). Only the load average may wait
+    (up to `grace` seconds, one reading every 30); the battery level, low power mode, heat and
+    Docker do not."""
     if DRY_RUN:
         return snapshot(), []
     deadline = time.monotonic() + grace
@@ -252,28 +266,36 @@ def clean_tree() -> bool:
     return not out_of(["git", "status", "--porcelain", "--untracked-files=no"]).strip()
 
 
-def guard(protocol_path: Path) -> tuple[str, str]:
-    """What must hold before anything is measured: the harness is committed and pushed, the tree
-    is clean, the protocol is the sealed one and the measured code and configurations are the
-    pinned ones. Returns the protocol hash and the commit."""
+class Seal(NamedTuple):
+    protocol: str  # SHA-256 of stage A
+    amendment: str  # SHA-256 of amendment A.1
+    commit: str
+
+
+def guard(protocol_path: Path, amendment_path: Path) -> Seal:
+    """What must hold before anything is measured: the harness and the pins are committed and
+    pushed, the tree is clean, stage A and amendment A.1 are the sealed documents and the
+    measured code and configurations are the pinned ones."""
     if DRY_RUN:
-        return protocol_sha(protocol_path), "dry-run"
-    for name in HARNESS:
+        protocol = protocol_sha(protocol_path)
+        return Seal(protocol, amendment_sha(amendment_path, protocol), "dry-run")
+    for name in (*HARNESS, str(PIN), str(PIN_A1)):
         tracked = subprocess.run(
             ["git", "ls-files", "--error-unmatch", name], capture_output=True, check=False
         )
         if tracked.returncode != 0:
-            raise SystemExit(f"{name} is not committed: commit the harness first")
+            raise SystemExit(f"{name} is not committed: commit it first")
     if not clean_tree():
         raise SystemExit("tracked files changed since the commit: commit the harness first")
     ahead = out_of(["git", "rev-list", "--count", "@{u}..HEAD"]).strip()
     if ahead != "0":
         raise SystemExit(f"the commit is not public yet ({ahead} commits ahead of origin)")
     protocol = protocol_sha(protocol_path)
+    amendment = amendment_sha(amendment_path, protocol)
     wrong = verify_pins()
     if wrong:
         raise SystemExit("pinned files differ from the protocol:\n  " + "\n  ".join(wrong))
-    return protocol, out_of(["git", "rev-parse", "HEAD"]).strip()
+    return Seal(protocol, amendment, out_of(["git", "rev-parse", "HEAD"]).strip())
 
 
 def protocol_sha(protocol: Path) -> str:
@@ -284,18 +306,34 @@ def protocol_sha(protocol: Path) -> str:
     return digest
 
 
+def amendment_sha(amendment: Path, protocol_hash: str) -> str:
+    pin = json.loads(PIN_A1.read_text(encoding="utf-8"))
+    digest = cp.sha256_file(amendment)
+    if digest != pin["document_sha256"]:
+        raise SystemExit(
+            f"{amendment} hashes to {digest}, the public pin says {pin['document_sha256']}"
+        )
+    if pin["amends_document_sha256"] != protocol_hash:
+        raise SystemExit("the amendment pin does not amend the sealed protocol")
+    return digest
+
+
 class Monitor(threading.Thread):
     """Watches the machine while a system is measured. Once a second it samples the resident
     memory of this process tree (a coarse, secondary observation, never a peak) and notes a jump
     between the wall clock and the monotonic clock, which only a suspension of the machine
-    makes. Every 30 seconds it checks that the Mac is still on AC power. Events carry the
-    monotonic time, so that a pass can ask whether anything happened while it ran."""
+    makes. Every 30 seconds it records the power source and battery level and checks low power
+    mode. Events carry the monotonic time, so that a pass can ask what happened while it ran.
+    Under amendment A.1 a change of power source is only recorded; a suspension, low power mode
+    switched on or a battery under B_CRITICAL invalidates."""
 
     def __init__(self) -> None:
         super().__init__(daemon=True)
         self._stop_event = threading.Event()
         self.maximum_kb = 0
-        self.events: list[tuple[float, str]] = []
+        self.events: list[tuple[float, str, bool]] = []  # (monotonic time, text, invalidates)
+        self.power: list[dict[str, Any]] = []
+        self._source: str | None = None
 
     def run(self) -> None:
         last_wall, last_mono = time.time(), time.monotonic()
@@ -305,15 +343,37 @@ class Monitor(threading.Thread):
             self.maximum_kb = max(self.maximum_kb, cp.descendants_rss(listing, os.getpid()))
             wall, mono = time.time(), time.monotonic()
             if (wall - last_wall) - (mono - last_mono) > 5.0:
-                self.events.append((mono, "the machine was suspended"))
+                self.events.append((mono, "the machine was suspended", True))
             last_wall, last_mono = wall, mono
+            if tick % 30 == 0:
+                self._sample_power(mono)
             tick += 1
-            if tick % 30 == 0 and not cp.on_ac_power(out_of(["pmset", "-g", "batt"])):
-                self.events.append((mono, "AC power was lost"))
             self._stop_event.wait(1.0)
 
-    def since(self, mark: float) -> list[str]:
-        return [what for at, what in self.events if at >= mark]
+    def _sample_power(self, mono: float) -> None:
+        batt = out_of(["pmset", "-g", "batt"])
+        source, level = cp.power_source(batt), cp.battery_percent(batt)
+        stamp = datetime.now(UTC).isoformat(timespec="seconds")
+        self.power.append({"mono": mono, "time_utc": stamp, "source": source, "percent": level})
+        if self._source is not None and source != self._source:
+            text = f"power source changed from {self._source} to {source} at {level} %"
+            self.events.append((mono, text, False))
+        self._source = source
+        if not cp.low_power_mode_off(out_of(["pmset", "-g"])):
+            self.events.append((mono, "low power mode was switched on", True))
+        if level is not None and level < cp.B_CRITICAL:
+            self.events.append((mono, f"battery at {level} %, under {cp.B_CRITICAL} %", True))
+
+    def invalidating_since(self, mark: float) -> list[str]:
+        return [text for at, text, bad in self.events if bad and at >= mark]
+
+    def changes_since(self, mark: float) -> list[str]:
+        return [text for at, text, bad in self.events if not bad and at >= mark]
+
+    def power_since(self, mark: float) -> list[dict[str, Any]]:
+        return [
+            {k: v for k, v in s.items() if k != "mono"} for s in self.power if s["mono"] >= mark
+        ]
 
     def finish(self) -> int:
         self._stop_event.set()
@@ -707,7 +767,7 @@ def verify_first(ctx: Context, system: str, order: Sequence[str]) -> list[str]:
 
 
 def run_pass(
-    ctx: Context, system: str, label: str, seed: int, folder: Path, protocol: str, commit: str
+    ctx: Context, system: str, label: str, seed: int, folder: Path, seal: Seal
 ) -> dict[str, Any]:
     docker_allowed = system == "S1p"
     snap_before, found = preconditions(docker_allowed)
@@ -751,8 +811,9 @@ def run_pass(
         lines.append(
             json.dumps(
                 {
-                    "protocol_sha256": protocol,
-                    "commit": commit,
+                    "protocol_sha256": seal.protocol,
+                    "amendment_sha256": seal.amendment,
+                    "commit": seal.commit,
                     "system": system,
                     "pass": label,
                     "seed": seed,
@@ -766,10 +827,28 @@ def run_pass(
                 }
             )
         )
-    events = MONITOR.since(mark) if MONITOR is not None else []
+    events = MONITOR.invalidating_since(mark) if MONITOR is not None else []
     snap_after = snapshot()
-    after = [f for f in failures(snap_after, docker_allowed) if not f.startswith("load ")]
+    after = [
+        f for f in failures(snap_after, docker_allowed, starting=False) if not f.startswith("load ")
+    ]
     after = [] if DRY_RUN else after + events
+    samples = MONITOR.power_since(mark) if MONITOR is not None else []
+    sources = [cp.power_source(snap_before["batt"])]
+    sources += [x["source"] for x in samples] + [cp.power_source(snap_after["batt"])]
+    power = {
+        "profile": cp.power_profile(sources),
+        "start": {
+            "source": cp.power_source(snap_before["batt"]),
+            "percent": cp.battery_percent(snap_before["batt"]),
+        },
+        "end": {
+            "source": cp.power_source(snap_after["batt"]),
+            "percent": cp.battery_percent(snap_after["batt"]),
+        },
+        "changes": MONITOR.changes_since(mark) if MONITOR is not None else [],
+        "samples": samples,
+    }
     summary = cp.summarize(totals)
     half = min(30, len(totals) // 2)
     early, late = (
@@ -781,6 +860,7 @@ def run_pass(
     record |= {
         "status": "ok" if not after else "invalid_during_or_after",
         "reasons": after,
+        "power": power,
         "after": snap_after,
         "wall_seconds": time.perf_counter() - started,
         "n": summary.n,
@@ -820,9 +900,9 @@ def stage_table(rows: Sequence[dict[str, Any]]) -> dict[str, dict[str, float]]:
     return {name: stats(values) for name, values in per_stage.items()}
 
 
-def run_system(system: str, protocol_path: Path) -> int:
+def run_system(system: str, protocol_path: Path, amendment_path: Path) -> int:
     global MONITOR
-    protocol, commit = guard(protocol_path)
+    seal = guard(protocol_path, amendment_path)
     folder = RESULTS / system
     if (folder / "timings.jsonl").exists() or (folder / "summary.json").exists():
         raise SystemExit(f"{folder} already holds results: archive them, nothing is overwritten")
@@ -837,8 +917,9 @@ def run_system(system: str, protocol_path: Path) -> int:
     env_text = json.dumps(env, indent=1, ensure_ascii=False, sort_keys=True) + "\n"
     (folder / "environment.json").write_text(env_text, encoding="utf-8")
     summary: dict[str, Any] = {
-        "protocol_sha256": protocol,
-        "commit": commit,
+        "protocol_sha256": seal.protocol,
+        "amendment_sha256": seal.amendment,
+        "commit": seal.commit,
         "dry_run": bool(DRY_RUN),
         "system": system,
         "environment_sha256": hashlib.sha256(env_text.encode()).hexdigest(),
@@ -860,7 +941,7 @@ def run_system(system: str, protocol_path: Path) -> int:
     def execute(label: str, seed: int, cool: bool) -> dict[str, Any]:
         if cool:
             time.sleep(COOLDOWN_SECONDS)
-        result = run_pass(ctx, system, label, seed, folder, protocol, commit)
+        result = run_pass(ctx, system, label, seed, folder, seal)
         passes[label] = result
         return result
 
@@ -965,6 +1046,7 @@ def analyse(
                     "generation_mismatches",
                     "full_ranking_differs",
                     "unreadable_decompositions",
+                    "power",
                 )
             }
             | {"before": v["before"], "after": v.get("after")}
@@ -981,6 +1063,7 @@ def analyse(
         lang: stats([float(r["total_ns"]) for r in rows if r["lang"] == lang])
         for lang in sorted({r["lang"] for r in rows})
     }
+    analysis["power_profiles"] = {label: ok[label]["power"]["profile"] for label in reported}
     first = ok[reported[0]]
     analysis["top10_identical_across_reported_passes"] = all(
         ok[label]["tops"] == first["tops"] for label in reported
@@ -1049,9 +1132,9 @@ def heavy_imports(system: str) -> None:
         from ingest import vector_index  # noqa: F401
 
 
-def cold(system: str, repetition: int, protocol_path: Path) -> int:
+def cold(system: str, repetition: int, protocol_path: Path, amendment_path: Path) -> int:
     module_imports = time.perf_counter() - START
-    protocol, commit = guard(protocol_path)
+    seal = guard(protocol_path, amendment_path)
     snap, found = preconditions(system == "S1p")
     if found:
         print("precondition_failed", found)
@@ -1078,8 +1161,9 @@ def cold(system: str, repetition: int, protocol_path: Path) -> int:
             "top": list(out.top),
         }
     row |= {
-        "protocol_sha256": protocol,
-        "commit": commit,
+        "protocol_sha256": seal.protocol,
+        "amendment_sha256": seal.amendment,
+        "commit": seal.commit,
         "system": system,
         "repetition": repetition,
         "import_seconds": imports,
@@ -1117,11 +1201,74 @@ def smoke(system: str, verify: bool) -> int:
     return 0
 
 
-def preflight_command() -> int:
+def ci_state(commit: str) -> str:
+    """The conclusion of the GitHub Actions run of `commit` in the public repository."""
+    import urllib.request
+
+    remote = out_of(["git", "remote", "get-url", "origin"]).strip()
+    repo = remote.split("github.com")[-1].lstrip(":/").removesuffix(".git")
+    url = f"https://api.github.com/repos/{repo}/actions/runs?head_sha={commit}"
+    try:
+        with urllib.request.urlopen(url, timeout=20) as answer:  # noqa: S310
+            runs = json.load(answer).get("workflow_runs", [])
+    except OSError as error:
+        return f"unknown ({error})"
+    if not runs:
+        return "no run found"
+    run = runs[0]
+    return f"{run['status']}/{run['conclusion']} (run {run['run_number']})"
+
+
+def preflight_command(protocol_path: Path, amendment_path: Path) -> int:
+    """Every precondition of S5.3 in one place. Exit 1 if anything blocks."""
     snap = snapshot()
-    found = failures(snap, docker_allowed=False)
-    print(json.dumps({"snapshot": snap, "failures": found}, indent=1, ensure_ascii=False))
-    return 1 if found else 0
+    blocking = failures(snap, docker_allowed=False)
+    chrome = (
+        subprocess.run(
+            ["pgrep", "-f", "Google Chrome"], capture_output=True, check=False
+        ).returncode
+        == 0
+    )
+    if chrome:
+        blocking.append("Google Chrome is running")
+    if not clean_tree():
+        blocking.append("tracked files changed since the commit")
+    ahead = out_of(["git", "rev-list", "--count", "@{u}..HEAD"]).strip()
+    if ahead != "0":
+        blocking.append(f"{ahead} commits not pushed")
+    commit = out_of(["git", "rev-parse", "HEAD"]).strip()
+    ci = ci_state(commit)
+    if not ci.startswith("completed/success"):
+        blocking.append(f"CI of HEAD is not green: {ci}")
+    try:
+        protocol = protocol_sha(protocol_path)
+        amendment = amendment_sha(amendment_path, protocol)
+    except SystemExit as error:
+        protocol = amendment = ""
+        blocking.append(f"seal check: {error}")
+    blocking += [f"pin: {w}" for w in verify_pins()]
+    leftovers = [
+        str(p)
+        for system in ORDER
+        for p in (RESULTS / system / "timings.jsonl", RESULTS / system / "summary.json")
+        if p.exists()
+    ]
+    if leftovers:
+        blocking.append(f"results already exist: {leftovers}")
+    report_ = {
+        "blocking": blocking,
+        "battery": snap["batt"].strip(),
+        "uptime": snap["uptime"],
+        "docker_running": snap["docker_running"],
+        "chrome_running": chrome,
+        "busiest": snap["busiest"],
+        "commit": commit,
+        "ci": ci,
+        "protocol_sha256": protocol,
+        "amendment_sha256": amendment,
+    }
+    print(json.dumps(report_, indent=1, ensure_ascii=False))
+    return 1 if blocking else 0
 
 
 FINISHED = {"valid", "valid_after_repeat", "measurement_unstable", "not_measured"}
@@ -1144,13 +1291,15 @@ def cold_rows(folder: Path) -> int:
     return len(path.read_text(encoding="utf-8").splitlines()) if path.exists() else 0
 
 
-def drive(only: str | None, protocol_path: Path) -> int:
-    guard(protocol_path)
-    _, found = preconditions(only == "S1p")
+def drive(systems: tuple[str, ...], protocol_path: Path, amendment_path: Path) -> int:
+    """The systems in the given order, then their cold starts, then the report. The protocol's
+    order is S2, S1, S3, the S1p block (the only one with Docker open), S6a, S4, S6b, S5, so the
+    run is made in three calls: S2,S1,S3 then S1p then S6a,S4,S6b,S5."""
+    guard(protocol_path, amendment_path)
+    _, found = preconditions(systems == ("S1p",))
     if found:
         print("preconditions fail, nothing started:", found)
         return 3
-    systems = (only,) if only else tuple(s for s in ORDER if s != "S1p")
     python = sys.executable
     RESULTS.mkdir(parents=True, exist_ok=True)
     for system in systems:
@@ -1168,6 +1317,7 @@ def drive(only: str | None, protocol_path: Path) -> int:
         time_file = folder / "main-time.txt"
         command = ["caffeinate", "-dims", "/usr/bin/time", "-l", "-o", str(time_file), python]
         command += [__file__, "run", "--system", system, "--protocol", str(protocol_path)]
+        command += ["--amendment", str(amendment_path)]
         print("running", system, flush=True)
         code = subprocess.run(command, check=False).returncode
         memory = (
@@ -1185,6 +1335,7 @@ def drive(only: str | None, protocol_path: Path) -> int:
         for repetition in range(cold_rows(RESULTS / system) + 1, 4):
             command = ["caffeinate", "-dims", python, __file__, "cold", "--system", system]
             command += ["--repetition", str(repetition), "--protocol", str(protocol_path)]
+            command += ["--amendment", str(amendment_path)]
             print("cold start", system, repetition, flush=True)
             code = subprocess.run(command, check=False).returncode
             if code != 0:
@@ -1260,20 +1411,21 @@ def report() -> int:
     )
     reference = systems.get("S1", {}).get("p50_ns")
     lines = ["# S5.3 operational cost, measured on M1 (Apple M1, 16 GiB, fanless)", ""]
-    lines += ["| System | Status | p50 (ms) | p95 (ms) | max (ms) | n | p50 / S1 |"]
-    lines += ["|---|---|---|---|---|---|---|"]
+    lines += ["| System | Status | p50 (ms) | p95 (ms) | max (ms) | n | p50 / S1 | Power profile |"]
+    lines += ["|---|---|---|---|---|---|---|---|"]
     for name in ORDER:
         d = systems.get(name)
         if d is None:
             continue
         if "p50_ns" in d:
             ratio = f"{d['p50_ns'] / reference:.1f}" if reference else ""
+            profiles = ", ".join(sorted(set(d.get("power_profiles", {}).values())))
             lines.append(
                 f"| {name} | {d['status']} | {ms(d['p50_ns'])} | {ms(d['p95_ns'])} | "
-                f"{ms(d['max_ns'])} | {d['n']} | {ratio} |"
+                f"{ms(d['max_ns'])} | {d['n']} | {ratio} | {profiles} |"
             )
         else:
-            lines.append(f"| {name} | {d.get('status')} | | | | | |")
+            lines.append(f"| {name} | {d.get('status')} | | | | | | |")
     lines += [
         "",
         "| System | Main peak footprint (GiB) | Worker peak (GiB) | Sum (upper bound, GiB) |",
@@ -1315,32 +1467,37 @@ def report() -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("preflight")
     sub.add_parser("report")
+    seals = argparse.ArgumentParser(add_help=False)
+    seals.add_argument("--protocol", type=Path, default=PROTOCOL)
+    seals.add_argument("--amendment", type=Path, default=AMENDMENT)
+    sub.add_parser("preflight", parents=[seals])
     for name in ("smoke", "run", "cold"):
-        p = sub.add_parser(name)
+        p = sub.add_parser(name, parents=[] if name == "smoke" else [seals])
         p.add_argument("--system", choices=ORDER, required=True)
         if name == "smoke":
             p.add_argument("--verify", action="store_true")
-        else:
-            p.add_argument("--protocol", type=Path, required=True)
         if name == "cold":
             p.add_argument("--repetition", type=int, required=True)
-    p = sub.add_parser("drive")
-    p.add_argument("--protocol", type=Path, required=True)
-    p.add_argument("--only", choices=ORDER)
+    p = sub.add_parser("drive", parents=[seals])
+    p.add_argument("--systems", required=True, help="comma-separated, in the order to run")
     args = parser.parse_args(argv)
     if args.command == "preflight":
-        return preflight_command()
+        return preflight_command(args.protocol, args.amendment)
     if args.command == "report":
         return report()
     if args.command == "smoke":
         return smoke(args.system, args.verify)
     if args.command == "run":
-        return run_system(args.system, args.protocol)
+        return run_system(args.system, args.protocol, args.amendment)
     if args.command == "cold":
-        return cold(args.system, args.repetition, args.protocol)
-    return drive(args.only, args.protocol)
+        return cold(args.system, args.repetition, args.protocol, args.amendment)
+    systems = tuple(args.systems.split(","))
+    if not systems or any(x not in ORDER for x in systems) or len(set(systems)) != len(systems):
+        parser.error(f"--systems must be distinct names among {', '.join(ORDER)}")
+    if "S1p" in systems and systems != ("S1p",):
+        parser.error("the S1p block runs alone: Docker is open only for it")
+    return drive(systems, args.protocol, args.amendment)
 
 
 if __name__ == "__main__":

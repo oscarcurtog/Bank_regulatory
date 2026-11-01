@@ -188,3 +188,16 @@ def test_resident_memory_of_a_process_tree() -> None:
 
 def test_the_warmup_queries_are_three_fixed_strings() -> None:
     assert len(cp.WARMUP_QUERIES) == 3 and len(set(cp.WARMUP_QUERIES)) == 3
+
+
+def test_power_source_level_and_profile() -> None:
+    assert cp.power_source(BATTERY) == "Battery" and cp.power_source(AC) == "AC"
+    assert cp.power_source("") == "unknown" and cp.power_source("nothing") == "unknown"
+    assert cp.battery_percent(BATTERY) == 76 and cp.battery_percent(AC) == 80
+    assert cp.battery_percent("no level here") is None
+    assert (cp.B_START, cp.B_CRITICAL) == (40, 15)
+    assert cp.power_profile(["AC", "AC"]) == "ac_throughout"
+    assert cp.power_profile(["Battery", "Battery", "Battery"]) == "battery_throughout"
+    assert cp.power_profile(["Battery", "AC"]) == "mixed"
+    assert cp.power_profile(["AC", "unknown"]) == "mixed"
+    assert cp.power_profile([]) == "mixed"
