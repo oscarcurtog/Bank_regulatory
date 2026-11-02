@@ -226,6 +226,10 @@ def guard() -> dict[str, Any]:
         raise SystemExit("amendment A.1 does not amend the sealed stage A")
     text = DOC_B.read_text(encoding="utf-8")
     inputs: dict[str, str] = pin_b["inputs"]
+    if cp.sha256_file(Path("ingest/selection_rules.py")) != inputs["selection_rules_py"]:
+        raise SystemExit(
+            "ingest/selection_rules.py is not the implementation the preregistration pins"
+        )
     absent = [k for k, v in inputs.items() if v not in text]
     if absent:
         raise SystemExit(f"the preregistration text does not hold the pinned hashes of {absent}")
