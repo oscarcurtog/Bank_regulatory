@@ -1,0 +1,30 @@
+{
+  "schema_version": "1",
+  "name": "s5-s6-preregistration-b",
+  "stage": "B",
+  "title": "Final experimental preregistration of the S5-S6 retrieval selection, pinned by the hash of a private document",
+  "document_sha256": "99718ac0cdcddaef17a521e2403c1a349fc1e420ea48717e026f5fc135fc7ed7",
+  "document_bytes": 37943,
+  "hash_algorithm": "sha256",
+  "document_status": "private; kept outside the public repository",
+  "scope": "the rules of the single labelled read of six retrieval systems on DEV (E5, D-4B, E, E5 + BM25 by RRF, E5 + reranker at N=20 and N=50): frozen candidate sources, latency classes, displacement and dominance rules, the nine labels, the deterministic coverage sensitivity envelope, the budget of six looks and the stop rules; no TEST v2",
+  "amends_document_sha256": "none; builds on stage A and amendment A.1, which it does not modify",
+  "inputs": {
+    "run_E5": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+    "run_D-4B": "ccdf3e111731c78c19e2bcd616e6c46896527c0cdf8530547df88d9a3ee15317",
+    "run_E": "8ee79746f75e817320228e004344fb6eb09d5fe97fdcb815891834197b7ef521",
+    "run_RRF": "d52c3a9ec6f0590eb2840703ee76221fb6dfaace7330533543f1f603eafdd39b",
+    "run_N20": "740b0ac2f465117e9ba433aa460c5e89eadb9fe36509dad04993b570e56ed897",
+    "run_N50": "f35b8ced316b97d7a901b39e522f75e7cb9b5227af103333fbbbab51faafeaab",
+    "bm25_run": "49b9d78fd41c12205e07a878ffeb2260d1110abd5ad99464b2d5f0e282c7aa76",
+    "s6b_scores": "5812d94de48c3e0fb02b82915866d7dc6186389d341d90cd5fc4c25291f4a38a",
+    "queries": "8c1d859430139f3d40354fe0866c9e11d9c05e6458aba27969f1a9077d55f2c7",
+    "dev_manifest": "c845b684035dac91dec399604e6623a60c67a9564afba975f177b5d6482fb917",
+    "cost_summary": "4a79e28dd32782d553ef9b06c7705bcea7e7c29095f9a168694ef3f51d14e1b4",
+    "cost_manifest": "53d897628a11024628e534eda914f706e2780e689a9e6170bfbd2c9770ad68f3",
+    "selection_rules_py": "13516acc00cdd90f6efca66c847efd98fc4afd1095d7e250dcdab3f2b0476631"
+  },
+  "amendments": "append-only: a later version is a new document with a new hash, published before it is used",
+  "sealed_on": "2026-11-02",
+  "note": "The commit that adds this file is the public timestamp: the rules, the candidate runs and the code of the rules were fixed before any label of the read was opened."
+}
