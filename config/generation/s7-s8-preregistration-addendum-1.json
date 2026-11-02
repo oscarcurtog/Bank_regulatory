@@ -1,0 +1,45 @@
+{
+  "schema_version": "1",
+  "name": "s7-s8-preregistration-addendum-1",
+  "stage": "addendum-1",
+  "amends": {
+    "name": "s7-s8-preregistration",
+    "document_sha256": "37e7e7204c1eefac879ff5871e5b9a1bb03c72dc343ee0545207413c4fcc99c1"
+  },
+  "title": "Addendum 1 to the S7-S8 preregistration: the semantic-support and answer-relevance labels come from a separate language model, not from people; pinned by the SHA-256 of its private document",
+  "document_sha256": "5088ec83d47a92988d962a83a5486f941bfe0243ff9d856cafc83a28d0c3707f",
+  "document_bytes": 6610,
+  "hash_algorithm": "sha256",
+  "document_status": "private; kept outside the public repository",
+  "interpretation": {
+    "semantic_support_labels": "cross-model semantic support audit",
+    "answer_relevance_labels": "cross-model answer relevance audit",
+    "label_required_on_every_conclusion": "model-audited, not human-validated",
+    "threshold": ">= 90 % SUPPORTED among SUPPORTED + UNSUPPORTED, unchanged; only its reading changes",
+    "not_claimed": "human labels, ground truth, expert review or legal validation"
+  },
+  "unchanged_before_labels": {
+    "evaluation_outputs_sha256": "9ce031b5532bce3d51385659a862979a3f6e82ab364ff2410d87f851a66b4b52",
+    "automatic_analysis_sha256": "d7dcc3ef2c9bc6413f348c90ef8b771082205cacad4c06cecbc8a9889568b11c",
+    "cases_json": "af0a449a60b36b81a8dc62a8a378586a2831ff8ff96b0c80a8340f74769163b4",
+    "ingest/answer_format.py": "cb64a0e59e54a99f5b515efa48837ecc95add780e22c0c7296aa524ea58ff0da",
+    "ingest/answer_verifier.py": "1a76d8d8c789d08bff97a05894b43978cb7dc1f4eecc3a11bdcb872c4589178c",
+    "ingest/answer_cases.py": "68aa4d0048809ca42f5f79704755245580a31f11f7a429d9a9bf1374feb6e359",
+    "ingest/answer_metrics.py": "0a55484a72e961256b5a5d78376804c84b7ee1987773270511b84d0396a332fe",
+    "ingest/answer_report.py": "127a5eccf6c56db36ab61fe0d9d29279c541dba69e64d70ccfb5ba5fc5c623c1"
+  },
+  "inputs_of_the_audit": {
+    "claims-packet.md": "3470f7678ccd9d432d5bcad8e7cd8629f34738c82a0d24a1c4b9d8bc9b3883d2",
+    "answers-packet.md": "766a1a36e7f1afe2a2d54125c4296f781a102350b3ff6a0104d72e6aa1b2608f",
+    "claims-labels.csv": "d2b11fa7650e59248c7d9a52efb66c8345b0270869f07bf79a5ffe90162c54e5",
+    "answers-labels.csv": "67c297474025b224a1a22539973687176826e288aebaa3c4af712d22868e6d24",
+    "RUBRICA.md": "99fbfad8c6fbbd0c8133035bbd2030664c49ad8aeab1fcb99a31884e15831fdf"
+  },
+  "code_commit": "509ee44",
+  "code_changed": {
+    "scripts/s7_report.py": "29af5caf0f5d22a8356cc086012cf4f2ba550712a3dce13f5da94b44b05b4927"
+  },
+  "amendments": "append-only: a later version is a new document with a new hash, published before it is used",
+  "sealed_on": "2026-11-02",
+  "note": "The commit that adds this file is the public timestamp: the reading of the labels, the blind inputs of the audit and the unchanged automatic results were fixed before any label of the audit existed."
+}
