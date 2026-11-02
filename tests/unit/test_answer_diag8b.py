@@ -3,6 +3,7 @@ outputs."""
 
 from __future__ import annotations
 
+import importlib
 import json
 from collections.abc import Collection
 from pathlib import Path
@@ -229,3 +230,22 @@ def test_words_around_a_usable_json_are_a_failure_type_but_garbage_is_not_double
     types = [d8.failure_types(o, records[o.case.case_id]) for o in outcomes]
     assert types[0] == {"extra_text_around_json"}
     assert types[1] == {"structural:no_json_object"}
+
+
+def test_the_weights_name_is_the_target_of_the_snapshot_link_even_if_the_blob_is_a_link_too(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.syspath_prepend("scripts")  # scripts/ is no package
+    module = importlib.import_module("s7_diag8b")
+    cache = tmp_path / "hub"
+    revision = "abc"
+    root = cache / "models--mlx-community--Qwen3-8B-4bit"
+    (root / "snapshots" / revision).mkdir(parents=True)
+    (root / "blobs" / "09").mkdir(parents=True)
+    (root / "blobs" / "09" / "stored-elsewhere").write_bytes(b"weights")
+    (root / "blobs" / "content-hash").symlink_to(Path("09") / "stored-elsewhere")
+    (root / "snapshots" / revision / "model.safetensors").symlink_to(
+        Path("..") / ".." / "blobs" / "content-hash"
+    )
+    monkeypatch.setattr(module, "HF_CACHE", cache)
+    assert module.weights_blob(revision) == "content-hash"

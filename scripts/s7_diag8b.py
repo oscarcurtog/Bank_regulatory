@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import time
@@ -36,6 +37,8 @@ FOLDER = gen.RESULTS / "diag-8b"
 BASELINE = gen.RESULTS / "evaluation"
 PIN = Path("config/generation/s7-s8-8b-diagnostic-preregistration.json")
 DOC = Path("docs/research/s7-s8-diagnostico-8b-v1.md")
+CORRECTION_PIN = Path("config/generation/s7-s8-8b-diagnostic-correction-1.json")
+CORRECTION_DOC = Path("docs/research/s7-s8-diagnostico-8b-v1-correccion-1.md")
 CODE = ("ingest/answer_diag8b.py", "scripts/s7_diag8b.py")
 HF_CACHE = Path(".cache/huggingface/hub")
 
@@ -45,13 +48,14 @@ def gold_cases(payload: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def weights_blob(revision: str) -> str:
-    """The content hash that names the weights file of the cached snapshot."""
+    """The content hash that names the weights file of the cached snapshot: the target of the
+    snapshot link, not the end of a longer chain (the cache may store a blob as a link again)."""
     snapshot = HF_CACHE / "models--mlx-community--Qwen3-8B-4bit" / "snapshots" / revision
-    return (snapshot / "model.safetensors").resolve().name
+    return Path(os.readlink(snapshot / "model.safetensors")).name
 
 
 def guard() -> dict[str, Any]:
-    for name in (*gen.PINNED_CODE, *CODE, str(PIN), str(CONFIG_8B)):
+    for name in (*gen.PINNED_CODE, *CODE, str(PIN), str(CORRECTION_PIN), str(CONFIG_8B)):
         done = subprocess.run(
             ["git", "ls-files", "--error-unmatch", name], capture_output=True, check=False
         )
@@ -63,11 +67,18 @@ def guard() -> dict[str, Any]:
     if ahead != "0":
         raise SystemExit(f"the commit is not public yet ({ahead} commits ahead of origin)")
     pin = json.loads(PIN.read_text(encoding="utf-8"))
-    if cp.sha256_file(DOC) != pin["document_sha256"]:
-        raise SystemExit(f"{DOC} does not hash to its public pin")
-    inputs: dict[str, str] = pin["inputs"]
-    text = DOC.read_text(encoding="utf-8")
-    absent = [k for k, v in inputs.items() if v not in text]
+    fix = json.loads(CORRECTION_PIN.read_text(encoding="utf-8"))
+    for doc, pinned in ((DOC, pin), (CORRECTION_DOC, fix)):
+        if cp.sha256_file(doc) != pinned["document_sha256"]:
+            raise SystemExit(f"{doc} does not hash to its public pin")
+    if fix["amends"]["document_sha256"] != pin["document_sha256"]:
+        raise SystemExit("the correction does not amend the pinned preregistration")
+    inputs: dict[str, str] = {**pin["inputs"], **fix["inputs"]}  # the correction wins
+    texts = {
+        k: (CORRECTION_DOC if k in fix["inputs"] else DOC).read_text(encoding="utf-8")
+        for k in inputs
+    }
+    absent = [k for k, v in inputs.items() if v not in texts[k]]
     if absent:
         raise SystemExit(f"the preregistration text does not hold the pinned hashes of {absent}")
     checks = {
@@ -85,6 +96,7 @@ def guard() -> dict[str, Any]:
         raise SystemExit("the cached weights are not the pinned ones")
     return {
         "preregistration_sha256": pin["document_sha256"],
+        "correction_sha256": fix["document_sha256"],
         "commit": gen.out_of(["git", "rev-parse", "HEAD"]).strip(),
         "prompt_sha256": af.prompt_sha256(),
         "model": config["model_id"],
