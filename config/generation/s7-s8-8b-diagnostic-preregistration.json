@@ -1,0 +1,74 @@
+{
+  "schema_version": "1",
+  "name": "s7-s8-8b-diagnostic-preregistration",
+  "stage": "addendum-2",
+  "amends": {
+    "name": "s7-s8-preregistration",
+    "document_sha256": "37e7e7204c1eefac879ff5871e5b9a1bb03c72dc343ee0545207413c4fcc99c1"
+  },
+  "title": "Addendum 2 to the S7-S8 preregistration: a minimal capability diagnostic of a larger local generator on the GOLD_KNOWN context, pinned by the SHA-256 of its private document",
+  "document_sha256": "9f47af5a78269d1d0ec650e088fb8a51e474df1cb7967dd8ecfc2f02047eefd1",
+  "document_bytes": 8668,
+  "hash_algorithm": "sha256",
+  "document_status": "private; kept outside the public repository",
+  "design": {
+    "question": "is the bottleneck the capacity or obedience of the 4B generator even when the known relevant evidence is in its context",
+    "model": "mlx-community/Qwen3-8B-4bit",
+    "revision": "545dc4251c05440727734bcd94334791f6ab0192",
+    "technical_adaptation": "chat template with enable_thinking = false; same messages",
+    "decoding": "greedy, max_new_tokens 900, fresh prompt cache per case, no content retries",
+    "context": "GOLD_KNOWN",
+    "need_ids": [
+      "N006",
+      "N009",
+      "N011",
+      "N012",
+      "N016",
+      "N017",
+      "N018",
+      "N019",
+      "N021",
+      "N022",
+      "N023",
+      "N024",
+      "N025",
+      "N026",
+      "N029",
+      "N031",
+      "N034",
+      "N035"
+    ],
+    "generations": 18,
+    "baseline": "the stored 4B GOLD_KNOWN outputs of the sealed evaluation, untouched",
+    "rule": {
+      "combined_answer_rate_at_least": 0.8,
+      "structural_failures_fewer_than": 2,
+      "verified_citation_rate_points_above_4b_at_least": 10,
+      "new_systematic_failure": "a failure type absent from all 18 outputs of the 4B that appears in 3 or more of the 18 outputs of the 8B",
+      "conclusions": [
+        "8B_DIAGNOSTIC_PASSED_READY_FOR_BLIND_AUDIT",
+        "8B_DIAGNOSTIC_FAILED_STOP"
+      ]
+    },
+    "if_passed": "a small blind cross-model audit of up to 40 claims with the same rubric and threshold; then stop and propose, never an automatic campaign",
+    "if_failed": "nothing else is run"
+  },
+  "inputs": {
+    "cases_json": "af0a449a60b36b81a8dc62a8a378586a2831ff8ff96b0c80a8340f74769163b4",
+    "prompt_sha256": "f1e8116ae14e4dc3a6fe83d7ad5594e20033287e7a89bbe244118edab3b492d0",
+    "generator_config_8b": "92836ad88b8529027775f101b3c1e1bf1c47db46434199de271a582e82ac02a4",
+    "weights_sha256": "f2d29621aab300336ad645567ff38c42aac755513006ef4e8a579cf7ef5256d8",
+    "baseline_4b_outputs": "9ce031b5532bce3d51385659a862979a3f6e82ab364ff2410d87f851a66b4b52",
+    "ingest/answer_format.py": "cb64a0e59e54a99f5b515efa48837ecc95add780e22c0c7296aa524ea58ff0da",
+    "ingest/answer_verifier.py": "1a76d8d8c789d08bff97a05894b43978cb7dc1f4eecc3a11bdcb872c4589178c",
+    "ingest/answer_cases.py": "68aa4d0048809ca42f5f79704755245580a31f11f7a429d9a9bf1374feb6e359",
+    "ingest/answer_metrics.py": "0a55484a72e961256b5a5d78376804c84b7ee1987773270511b84d0396a332fe",
+    "ingest/answer_report.py": "127a5eccf6c56db36ab61fe0d9d29279c541dba69e64d70ccfb5ba5fc5c623c1",
+    "ingest/answer_diag8b.py": "75b54861ea89049020dd0f794f9989f11b582c872f2995a08ab76984d51258fa",
+    "scripts/s7_diag8b.py": "052af2b7238c11d932a60873a6c7127e5501459e94df579a8ccf903f268c1fd4"
+  },
+  "code_commit": "db3c47a",
+  "amendments": "append-only: a later version is a new document with a new hash, published before it is used",
+  "sealed_on": "2026-11-02",
+  "note": "The commit that adds this file is the public timestamp: the model, the decoding, the cases, the decision rule and the audit rule were fixed before any output of the larger model was generated."
+}
