@@ -266,7 +266,7 @@ def render_report(
         f"- frontier (not discarded, no path): {', '.join(paths.frontier) or 'none'}",
         "",
         "selected/explored on DEV, not independently confirmed. Latencies and memory: "
-        "measured on M1. Latency classes: product assumption, measured on M1.",
+        "measured on M1. Latency classes: product assumption \u2014 measured on M1.",
         "",
     ]
     return "\n".join(lines)
