@@ -1,0 +1,28 @@
+{
+  "schema_version": "1",
+  "name": "s7-s8-preregistration",
+  "stage": "1",
+  "title": "Lightweight preregistration of the S7-S8 generation, grounding, abstention and citation evaluation, pinned by the hash of a private document",
+  "document_sha256": "37e7e7204c1eefac879ff5871e5b9a1bb03c72dc343ee0545207413c4fcc99c1",
+  "document_bytes": 23193,
+  "hash_algorithm": "sha256",
+  "document_status": "private; kept outside the public repository",
+  "scope": "one local 4-bit generator, four contexts, the DEV split of 6 prompt-development and 18 evaluation needs, 15 negative contexts, a deterministic citation-integrity verifier, two deciding abstention rules (SELF and COMBINED), a cascade rule and two small human checks; the prompt is frozen at the hash below; no TEST v2, no LLM judge",
+  "inputs": {
+    "cases_json": "af0a449a60b36b81a8dc62a8a378586a2831ff8ff96b0c80a8340f74769163b4",
+    "prompt_sha256": "f1e8116ae14e4dc3a6fe83d7ad5594e20033287e7a89bbe244118edab3b492d0",
+    "layer_sha256": "7dd578b30be406f58664c754728be322465de15aaebfe648baee91baa99bb8bd",
+    "run_E5": "b4880d4977fb242757849f4b8a20550f566fbad0fd5eda041505e28de83b9921",
+    "run_E": "8ee79746f75e817320228e004344fb6eb09d5fe97fdcb815891834197b7ef521",
+    "generator_config": "9f8b638720508a169ae5d23edf35db9dc5e4005831ca4162a34c69cb02a747c5",
+    "ingest/answer_format.py": "cb64a0e59e54a99f5b515efa48837ecc95add780e22c0c7296aa524ea58ff0da",
+    "ingest/answer_verifier.py": "1a76d8d8c789d08bff97a05894b43978cb7dc1f4eecc3a11bdcb872c4589178c",
+    "ingest/answer_cases.py": "68aa4d0048809ca42f5f79704755245580a31f11f7a429d9a9bf1374feb6e359",
+    "ingest/answer_metrics.py": "0a55484a72e961256b5a5d78376804c84b7ee1987773270511b84d0396a332fe",
+    "ingest/answer_report.py": "127a5eccf6c56db36ab61fe0d9d29279c541dba69e64d70ccfb5ba5fc5c623c1"
+  },
+  "code_commit": "7181e07",
+  "amendments": "append-only: a later version is a new document with a new hash, published before it is used",
+  "sealed_on": "2026-11-02",
+  "note": "The commit that adds this file is the public timestamp: the prompt, the verifier, the cases and the rules were fixed before any evaluation output was generated."
+}
