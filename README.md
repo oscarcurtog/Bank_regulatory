@@ -16,8 +16,8 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   models with exact search, BM25, and a one-hop cross-reference expansion) under a protocol fixed
   before the results, Pydantic data contracts, stale-layer detection, measurement tooling, tests,
   Docker and CI.
-- **Not implemented yet:** a vector index, hybrid search and reranking, generation, citation
-  verification, API and deployment.
+- **Not implemented yet:** generation, citation verification, API and deployment. Retrieval is
+  selected (see below) but nothing answers a question yet.
 
 ### Roadmap
 
@@ -47,7 +47,15 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   model-judged sample, not a measure of answer quality. The earlier protocol (TEST
   v1, seven constructions) is kept as history: the seventh, its first confirmatory attempt,
   stopped under the frozen minimum feasibility rule before any retrieval
-- **Generation, evaluation, API and deployment:** later
+- **Retrieval architecture selection (S5-S6), closed on 2026-11-02:** a pre-registered selection
+  on DEV between the dense baseline, hybrid fusion, a reranker at two depths and the
+  decomposition-based systems. **FAST PATH: E5. QUALITY PATH: E.** E5 is selected on measured cost,
+  latency and simplicity because no alternative met the pre-registered bar to displace it, not
+  because it was shown to be better; E's advantage over E5 rests on TEST v2. Incomplete relevance
+  judgments left several comparisons formally unresolved. See [Retrieval architecture selection
+  (S5-S6)](#retrieval-architecture-selection-s5-s6)
+- **Generation, evaluation, API and deployment:** later (next phase: generation, grounding,
+  abstention and citations)
 
 ## What is implemented
 
@@ -97,6 +105,13 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   independently of the development loop, its evaluation, and the contract that fixes both
   before the first topic. TEST v1's machinery (`ingest/holdout*.py`, `scripts/holdout.py`) is
   kept to reproduce runs 1 to 7. See [Internal TEST set](#internal-test-set-s3).
+- **Retrieval selection** (`ingest/cost_protocol.py`, `scripts/s5_cost.py`,
+  `scripts/s5_mlx_worker.py`, `ingest/selection_rules.py`, `ingest/selection_read.py`,
+  `scripts/s5_selection.py`): the operational-cost harness (latency, memory, cold start and
+  reproducibility, no label read) and the rules and single read of the S5-S6 selection, with a
+  deterministic coverage sensitivity envelope. Their protocols are private documents pinned by
+  hash in `config/retrieval/s5-s6-preregistration-*.json`. See [Retrieval architecture selection
+  (S5-S6)](#retrieval-architecture-selection-s5-s6).
 - **Data contracts** (Pydantic): the manifest, the processed layer (`data/processed/{act}.json`),
   the chunk layer (`data/chunks/{act}.json`) and the benchmark files are validated when they are
   written and when they are read. Loading aborts instead of returning partly checked data.
@@ -104,7 +119,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
   parser version wrote it, or if its source snapshot no longer matches the manifest.
 - **Measurement tooling** (`scripts/`): node-level and article-level text and token profiles of the
   corpus.
-- **Tests and static checks:** 1471 tests (unit, integration, and regression tests for real defects
+- **Tests and static checks:** 1894 tests (unit, integration, and regression tests for real defects
   found during development), Ruff and mypy.
 - **Docker:** a multi-stage build with a non-root runtime image and a separate image for the tests.
 - **CI:** GitHub Actions runs the checks and validates the runtime image on every push and pull
@@ -115,7 +130,7 @@ The corpus covers three acts, 331 articles in total, downloaded on 2026-09-05:
 ```
 ingest/              library: download, parser, processed and chunk layers, benchmark, retrieval
 config/embeddings/   the contract of each embedding model, and the model comparison policy
-config/retrieval/    the retrieval iterations' protocols and the contracts of BM25, fusion, rerankers
+config/retrieval/    the retrieval iterations' protocols, the contracts of BM25, fusion, rerankers and the S5-S6 pins
 config/external/     the protocol of the external validation (T4)
 config/holdout/      TEST v2's protocol, contract and S4 plan; TEST v1's, historical (S3)
 scripts/             pipeline and measurement entry points
@@ -748,6 +763,89 @@ results instead of 50 (G3), 0.801. None met the iteration's rule for replacing i
 none beats E's Recall@10 and none reaches the useful target. By F's stop rule, E stays the
 retrieval candidate.
 
+### Retrieval architecture selection (S5-S6)
+
+S5-S6 asked which retrieval architecture should feed the generation stage, weighing quality
+against measured cost. It was decided on DEV, which by then was an exploratory set already used
+by about twenty systems, under rules fixed before the results and pinned in three steps, each by
+the SHA-256 of a private document: the measurement protocol (stage A) and its power amendment
+(A.1), published before any cost was measured, and the experimental rules (stage B), published
+before any new relevance label was read
+(`config/retrieval/s5-s6-preregistration-a.json`, `-a1.json` and `-b.json`; the commit that adds
+each file is its public timestamp). The budget was six labelled looks and exactly six were used.
+
+**Outcome**
+
+- **FAST PATH: E5** (`multilingual-e5-large`, exact dense search). It is selected on measured
+  cost, latency, memory and simplicity, and on the burden of proof: no alternative in its latency
+  class met the pre-registered bar to displace it. It is not selected because it was shown to be
+  better than the alternatives.
+- **QUALITY PATH: E** (question decomposition by a local 4-bit `Qwen3-4B-Instruct-2507`, E5 over
+  each sub-question, `Qwen3-Reranker-0.6B` reordering). Its advantage over E5 was confirmed on
+  TEST v2 (see [TEST v2 result and closure](#test-v2-result-and-closure)); the DEV read in this
+  phase is descriptive and confirms nothing. E trades a much higher operational cost for that
+  confirmed gain.
+- **Not selected:** hybrid fusion with BM25 (RRF), the reranker over E5's top 20 and top 50, and
+  the decomposition without the reranker (D-4B, kept as an intermediate reference). None was
+  formally discarded.
+
+**Measured cost.** One Apple M1, one query at a time, models already loaded, retrieval only.
+`measured on M1`: these are not production figures, not throughput, and say nothing about
+another machine or about generation. Memory is the sum of the peak footprints of the processes
+involved, so it is an upper bound.
+
+| System | p95 latency | Memory (upper bound) |
+|---|---|---|
+| E5, exact search in process | 0.154 s (0.166 s through PostgreSQL with pgvector in Docker) | 0.66 GiB |
+| E5 + BM25, RRF fusion | 0.156 s | 0.65 GiB |
+| E5 + reranker, top 20 | 9.6 s | 5.95 GiB |
+| D-4B (decomposition, no reranker) | 18.3 s | 4.14 GiB |
+| E5 + reranker, top 50 | 19.7 s | 6.05 GiB |
+| E (decomposition + reranker) | 85.7 s | 8.99 GiB |
+
+**Quality on DEV, exploratory** (27 evaluable needs; `selected/explored on DEV, not independently
+confirmed`). The point estimates below are descriptive. They do not rank the variants: Judged@10,
+the share of each top 10 that has a relevance judgment, is only 0.29 to 0.38 for every system,
+and the variants bring in between 2.5 and 5.4 chunks per query that E5's top 10 does not contain,
+most of them unjudged.
+
+| System | Recall@10 | nDCG@10 | Judged@10 | Status against E5 |
+|---|---|---|---|---|
+| E5 | 0.763 | 0.528 | 0.322 | FAST PATH |
+| E5 + BM25, RRF | 0.649 | 0.414 | 0.293 | not selected, unresolved by coverage |
+| E5 + reranker, top 20 | 0.773 | 0.534 | 0.369 | not selected, quality unresolved |
+| E5 + reranker, top 50 | 0.747 | 0.518 | 0.348 | not selected, quality unresolved |
+| D-4B | 0.803 | 0.552 | 0.358 | intermediate reference, not selected |
+| E | 0.824 | 0.561 | 0.377 | QUALITY PATH (confirmed on TEST v2) |
+
+The coverage rule fixed in advance asks, for each comparison of a variant with E5, whether any
+legal assignment of the DEV grades to the unjudged chunks in the two top 10 lists could change
+the decision. For all four variants it could, so each comparison is reported as not evaluable due
+to qrel coverage; nothing displaced E5 and nothing was discarded. The candidates of the fusion
+and the reranker come from E5's frozen DEV rankings, and the reranker scores are the ones saved
+during the cost measurement: nothing was rescored.
+
+**What this does not show**
+
+- That E5 is better than hybrid fusion, the rerankers or D-4B, or that they are equivalent. The
+  data cannot say either.
+- That the selection holds outside DEV, on a new corpus, or with other judges. E over E5 is the
+  only comparison with an independent confirmation, and its labels come from one model family.
+- That the latencies hold in production. They are single-query timings on one laptop.
+- That retrieval quality turns into answer quality. Generation has not been built or measured.
+
+**Lesson kept.** A pooled benchmark built around earlier systems can evaluate those systems and
+still tell little about new architectures that retrieve different documents. A future evaluation
+should widen the pool before freezing relevance judgments, judge deeper, or use an independent set
+when a really new family is introduced. The judgments of DEV were not extended after seeing the
+results.
+
+**When this would be reopened.** A lexical product need (queries dominated by exact article
+references or identifiers) for the hybrid; a need for more quality than E5 with E operationally
+unviable, for the intermediate D-4B; and, for an independent evaluation, a decision that depends
+on telling E5 from a variant, a public claim of superiority, a new corpus, expert-made labels or a
+publication.
+
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
@@ -755,8 +853,9 @@ retrieval candidate.
 - The DEV benchmark holds 30 judged questions in two batches (27 evaluable), so a difference
   between two retrievers needs to be large to be told apart from noise (about 0.08 of nDCG@10).
   The retrieval iterations selected on DEV, so their numbers are development numbers; an
-  independent TEST set has not been built. No approximate index (HNSW, IVFFlat) or hybrid
-  search has been measured (the pgvector index is exact), and
+  independent TEST set has not been built for the iterations, only for E over E5 (TEST v2). No
+  approximate index (HNSW, IVFFlat) has been measured (the pgvector index is exact); hybrid fusion
+  was measured once, in S5-S6, with an unresolved result; and
   neither the cross-encoder rerankers nor a local language model judging candidates improved on
   E5; the decomposition of round D improves nDCG@10 on DEV, and has not been tested on new needs;
   fine-tuning the reranker on synthetic questions from the corpus improved on held-out synthetic
@@ -769,6 +868,10 @@ retrieval candidate.
   one model family and no legal expert reviewed them, its optional human audit was not run, and it
   measures retrieval, not answers; the seven constructions of TEST v1 were aborted before any
   result.
+- S5-S6 selected the retrieval architecture on DEV, where only 29 to 38 % of each system's top 10
+  has a relevance judgment, from one model family. The comparisons between E5 and its variants
+  are formally unresolved, the latencies are single-query timings on one Apple M1, and E is
+  currently tied to Apple silicon (MLX). The selection says nothing about the quality of answers.
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4
