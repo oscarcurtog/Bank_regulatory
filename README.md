@@ -16,8 +16,12 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   models with exact search, BM25, and a one-hop cross-reference expansion) under a protocol fixed
   before the results, Pydantic data contracts, stale-layer detection, measurement tooling, tests,
   Docker and CI.
-- **Not implemented yet:** generation, citation verification, API and deployment. Retrieval is
-  selected (see below) but nothing answers a question yet.
+- **Evaluated, not production:** an answer-generation harness with a deterministic citation
+  verifier, run once on DEV under a pre-registered protocol (S7-S8, see below). It is an
+  exploratory evaluation, not a pipeline anyone should rely on.
+- **Not implemented yet:** an answer pipeline fit for use, API and deployment. Retrieval is
+  selected and a small local generator was evaluated, but nothing in this repository answers
+  questions for users.
 
 ### Roadmap
 
@@ -54,8 +58,15 @@ legal structure, validated data contracts, measurement tooling, tests, Docker im
   because it was shown to be better; E's advantage over E5 rests on TEST v2. Incomplete relevance
   judgments left several comparisons formally unresolved. See [Retrieval architecture selection
   (S5-S6)](#retrieval-architecture-selection-s5-s6)
-- **Generation, evaluation, API and deployment:** later (next phase: generation, grounding,
-  abstention and citations)
+- **Generation, grounding, abstention and citations (S7-S8), closed on 2026-11-02:** a
+  pre-registered exploratory evaluation on DEV of a local 4-bit `Qwen3-4B-Instruct-2507` that
+  answers in a strict format, with every claim carrying a chunk id and a literal quote that a
+  deterministic check verifies. **Automatic routing from the FAST to the QUALITY retrieval path is
+  not justified by this evidence**, the deterministic check proves provenance and integrity of the
+  citations but not that they support the claim, and a larger model did not improve the result
+  under the same contract. See [Generation, grounding and abstention
+  (S7-S8)](#generation-grounding-and-abstention-s7-s8)
+- **API and deployment:** later
 
 ## What is implemented
 
@@ -846,6 +857,74 @@ unviable, for the intermediate D-4B; and, for an independent evaluation, a decis
 on telling E5 from a variant, a public claim of superiority, a new corpus, expert-made labels or a
 publication.
 
+### Generation, grounding and abstention (S7-S8)
+
+S7-S8 asked whether a small local generator can answer from the retrieved articles with citations
+that a deterministic check can verify, and whether it abstains when its sources do not suffice. It
+is an exploratory evaluation on DEV (18 needs for evaluation, 6 others used to develop the prompt,
+which was frozen after two versions), under rules fixed before the results and pinned by the
+SHA-256 of private documents: the evaluation, an addendum on how the labels of the audit are
+read, and an addendum with a correction for the larger-model diagnostic
+(`config/generation/s7-s8-*.json`; the commit that adds each file is its public timestamp). TEST
+v2 was not used.
+
+**Setup.** The generator is a 4-bit `Qwen3-4B-Instruct-2507` run greedily with MLX. It must reply
+with a strict JSON object: whether its sources suffice, atomic claims, and for each claim one or
+more citations made of a chunk id and a quote copied literally from that chunk. A deterministic
+verifier ("layer 0", `ingest/answer_verifier.py`) checks that the chunk was in the context, that the
+quote is a literal passage of it and that any figure in the claim appears in the cited chunks. The
+combined rule accepts an answer only if the model says its sources suffice, it has at least one
+claim and every claim passes layer 0. Four contexts were compared: the chunks the DEV judgments
+call relevant (`GOLD_KNOWN`), the top 10 of E5 (FAST), the top 10 of E (QUALITY) and the top 5 of
+E5. Fifteen negative contexts were built in advance, where abstaining was the aim.
+
+**Outcome** (exploratory, 18 needs, `explored on DEV, not independently confirmed`)
+
+| Context | Model says sources suffice | Accepted by the combined rule |
+|---|---|---|
+| `GOLD_KNOWN` | 15/18 | 8/18 |
+| E5 top 10 (FAST) | 14/18 | 7/18 |
+| E top 10 (QUALITY) | 13/18 | 6/18 |
+| E5 top 5 | 15/18 | 7/18 |
+
+- **Routing.** FAST accepted 7 of 18, QUALITY 6 and a cascade (E5, then E only where E5 abstained)
+  9. QUALITY rescued 2 needs where FAST abstained, but the cascade failed the external check
+  below, so **automatic FAST to QUALITY routing is not justified**. E stays the QUALITY path on the
+  strength of its retrieval evidence, to be used on demand.
+- **Negatives.** One of the 15 pre-registered negative contexts produced an answer that should not
+  have been given (0 of 3 natural, 1 of 6 constructed insufficient contexts, 0 of 6 mismatched
+  contexts; 95 % Wilson interval 1 to 30 %). The constructed contexts are insufficient only under
+  the DEV relevance judgments, not in law. This is not a safety claim.
+- **What layer 0 proves.** Provenance and integrity of the citations, nothing about meaning. A
+  separate language model, working blind on 40 claims that had passed layer 0, judged 21 supported
+  by their cited text and 19 not (52.5 % supported), and judged that 8 of the 9 accepted answers
+  addressed the question and one did so partially. **An answer can address the question and still
+  contain claims its citations do not support.** These are `model-audited, not human-validated`
+  labels (the auditing model and version were not captured) and no legal expert reviewed anything.
+- **Larger model.** A diagnostic with `Qwen3-8B` (4-bit, first Qwen3 generation, run without
+  thinking; not a scaled-up 4B-Instruct-2507) on `GOLD_KNOWN` only, with the same prompt, schema,
+  verifier and decoding: 8 of 18 accepted again, and 15 of 26 citations verified against 17 of 26
+  for the 4B. It failed its pre-registered rule and nothing more was run with it. **Under the
+  frozen `GOLD_KNOWN` diagnostic, the tested 8B model did not improve the operational acceptance
+  rate over the 4B model and showed lower deterministic citation verification.** This says nothing
+  about other models of that size or about larger models in general.
+
+**What this does not show.** That the answers are correct or legally valid, that the system is
+safe to abstain, that the results hold outside DEV or with other models, or that anything here is
+ready for production. The main failure is reproducing a literal quote exactly; whether that
+contract, rather than model size, is the bottleneck was not tested.
+
+**Reading the hashes.** The hashes pinned in `config/generation` belong to the code that was
+executed. A later commit translated the Spanish strings that frame the review packets in
+`ingest/answer_report.py` to English, a language-only change after the experiment: the analysis it
+produces is byte-identical, but the file has a different hash from then on, so the guards that
+compare the pinned hashes refuse to start a new run from this tree.
+
+**When this would be reopened.** A decision that depends on the semantic support of the citations
+(a verifier of meaning, or a different citation contract), a larger or different generator under a
+new pre-registration, an independent evaluation set, expert-made labels, or any plan to put
+answers in front of users.
+
 ## Known limitations
 
 - The corpus is not in the repository and there is no download command yet.
@@ -872,6 +951,12 @@ publication.
   has a relevance judgment, from one model family. The comparisons between E5 and its variants
   are formally unresolved, the latencies are single-query timings on one Apple M1, and E is
   currently tied to Apple silicon (MLX). The selection says nothing about the quality of answers.
+- S7-S8 evaluated one small generator on 18 DEV needs and 15 negative contexts, once, so every
+  interval is wide. Its semantic-support check came from one other language model on 40 claims, with
+  no human or legal-expert validation, and showed that about half of the claims that pass the
+  deterministic citation check were not judged supported. The negative contexts are constructed
+  under the DEV judgments. The larger-model diagnostic covered one model on one context. Nothing
+  there is a measure of legal correctness or a production claim.
 - Subparagraphs are detected from the markup alone, without reading the words. As a result, a
   heading line inside a paragraph (the "Method A/B/C" lines of PSD2 Article 9(1)) and a quoted text
   after a colon become subparagraphs of their own. Inside a point nothing is split, so in 4
