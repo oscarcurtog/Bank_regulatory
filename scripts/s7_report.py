@@ -1,14 +1,20 @@
-"""Report of S7-S8: from the generated outputs to the analysis, the blind human packets and,
-after the human labels, the final scores.
+"""Report of S7-S8: from the generated outputs to the analysis, the blind packets and, after the
+labels of a separate model, the final scores.
 
     PYTHONPATH=. .venv/bin/python scripts/s7_report.py check    # prompt development: a quick look
     PYTHONPATH=. .venv/bin/python scripts/s7_report.py analyse  # the evaluation: analysis + packets
-    PYTHONPATH=. .venv/bin/python scripts/s7_report.py score --claims C.csv --answers A.csv
+    PYTHONPATH=. .venv/bin/python scripts/s7_report.py score --claims C.csv --answers A.csv \
+        --auditor "name and version of the auditing model"
 
 It runs no model. `analyse` applies exactly the preregistered rules to the outputs of
 `scripts/s7_generate.py evaluate`, writes the analysis, the report and the two blind packets (40
 claims, and the answers) with their label templates, and keeps the keys apart. `score` reads the
-labels the human wrote, scores them and recomputes the decisions that depend on them.
+labels, scores them and recomputes the decisions that depend on them.
+
+Addendum 1 to the preregistration (2026-11-02): the labels are a cross-model audit by a separate
+language model, not human labels. The modules that were sealed keep their names (`human_*`); `score`
+renames them on the way out and refuses to write anything that still says "human", so a result is
+always labelled "model-audited, not human-validated".
 """
 
 from __future__ import annotations
@@ -48,6 +54,57 @@ class Paths:
         self.evaluation = results / "evaluation"
         self.human = results / "human"
         self.keys = results / "human-key"
+
+
+AUDIT_BANNER = "model-audited, not human-validated"
+AUDIT_KEYS = {
+    "human_claims": "cross_model_claims_audit",
+    "human_answers": "cross_model_answers_audit",
+    "human_support_meets_guardrail": "cross_model_support_meets_guardrail",
+    "human_support_below_90": "cross_model_support_below_90",
+    "human_support_by_context_descriptive": "cross_model_support_by_context_descriptive",
+}
+AUDIT_PHRASES = (
+    ("## Human anchor: claims", "## Cross-model semantic support audit: claims"),
+    ("## Human check: answers", "## Cross-model answer relevance audit: answers"),
+    ("needs the human guardrail", "needs the cross-model support audit"),
+)
+AUDIT_TITLE = "# S7-S8 evaluation: automatic report"
+
+
+def _nothing_human(text: str, what: str) -> None:
+    if "human" in text.lower():
+        raise SystemExit(f"{what} still says 'human' after the relabelling: nothing was written")
+
+
+def audit_json(node: Any) -> Any:
+    """The analysis with the keys of the labels renamed from human_* to cross_model_*."""
+    if isinstance(node, dict):
+        return {AUDIT_KEYS.get(k, k): audit_json(v) for k, v in node.items()}
+    if isinstance(node, list):
+        return [audit_json(v) for v in node]
+    return node
+
+
+def audit_json_text(analysis: Any) -> str:
+    text = json.dumps(audit_json(analysis), indent=1, sort_keys=True) + "\n"
+    _nothing_human(text, "the analysis")
+    return text
+
+
+def audit_report(text: str) -> str:
+    """The rendered report with the names and headings of the labels changed and the banner on
+    top. A heading that is not found is an error: the renderer must not change unnoticed."""
+    for old, new in AUDIT_PHRASES:
+        text = text.replace(old, new)
+    for old, new in AUDIT_KEYS.items():
+        text = text.replace(old, new)
+    _nothing_human(text, "the report")
+    if not text.startswith(AUDIT_TITLE):
+        raise SystemExit("the report does not start with the expected title")
+    return text.replace(
+        AUDIT_TITLE, f"{AUDIT_TITLE} and cross-model audit\n\n**{AUDIT_BANNER}**", 1
+    )
 
 
 def write_once(path: Path, text: str) -> None:
@@ -182,7 +239,7 @@ def analyse(paths: Paths) -> int:
     return 0
 
 
-def score(claims: Path, answers: Path, paths: Paths) -> int:
+def score(claims: Path, answers: Path, auditor: str, paths: Paths) -> int:
     payload = json.loads(paths.cases.read_text(encoding="utf-8"))
     cases = payload["cases"]["evaluation_positive"] + payload["cases"]["evaluation_negative"]
     texts, grades = load_world()
@@ -195,13 +252,18 @@ def score(claims: Path, answers: Path, paths: Paths) -> int:
     )
     analysis = rep.analyse(outcomes, grades, records, human_claims, human_answers)
     seal = json.loads((paths.evaluation / "seal.json").read_text(encoding="utf-8"))["seal"]
-    header = {"preregistration": seal["preregistration_sha256"], "labels": "human, blind packets"}
-    write_once(
-        paths.results / "analysis-with-human.json",
-        json.dumps(analysis, indent=1, sort_keys=True) + "\n",
-    )
-    write_once(paths.results / "report-with-human.md", rep.render_report(analysis, header))
-    for name in ("analysis-with-human.json", "report-with-human.md"):
+    header = {
+        "preregistration": seal["preregistration_sha256"],
+        "labels": f"cross-model audit on the blind packets by {auditor}",
+        "labels sha256 (claims, answers)": ", ".join(
+            hashlib.sha256(f.read_bytes()).hexdigest() for f in (claims, answers)
+        ),
+    }
+    analysis_text = audit_json_text(analysis)
+    report_text = audit_report(rep.render_report(analysis, header))
+    write_once(paths.results / "analysis-with-audit.json", analysis_text)
+    write_once(paths.results / "report-with-audit.md", report_text)
+    for name in ("analysis-with-audit.json", "report-with-audit.md"):
         print(hashlib.sha256((paths.results / name).read_bytes()).hexdigest(), paths.results / name)
     return 0
 
@@ -216,13 +278,14 @@ def main(argv: list[str] | None = None) -> int:
     sc = sub.add_parser("score")
     sc.add_argument("--claims", type=Path, required=True)
     sc.add_argument("--answers", type=Path, required=True)
+    sc.add_argument("--auditor", required=True, help="name and version of the auditing model")
     args = parser.parse_args(argv)
     paths = Paths(args.results_dir)
     if args.command == "check":
         return check(args.folder, paths)
     if args.command == "analyse":
         return analyse(paths)
-    return score(args.claims, args.answers, paths)
+    return score(args.claims, args.answers, args.auditor, paths)
 
 
 if __name__ == "__main__":

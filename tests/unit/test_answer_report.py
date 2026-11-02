@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 
 import pytest
@@ -192,3 +193,34 @@ def test_a_multi_line_chunk_stays_inside_its_block_quote() -> None:
         }
     ]
     assert "> x\n> y" in rep.render_answers_packet(answers)
+
+
+def test_the_audit_relabelling_leaves_nothing_called_human() -> None:
+    module = importlib.import_module("scripts.s7_report")  # scripts/ is no package for mypy
+    outcomes, grades, records = _world()
+    claims = {
+        "overall": {"support_rate_excluding_unclear": 0.95},
+        "by_context": {c: {"support_rate_excluding_unclear": 0.95} for c in am.HUMAN_CONTEXTS},
+        "meets_90_percent": True,
+    }
+    analysis = rep.analyse(outcomes, grades, records, claims, {"ANSWERED": 5})
+    renamed = module.audit_json(analysis)
+    assert renamed["cross_model_claims_audit"] == claims
+    assert renamed["cross_model_answers_audit"] == {"ANSWERED": 5}
+    assert "cross_model_support_meets_guardrail" in renamed["cascade"]["criteria"]
+    assert "human" not in module.audit_json_text(analysis).lower()
+    header = {"preregistration": "x", "labels": "cross-model audit"}
+    text = module.audit_report(rep.render_report(analysis, header))
+    assert text.splitlines()[2] == "**model-audited, not human-validated**"
+    assert "## Cross-model semantic support audit: claims" in text
+    assert "## Cross-model answer relevance audit: answers" in text
+    assert "needs the cross-model support audit" in text
+    assert "human" not in text.replace("not human-validated", "").lower()
+
+
+def test_the_relabelling_refuses_a_report_that_still_says_human() -> None:
+    module = importlib.import_module("scripts.s7_report")
+    with pytest.raises(SystemExit):
+        module.audit_report("# S7-S8 evaluation: automatic report\n\n## Human something else\n")
+    with pytest.raises(SystemExit):
+        module.audit_json_text({"human_unknown_key": 1})
