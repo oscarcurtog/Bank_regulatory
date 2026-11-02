@@ -343,55 +343,55 @@ def _quoted(text: str) -> str:
 
 def render_claims_packet(packet: Sequence[Mapping[str, Any]]) -> str:
     lines = [
-        "# Ancla humana: 40 afirmaciones",
+        "# Human anchor: 40 claims",
         "",
-        "Para cada afirmación, lee el texto citado y responde SOLO a esto: "
-        "**¿El texto citado sostiene realmente la afirmación?** No tienes que decidir si es "
-        "jurídicamente correcta. Etiqueta en `claims-labels.csv`.",
+        "For each claim, read the cited text and answer ONLY this: "
+        "**Does the cited text really support the claim?** You do not have to decide whether it "
+        "is legally correct. Label it in `claims-labels.csv`.",
         "",
     ]
     for item in packet:
-        lines += [f"## {item['item']}", "", f"**Afirmación:** {item['claim']}", ""]
+        lines += [f"## {item['item']}", "", f"**Claim:** {item['claim']}", ""]
         for cite in item["citations"]:
             lines += [
-                f"**Cita literal** (fragmento `{cite['chunk_id']}`):",
+                f"**Literal quote** (chunk `{cite['chunk_id']}`):",
                 "",
                 _quoted(cite["quote"]),
                 "",
-                f"Texto completo del fragmento `{cite['chunk_id']}`:",
+                f"Full text of chunk `{cite['chunk_id']}`:",
                 "",
                 _quoted(cite["chunk_text"]),
                 "",
             ]
-        lines += ["Etiqueta: SUPPORTED / UNSUPPORTED / UNCLEAR", "", "---", ""]
+        lines += ["Label: SUPPORTED / UNSUPPORTED / UNCLEAR", "", "---", ""]
     return "\n".join(lines)
 
 
 def render_answers_packet(packet: Sequence[Mapping[str, Any]]) -> str:
     lines = [
-        "# Evaluación humana de respuestas",
+        "# Human evaluation of answers",
         "",
-        "Para cada elemento, dada la pregunta y **únicamente** las citas y textos mostrados, "
-        "responde: **¿la respuesta aborda realmente lo que se pregunta?** No es una "
-        "evaluación jurídica. Etiqueta en `answers-labels.csv`.",
+        "For each item, given the question and **only** the citations and texts shown, "
+        "answer: **does the answer really address what is asked?** This is not a legal "
+        "evaluation. Label it in `answers-labels.csv`.",
         "",
     ]
     for item in packet:
         lines += [
             f"## {item['item']}",
             "",
-            f"**Pregunta:** {item['question']}",
+            f"**Question:** {item['question']}",
             "",
-            "**Respuesta del sistema:**",
+            "**System answer:**",
             "",
         ]
         for n, claim in enumerate(item["claims"], start=1):
             cites = ", ".join(f"`{c}`" for c in claim["cites"])
             lines.append(f"{n}. {claim['text']} [{cites}]")
-        lines += ["", "**Textos citados:**", ""]
+        lines += ["", "**Cited texts:**", ""]
         for chunk_id, text in item["cited_texts"].items():
             lines += [f"`{chunk_id}`:", "", _quoted(text), ""]
-        lines += ["Etiqueta: ANSWERED / PARTIAL / NOT_ANSWERED / UNCLEAR", "", "---", ""]
+        lines += ["Label: ANSWERED / PARTIAL / NOT_ANSWERED / UNCLEAR", "", "---", ""]
     return "\n".join(lines)
 
 
