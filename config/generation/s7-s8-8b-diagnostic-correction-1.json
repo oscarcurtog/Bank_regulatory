@@ -1,0 +1,23 @@
+{
+  "schema_version": "1",
+  "name": "s7-s8-8b-diagnostic-correction-1",
+  "stage": "addendum-2-correction-1",
+  "amends": {
+    "name": "s7-s8-8b-diagnostic-preregistration",
+    "document_sha256": "9f47af5a78269d1d0ec650e088fb8a51e474df1cb7967dd8ecfc2f02047eefd1"
+  },
+  "title": "Correction 1 to the 8B diagnostic preregistration: the weights check of the guard, published before any output of the larger model exists",
+  "document_sha256": "155be4dc58d22286de8a3489b1ed7b0e1e91e1100a0f9e29cb4125b57a0b88ab",
+  "document_bytes": 2511,
+  "hash_algorithm": "sha256",
+  "document_status": "private; kept outside the public repository",
+  "what_failed": "the first start stopped in the guard before any model was loaded and before any generation: the cache stores the weights blob as a link again, and resolving the whole chain gave a storage path instead of the content hash",
+  "what_changed": "only scripts/s7_diag8b.py: the weights check reads the target of the snapshot link, and the guard reads this correction pin, whose inputs replace those of the original pin",
+  "what_did_not_change": "model, revision, weights hash, configuration, prompt, modules, cases, baseline, needs, decoding, metrics, decision rule and audit rule",
+  "inputs": {
+    "scripts/s7_diag8b.py": "99aafb8054ac6c46f8d284b59b73cdffc556359979a36ec21ed7e2e129fae723"
+  },
+  "code_commit": "4de7f80",
+  "sealed_on": "2026-11-02",
+  "note": "The commit that adds this file is the public timestamp: no output of the larger model existed when the corrected guard was pinned."
+}
